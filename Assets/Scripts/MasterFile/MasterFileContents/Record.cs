@@ -112,7 +112,7 @@ namespace MasterFile.MasterFileContents
             UnknownData = unknownData;
         }
 
-        private static Record ParseBasicInfo(string recordType,BinaryReader fileReader, long position)
+        private static Record ParseBasicInfo(string recordType, BinaryReader fileReader, long position)
         {
             fileReader.BaseStream.Seek(position, SeekOrigin.Begin);
             return new Record(recordType, fileReader.ReadUInt32(), fileReader.ReadUInt32(),
@@ -127,6 +127,8 @@ namespace MasterFile.MasterFileContents
             {
                 case "TES4":
                     return TES4.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position);
+                case "WRLD":
+                    return WRLD.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position);
                 default:
                     fileReader.BaseStream.Seek(basicRecordInfo.DataSize, SeekOrigin.Current);
                     return basicRecordInfo;
