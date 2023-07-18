@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using MasterFile.MasterFileContents.Records;
 
 namespace MasterFile.MasterFileContents
 {
@@ -16,7 +17,7 @@ namespace MasterFile.MasterFileContents
         /// <summary>
         /// Size of data field
         /// </summary>
-        public UInt32 DataSize { get; protected set; }
+        public uint DataSize { get; protected set; }
 
         /// <summary>
         /// <para>Flags</para>
@@ -60,12 +61,12 @@ namespace MasterFile.MasterFileContents
         /// (REFR) NoRespawn</para>
         /// <para>0x80000000 -> (REFR) MultiBound</para>
         /// </summary>
-        public UInt32 Flag { get; protected set; }
+        public uint Flag { get; protected set; }
 
         /// <summary>
         /// Record (form) identifier
         /// </summary>
-        public UInt32 FormID { get; protected set; }
+        public uint FormID { get; protected set; }
 
         /// <summary>
         /// <para>Timestamp</para>
@@ -76,24 +77,24 @@ namespace MasterFile.MasterFileContents
         /// <para>HB = (((Y - 4) MOD 10) + 1) * 12 + M</para>
         /// <para>Skyrim SE: Bits are used to represent each part, with a two-digit year: 0bYYYYYYYMMMMDDDDD. Thus, January 25, 2021 would be (spaces added for clarity): 0b 0010101 0001 11001 or 0x2A39.</para>
         /// </summary>
-        public UInt16 Timestamp { get; protected set; }
+        public ushort Timestamp { get; protected set; }
 
         /// <summary>
         /// <para>Version Control Info</para>
         /// <para>The low byte is the user id that last had the form checked out.</para>
         /// <para>The high byte is the user id (if any) that currently has the form checked out.</para>
         /// </summary>
-        public UInt16 VersionControlInfo { get; protected set; }
+        public ushort VersionControlInfo { get; protected set; }
 
         /// <summary>
         /// The internal version of the record. This can be used to distinguish certain records that have different field layouts or sizes.
         /// </summary>
-        public UInt16 InternalRecordVersion { get; protected set; }
+        public ushort InternalRecordVersion { get; protected set; }
 
         /// <summary>
         /// Unknown. Values range between 0-15.
         /// </summary>
-        public UInt16 UnknownData { get; protected set; }
+        public ushort UnknownData { get; protected set; }
 
         /// <summary>
         /// This constructor is only used when a record of unknown type gets parsed
@@ -111,14 +112,25 @@ namespace MasterFile.MasterFileContents
             UnknownData = unknownData;
         }
 
-        public new virtual Record Parse(BinaryReader fileReader, ulong position)
+        private static Record ParseBasicInfo(string recordType,BinaryReader fileReader, long position)
         {
-            throw new NotImplementedException();
+            fileReader.BaseStream.Seek(position, SeekOrigin.Begin);
+            return new Record(recordType, fileReader.ReadUInt32(), fileReader.ReadUInt32(),
+                fileReader.ReadUInt32(), fileReader.ReadUInt16(), fileReader.ReadUInt16(), fileReader.ReadUInt16(),
+                fileReader.ReadUInt16());
         }
-        
-        protected override MasterFileEntry ParseFromFile(BinaryReader fileReader, ulong position)
+
+        public static Record Parse(string recordType, BinaryReader fileReader, long position)
         {
-            return Parse(fileReader, position);
+            Record basicRecordInfo = ParseBasicInfo(recordType, fileReader, position);
+            switch (basicRecordInfo.Type)
+            {
+                case "TES4":
+                    return TES4.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position);
+                default:
+                    fileReader.BaseStream.Seek(basicRecordInfo.DataSize, SeekOrigin.Current);
+                    return basicRecordInfo;
+            }
         }
     }
 }

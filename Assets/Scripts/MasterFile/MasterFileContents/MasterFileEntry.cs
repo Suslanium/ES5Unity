@@ -7,11 +7,18 @@ namespace MasterFile.MasterFileContents
     /// </summary>
     public abstract class MasterFileEntry
     {
-        public MasterFileEntry Parse(BinaryReader fileReader, ulong position)
+        public static MasterFileEntry Parse(BinaryReader fileReader, long position)
         {
-            return ParseFromFile(fileReader, position);
+            fileReader.BaseStream.Seek(position, SeekOrigin.Begin);
+            string entryType = new string(fileReader.ReadChars(4));
+            if (entryType.Equals("GRUP"))
+            {
+                return Group.Parse(fileReader, fileReader.BaseStream.Position);
+            }
+            else
+            {
+                return Record.Parse(entryType, fileReader, fileReader.BaseStream.Position);
+            }
         }
-
-        protected abstract MasterFileEntry ParseFromFile(BinaryReader fileReader, ulong position);
     }
 }

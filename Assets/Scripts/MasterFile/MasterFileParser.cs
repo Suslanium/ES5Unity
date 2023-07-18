@@ -1,18 +1,15 @@
-using System.Collections;
-using System.Collections.Generic;
+using System;
 using UnityEngine;
 
-public class MasterFileParser : MonoBehaviour
+namespace MasterFile
 {
-    // Start is called before the first frame update
-    void Start()
+    public class MasterFileParser : MonoBehaviour
     {
-        
-    }
+        [SerializeField] private String filePath;
 
-    // Update is called once per frame
-    void Update()
-    {
-        
+        void Start()
+        {
+            ESMasterFile masterFile = ESMasterFile.Parse(filePath);
+        }
     }
 }

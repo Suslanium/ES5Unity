@@ -1,4 +1,4 @@
-using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace MasterFile.MasterFileContents
@@ -11,7 +11,7 @@ namespace MasterFile.MasterFileContents
         /// <summary>
         /// Size of the entire group, including the group header (24 bytes).
         /// </summary>
-        public UInt32 Size { get; protected set; }
+        public uint Size { get; protected set; }
 
         /// <summary>
         /// Label. Format depends on group type (see next field). Stored as 4 bytes.
@@ -32,7 +32,7 @@ namespace MasterFile.MasterFileContents
         /// <para> 8 -> Cell persistent children -> FormID -> Parent cell (CELL) </para>
         /// <para> 9 -> Cell temporary children -> FormID -> Parent cell (CELL)</para>
         /// </summary>
-        public Int32 GroupType { get; protected set; }
+        public int GroupType { get; protected set; }
 
         /// <summary>
         /// <para>Timestamp</para>
@@ -43,27 +43,27 @@ namespace MasterFile.MasterFileContents
         /// <para>HB = (((Y - 4) MOD 10) + 1) * 12 + M</para>
         /// <para>Skyrim SE: Bits are used to represent each part, with a two-digit year: 0bYYYYYYYMMMMDDDDD. Thus, January 25, 2021 would be (spaces added for clarity): 0b 0010101 0001 11001 or 0x2A39.</para>
         /// </summary>
-        public UInt16 Timestamp { get; protected set; }
+        public ushort Timestamp { get; protected set; }
 
         /// <summary>
         /// <para>Version Control Info</para>
         /// <para>The low byte is the user id that last had the form checked out.</para>
         /// <para>The high byte is the user id (if any) that currently has the form checked out.</para>
         /// </summary>
-        public UInt16 VersionControlInfo { get; protected set; }
+        public ushort VersionControlInfo { get; protected set; }
 
         /// <summary>
         /// Unknown. The values stored here are significantly different than those used in records and appear to be a 32-bit value rather than two 16-bit values.
         /// </summary>
-        public UInt32 UnknownData { get; protected set; }
+        public uint UnknownData { get; protected set; }
 
         /// <summary>
         /// Records and subgroups.
         /// </summary>
-        public MasterFileEntry[] GroupData { get; protected set; }
+        public List<MasterFileEntry> GroupData { get; protected set; } = new();
 
-        public Group(uint size, byte[] label, int groupType, ushort timestamp, ushort versionControlInfo,
-            uint unknownData, MasterFileEntry[] groupData)
+        private Group(uint size, byte[] label, int groupType, ushort timestamp, ushort versionControlInfo,
+            uint unknownData)
         {
             Size = size;
             Label = label;
@@ -71,17 +71,19 @@ namespace MasterFile.MasterFileContents
             Timestamp = timestamp;
             VersionControlInfo = versionControlInfo;
             UnknownData = unknownData;
-            GroupData = groupData;
         }
 
-        public new Group Parse(BinaryReader fileReader, ulong position)
+        public new static Group Parse(BinaryReader fileReader, long position)
         {
-            throw new NotImplementedException();
-        }
+            Group group = new Group(fileReader.ReadUInt32(), fileReader.ReadBytes(4), fileReader.ReadInt32(),
+                fileReader.ReadUInt16(), fileReader.ReadUInt16(), fileReader.ReadUInt32());
+            long basePosition = fileReader.BaseStream.Position;
+            while (fileReader.BaseStream.Position < basePosition + group.Size - 24)
+            {
+                group.GroupData.Add(MasterFileEntry.Parse(fileReader, fileReader.BaseStream.Position));
+            }
 
-        protected override MasterFileEntry ParseFromFile(BinaryReader fileReader, ulong position)
-        {
-            return Parse(fileReader, position);
+            return group;
         }
     }
 }
