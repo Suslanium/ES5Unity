@@ -1,6 +1,8 @@
 using System;
 using System.IO;
+using Ionic.Zlib;
 using MasterFile.MasterFileContents.Records;
+using UnityEngine;
 
 namespace MasterFile.MasterFileContents
 {
@@ -123,16 +125,62 @@ namespace MasterFile.MasterFileContents
         public static Record Parse(string recordType, BinaryReader fileReader, long position)
         {
             Record basicRecordInfo = ParseBasicInfo(recordType, fileReader, position);
+            long startPos = fileReader.BaseStream.Position;
+            Record toReturn;
+            if ((basicRecordInfo.Flag & 0x00040000) != 0)
+            {
+                //Record data is compressed
+                byte[] decompressedData = DecompressRecordData(fileReader, basicRecordInfo.DataSize);
+                MemoryStream decompressedDataStream = new MemoryStream(decompressedData, false);
+                BinaryReader decompressedDataReader = new BinaryReader(decompressedDataStream);
+                Record decompressedRecordInfo = new Record(basicRecordInfo.Type, (uint)decompressedData.Length, basicRecordInfo.Flag,
+                    basicRecordInfo.FormID, basicRecordInfo.Timestamp, basicRecordInfo.VersionControlInfo, basicRecordInfo.InternalRecordVersion,
+                    basicRecordInfo.UnknownData);
+                toReturn = GetSpecificRecord(decompressedDataReader, decompressedRecordInfo);
+                decompressedDataReader.Close();
+                decompressedDataStream.Close();
+            }
+            else
+            {
+                toReturn = GetSpecificRecord(fileReader, basicRecordInfo);
+            }
+
+            fileReader.BaseStream.Seek(startPos+basicRecordInfo.DataSize, SeekOrigin.Begin);
+            return toReturn;
+        }
+
+        private static Record GetSpecificRecord(BinaryReader fileReader, Record basicRecordInfo)
+        {
+            Record specificRecord = basicRecordInfo;
             switch (basicRecordInfo.Type)
             {
                 case "TES4":
-                    return TES4.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position);
+                    specificRecord = TES4.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position);
+                    break;
                 case "WRLD":
-                    return WRLD.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position);
-                default:
-                    fileReader.BaseStream.Seek(basicRecordInfo.DataSize, SeekOrigin.Current);
-                    return basicRecordInfo;
+                    specificRecord = WRLD.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position);
+                    break;
+                case "CELL":
+                    specificRecord = CELL.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position);
+                    break;
             }
+
+            return specificRecord;
+        }
+
+        private static byte[] DecompressRecordData(BinaryReader fileReader, uint compressedDataSize)
+        {
+            var decompressedSize = fileReader.ReadUInt32();
+            var compressedData = fileReader.ReadBytes(checked((int)compressedDataSize));
+            byte[] decompressedData = new byte[decompressedSize];
+            using MemoryStream compressedDataStream = new MemoryStream(compressedData, false);
+            using ZlibStream decompressStream = new ZlibStream(compressedDataStream, CompressionMode.Decompress);
+            var readAmount = decompressStream.Read(decompressedData, 0, checked((int)decompressedSize));
+            if (readAmount != decompressedSize)
+            {
+                Debug.LogError("Decompressed record data size doesn't match with the original decompressed size");
+            }
+            return decompressedData;
         }
     }
 }

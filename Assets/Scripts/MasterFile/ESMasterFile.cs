@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using MasterFile.MasterFileContents;
 using MasterFile.MasterFileContents.Records;
+using UnityEngine;
 
 namespace MasterFile
 {
@@ -27,7 +28,7 @@ namespace MasterFile
             {
                 masterFile.Groups.Add(MasterFileEntry.Parse(fileReader, fileReader.BaseStream.Position) as Group);
             }
-
+            
             return masterFile;
         }
     }

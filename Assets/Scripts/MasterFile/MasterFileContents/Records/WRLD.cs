@@ -17,7 +17,7 @@ namespace MasterFile.MasterFileContents.Records
         /// <summary>
         /// The name of this worldspace used in the game(lstring)
         /// </summary>
-        public uint LocalizedNameStringID { get; private set; }
+        public uint LocalizedNameID { get; private set; }
 
         /// <summary>
         /// X, Y
@@ -82,23 +82,23 @@ namespace MasterFile.MasterFileContents.Records
 
         public static WRLD ParseSpecific(Record baseInfo, BinaryReader fileReader, long position)
         {
-            WRLD wrld = new WRLD(baseInfo.Type, baseInfo.DataSize, baseInfo.Flag, baseInfo.FormID, baseInfo.Timestamp,
+            var wrld = new WRLD(baseInfo.Type, baseInfo.DataSize, baseInfo.Flag, baseInfo.FormID, baseInfo.Timestamp,
                 baseInfo.VersionControlInfo, baseInfo.InternalRecordVersion, baseInfo.UnknownData);
             while (fileReader.BaseStream.Position < position + baseInfo.DataSize)
             {
-                string fieldType = new string(fileReader.ReadChars(4));
-                ushort fieldSize = fileReader.ReadUInt16();
+                var fieldType = new string(fileReader.ReadChars(4));
+                var fieldSize = fileReader.ReadUInt16();
                 switch (fieldType)
                 {
                     case "EDID":
                         wrld.EditorID = new string(fileReader.ReadChars(fieldSize));
                         break;
                     case "FULL":
-                        wrld.LocalizedNameStringID = fileReader.ReadUInt32();
+                        wrld.LocalizedNameID = fileReader.ReadUInt32();
                         break;
                     case "WCTR":
-                        short x = fileReader.ReadInt16();
-                        short y = fileReader.ReadInt16();
+                        var x = fileReader.ReadInt16();
+                        var y = fileReader.ReadInt16();
                         wrld.CenterCellCoordinates = new[] { x, y };
                         break;
                     case "LTMP":
@@ -117,14 +117,16 @@ namespace MasterFile.MasterFileContents.Records
                         wrld.ClimateReference = fileReader.ReadUInt32();
                         break;
                     case "DNAM":
-                        float land = fileReader.ReadSingle();
-                        float ocean = fileReader.ReadSingle();
+                        var land = fileReader.ReadSingle();
+                        var ocean = fileReader.ReadSingle();
                         wrld.LandData = new[] { land, ocean };
                         break;
                     case "PNAM":
                         wrld.ParentWorldRelatedFlags = fileReader.ReadUInt16();
                         break;
                     case "OFST":
+                        //Skip because this field may contain an XXXX field before it and the fieldSize may be incorrect here
+                        //(This field is always last and it is only needed for debug purposes, so who cares)
                         fileReader.BaseStream.Seek(position + baseInfo.DataSize, SeekOrigin.Begin);
                         return wrld;
                     default:

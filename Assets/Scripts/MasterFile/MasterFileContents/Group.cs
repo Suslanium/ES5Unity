@@ -83,6 +83,8 @@ namespace MasterFile.MasterFileContents
                 group.GroupData.Add(MasterFileEntry.Parse(fileReader, fileReader.BaseStream.Position));
             }
 
+            fileReader.BaseStream.Seek(basePosition + group.Size - 24, SeekOrigin.Begin);
+
             return group;
         }
     }

@@ -54,12 +54,12 @@ namespace MasterFile.MasterFileContents.Records
 
         public static TES4 ParseSpecific(Record baseInfo, BinaryReader fileReader, long position)
         {
-            TES4 header = new TES4(baseInfo.Type, baseInfo.DataSize, baseInfo.Flag, baseInfo.FormID, baseInfo.Timestamp,
+            var header = new TES4(baseInfo.Type, baseInfo.DataSize, baseInfo.Flag, baseInfo.FormID, baseInfo.Timestamp,
                 baseInfo.VersionControlInfo, baseInfo.InternalRecordVersion, baseInfo.UnknownData);
             while (fileReader.BaseStream.Position < position + baseInfo.DataSize)
             {
-                string fieldType = new string(fileReader.ReadChars(4));
-                ushort fieldSize = fileReader.ReadUInt16();
+                var fieldType = new string(fileReader.ReadChars(4));
+                var fieldSize = fileReader.ReadUInt16();
                 switch (fieldType)
                 {
                     case "HEDR":
@@ -80,7 +80,7 @@ namespace MasterFile.MasterFileContents.Records
                         fileReader.ReadChars(fieldSize);
                         break;
                     case "ONAM":
-                        for (int i = 0; i < fieldSize / 4; i++)
+                        for (var i = 0; i < fieldSize / 4; i++)
                         {
                             header.OverridenForms.Add(fileReader.ReadUInt32());
                         }
