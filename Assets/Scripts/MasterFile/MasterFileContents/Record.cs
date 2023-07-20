@@ -169,6 +169,9 @@ namespace MasterFile.MasterFileContents
                 case "STAT":
                     specificRecord = STAT.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position);
                     break;
+                case "MSTT":
+                    specificRecord = MSTT.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position);
+                    break;
             }
 
             return specificRecord;
