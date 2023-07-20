@@ -166,6 +166,9 @@ namespace MasterFile.MasterFileContents
                 case "REFR":
                     specificRecord = REFR.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position);
                     break;
+                case "STAT":
+                    specificRecord = STAT.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position);
+                    break;
             }
 
             return specificRecord;
