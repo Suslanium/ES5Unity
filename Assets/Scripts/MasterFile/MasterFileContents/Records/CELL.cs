@@ -93,7 +93,7 @@ namespace MasterFile.MasterFileContents.Records
 
         public static CELL ParseSpecific(Record baseInfo, BinaryReader fileReader, long position)
         {
-            CELL cell = new CELL(baseInfo.Type, baseInfo.DataSize, baseInfo.Flag, baseInfo.FormID, baseInfo.Timestamp,
+            var cell = new CELL(baseInfo.Type, baseInfo.DataSize, baseInfo.Flag, baseInfo.FormID, baseInfo.Timestamp,
                 baseInfo.VersionControlInfo, baseInfo.InternalRecordVersion, baseInfo.UnknownData);
             while (fileReader.BaseStream.Position < position + baseInfo.DataSize)
             {
