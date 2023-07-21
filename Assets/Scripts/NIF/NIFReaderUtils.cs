@@ -1,4 +1,6 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
+using NIF.NiObjects;
 
 namespace NIF
 {
@@ -37,7 +39,7 @@ namespace NIF
 
             return array;
         }
-        
+
         public static uint[] ReadUintArray(BinaryReader binaryReader, uint length)
         {
             uint[] array = new uint[length];
@@ -47,6 +49,70 @@ namespace NIF
             }
 
             return array;
+        }
+
+        public static string ReadString(BinaryReader binaryReader, Header header)
+        {
+            if (header.Version <= 0x14000005)
+            {
+                return ReadSizedString(binaryReader);
+            }
+            else if (header.Version >= 0x14010003)
+            {
+                var stringIndex = binaryReader.ReadUInt32();
+                return header.Strings[stringIndex];
+            }
+
+            return null;
+        }
+
+        public static int ReadRef(BinaryReader binaryReader)
+        {
+            return binaryReader.ReadInt32();
+        }
+
+        public static int[] ReadRefArray(BinaryReader binaryReader, uint length)
+        {
+            var refArray = new int[length];
+            for (var i = 0; i < length; i++)
+            {
+                refArray[i] = binaryReader.ReadInt32();
+            }
+
+            return refArray;
+        }
+
+        public static float ReadHalfPrecisionFloat(BinaryReader binaryReader)
+        {
+            var bytes = binaryReader.ReadBytes(2);
+            return GetHalfPrecisionFloat(bytes[0], bytes[1]);
+        }
+        
+        //This was taken from Stackoverflow(https://stackoverflow.com/questions/37759848/convert-byte-array-to-16-bits-float)
+        public static float GetHalfPrecisionFloat(byte HO, byte LO)
+        {
+            var intVal = BitConverter.ToInt32(new byte[] { HO, LO, 0, 0 }, 0);
+
+            int mant = intVal & 0x03ff;
+            int exp = intVal & 0x7c00;
+            if (exp == 0x7c00) exp = 0x3fc00;
+            else if (exp != 0)
+            {
+                exp += 0x1c000;
+                if (mant == 0 && exp > 0x1c400)
+                    return BitConverter.ToSingle(BitConverter.GetBytes((intVal & 0x8000) << 16 | exp << 13 | 0x3ff), 0);
+            }
+            else if (mant != 0)
+            {
+                exp = 0x1c400;
+                do
+                {
+                    mant <<= 1;
+                    exp -= 0x400;
+                } while ((mant & 0x400) == 0);
+                mant &= 0x3ff;
+            }
+            return BitConverter.ToSingle(BitConverter.GetBytes((intVal & 0x8000) << 16 | (exp | mant) << 13), 0);
         }
     }
 }

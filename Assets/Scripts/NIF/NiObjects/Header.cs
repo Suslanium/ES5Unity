@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-namespace NIF.Structures
+namespace NIF.NiObjects
 {
     public class Header
     {
@@ -87,31 +87,35 @@ namespace NIF.Structures
 
             header.HeaderString = System.Text.Encoding.UTF8.GetString(headerStringBytes.ToArray());
             header.Version = nifReader.ReadUInt32();
-            header.EndianType = nifReader.ReadByte();
-            header.UserVersion = nifReader.ReadUInt32();
+            if (header.Version >= 0x14000003) header.EndianType = nifReader.ReadByte();
+            if (header.Version >= 0x0A000108) header.UserVersion = nifReader.ReadUInt32();
             header.NumberOfBlocks = nifReader.ReadUInt32();
-            header.BethesdaVersion = nifReader.ReadUInt32();
-            header.Author = NIFReaderUtils.ReadExportString(nifReader);
-            
-            //Skipping some stuff
-            if (header.BethesdaVersion > 130) nifReader.BaseStream.Seek(4, SeekOrigin.Current);
-            if (header.BethesdaVersion < 131)
+            if (header.Version == 0x0A000102 || (header.Version == 0x14020007 || header.Version == 0x14020005 || (header.Version is >= 0x0A010000 and <= 0x14000004 && header.UserVersion <= 11)) && header.UserVersion >= 3)
             {
+                header.BethesdaVersion = nifReader.ReadUInt32();
+                header.Author = NIFReaderUtils.ReadExportString(nifReader);
+
+                //Skipping some stuff
+                if (header.BethesdaVersion > 130) nifReader.BaseStream.Seek(4, SeekOrigin.Current);
+                if (header.BethesdaVersion < 131)
+                {
+                    NIFReaderUtils.ReadExportString(nifReader);
+                }
+
                 NIFReaderUtils.ReadExportString(nifReader);
-            }
-            NIFReaderUtils.ReadExportString(nifReader);
-            if (header.BethesdaVersion >= 103)
-            {
-                NIFReaderUtils.ReadExportString(nifReader);
+                if (header.BethesdaVersion >= 103)
+                {
+                    NIFReaderUtils.ReadExportString(nifReader);
+                }
             }
 
             header.NumberOfBlockTypes = nifReader.ReadUInt16();
             header.BlockTypes = NIFReaderUtils.ReadSizedStringArray(nifReader, header.NumberOfBlockTypes);
             header.BlockTypeIndex = NIFReaderUtils.ReadUshortArray(nifReader, header.NumberOfBlocks);
-            header.BlockSizes = NIFReaderUtils.ReadUintArray(nifReader, header.NumberOfBlocks);
-            header.NumberOfStrings = nifReader.ReadUInt32();
-            header.MaximumStringLength = nifReader.ReadUInt32();
-            header.Strings = NIFReaderUtils.ReadSizedStringArray(nifReader, header.NumberOfStrings);
+            if (header.Version >= 0x14020005) header.BlockSizes = NIFReaderUtils.ReadUintArray(nifReader, header.NumberOfBlocks);
+            if (header.Version >= 0x14010001) header.NumberOfStrings = nifReader.ReadUInt32();
+            if (header.Version >= 0x14010001) header.MaximumStringLength = nifReader.ReadUInt32();
+            if (header.Version >= 0x14010001) header.Strings = NIFReaderUtils.ReadSizedStringArray(nifReader, header.NumberOfStrings);
             header.NumberOfGroups = nifReader.ReadUInt32();
             header.Groups = NIFReaderUtils.ReadUintArray(nifReader, header.NumberOfGroups);
             return header;

@@ -11,7 +11,7 @@ namespace NIF.Tests
         private void Start()
         {
             using BinaryReader fileReader = new BinaryReader(File.Open(filePath, FileMode.Open));
-            var nif = NIFReader.ReadNIF(fileReader, 0);
+            var nif = NIFReader.ReadNIF(filePath, fileReader, 0);
             Debug.Log(nif.Header.BlockTypes);
         }
     }
