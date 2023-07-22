@@ -66,6 +66,28 @@ namespace NIF
             return null;
         }
 
+        public static string[] ReadStringArray(BinaryReader binaryReader, Header header, uint length)
+        {
+            var array = new string[length];
+            for (var i = 0; i < length; i++)
+            {
+                array[i] = ReadString(binaryReader, header);
+            }
+
+            return array;
+        }
+
+        public static float[] ReadFloatArray(BinaryReader binaryReader, uint length)
+        {
+            var array = new float[length];
+            for (var i = 0; i < length; i++)
+            {
+                array[i] = binaryReader.ReadSingle();
+            }
+
+            return array;
+        }
+
         public static int ReadRef(BinaryReader binaryReader)
         {
             return binaryReader.ReadInt32();
@@ -87,7 +109,7 @@ namespace NIF
             var bytes = binaryReader.ReadBytes(2);
             return GetHalfPrecisionFloat(bytes[0], bytes[1]);
         }
-        
+
         //This was taken from Stackoverflow(https://stackoverflow.com/questions/37759848/convert-byte-array-to-16-bits-float)
         public static float GetHalfPrecisionFloat(byte HO, byte LO)
         {
@@ -110,8 +132,10 @@ namespace NIF
                     mant <<= 1;
                     exp -= 0x400;
                 } while ((mant & 0x400) == 0);
+
                 mant &= 0x3ff;
             }
+
             return BitConverter.ToSingle(BitConverter.GetBytes((intVal & 0x8000) << 16 | (exp | mant) << 13), 0);
         }
     }

@@ -66,11 +66,11 @@ namespace NIF.NiObjects
             var ancestor = NiObjectNET.Parse(nifReader, ownerObjectName, header);
             var niAvObject = new NiAVObject(ancestor.ShaderType, ancestor.Name, ancestor.ExtraDataListLength,
                 ancestor.ExtraDataListReferences, ancestor.ControllerObjectReference);
-            if (header.BethesdaVersion != null && header.BethesdaVersion > 26)
+            if (header.BethesdaVersion > 26)
             {
                 niAvObject.Flags = nifReader.ReadUInt32();
             }
-            else if (header.BethesdaVersion != null)
+            else if (header.BethesdaVersion != 0)
             {
                 niAvObject.Flags = nifReader.ReadUInt16();
             }
