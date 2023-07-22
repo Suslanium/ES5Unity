@@ -21,6 +21,12 @@ namespace NIF
                     case "BSFadeNode":
                         niFile.NiObjects.Add(BSFadeNode.Parse(nifReader, "BSFadeNode", header));
                         break;
+                    case "NiIntegerExtraData":
+                        niFile.NiObjects.Add(NiIntegerExtraData.Parse(nifReader, "NiIntegerExtraData", header));
+                        break;
+                    case "BSXFlags":
+                        niFile.NiObjects.Add(BSXFlags.Parse(nifReader, "BSXFlags", header));
+                        break;
                     default:
                         Debug.LogWarning($"NIF Reader({fileName}): Unsupported NiObject type: {header.BlockTypes[header.BlockTypeIndex[i]]}");
                         if (header.BlockSizes != null)
