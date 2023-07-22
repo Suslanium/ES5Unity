@@ -66,20 +66,13 @@ namespace NIF.NiObjects
             var ancestor = NiObjectNET.Parse(nifReader, ownerObjectName, header);
             var niAvObject = new NiAVObject(ancestor.ShaderType, ancestor.Name, ancestor.ExtraDataListLength,
                 ancestor.ExtraDataListReferences, ancestor.ControllerObjectReference);
-            if (header.BethesdaVersion > 26)
-            {
-                niAvObject.Flags = nifReader.ReadUInt32();
-            }
-            else if (header.BethesdaVersion != 0)
-            {
-                niAvObject.Flags = nifReader.ReadUInt16();
-            }
+            niAvObject.Flags = header.BethesdaVersion > 26 ? nifReader.ReadUInt32() : nifReader.ReadUInt16();
 
             niAvObject.Translation = Vector3.Parse(nifReader);
             niAvObject.Rotation = Matrix33.Parse(nifReader);
             niAvObject.Scale = nifReader.ReadSingle();
 
-            if (header.BethesdaVersion != null && header.BethesdaVersion <= 34)
+            if (header.BethesdaVersion <= 34)
             {
                 niAvObject.PropertiesNumber = nifReader.ReadUInt32();
                 niAvObject.PropertiesReferences = NIFReaderUtils.ReadRefArray(nifReader, niAvObject.PropertiesNumber);

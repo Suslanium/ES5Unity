@@ -33,6 +33,9 @@ namespace NIF
                     case "NiTriShape":
                         niFile.NiObjects.Add(NiTriShape.Parse(nifReader, "NiTriShape", header));
                         break;
+                    case "NiTriShapeData":
+                        niFile.NiObjects.Add(NiTriShapeData.Parse(nifReader, "NiTriShapeData", header));
+                        break;
                     default:
                         Debug.LogWarning($"NIF Reader({fileName}): Unsupported NiObject type: {header.BlockTypes[header.BlockTypeIndex[i]]}");
                         if (header.BlockSizes != null)

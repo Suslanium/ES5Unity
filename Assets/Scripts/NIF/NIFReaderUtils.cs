@@ -1,11 +1,13 @@
 ﻿using System;
 using System.IO;
 using NIF.NiObjects;
+using NIF.NiObjects.Structures;
 
 namespace NIF
 {
     public class NIFReaderUtils
     {
+        //TODO !!!!Convert everything into generics (especially array-based stuff)!!!!
         public static string ReadExportString(BinaryReader binaryReader)
         {
             var stringSize = binaryReader.ReadByte();
@@ -83,6 +85,61 @@ namespace NIF
             for (var i = 0; i < length; i++)
             {
                 array[i] = binaryReader.ReadSingle();
+            }
+
+            return array;
+        }
+
+        public static Vector3[] ReadVector3Array(BinaryReader binaryReader, uint length)
+        {
+            var array = new Vector3[length];
+            for (var i = 0; i < length; i++)
+            {
+                array[i] = Vector3.Parse(binaryReader);
+            }
+
+            return array;
+        }
+        
+        public static Color4[] ReadColor4Array(BinaryReader binaryReader, uint length)
+        {
+            var array = new Color4[length];
+            for (var i = 0; i < length; i++)
+            {
+                array[i] = Color4.Parse(binaryReader);
+            }
+
+            return array;
+        }
+        
+        public static TexCoord[] ReadTexCoordArray(BinaryReader binaryReader, uint length)
+        {
+            var array = new TexCoord[length];
+            for (var i = 0; i < length; i++)
+            {
+                array[i] = TexCoord.Parse(binaryReader);
+            }
+
+            return array;
+        }
+        
+        public static Triangle[] ReadTriangleArray(BinaryReader binaryReader, uint length)
+        {
+            var array = new Triangle[length];
+            for (var i = 0; i < length; i++)
+            {
+                array[i] = Triangle.Parse(binaryReader);
+            }
+
+            return array;
+        }
+        
+        public static MatchGroup[] ReadMatchGroupArray(BinaryReader binaryReader, uint length)
+        {
+            var array = new MatchGroup[length];
+            for (var i = 0; i < length; i++)
+            {
+                array[i] = MatchGroup.Parse(binaryReader);
             }
 
             return array;

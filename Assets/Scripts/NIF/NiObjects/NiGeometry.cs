@@ -71,7 +71,7 @@ namespace NIF.NiObjects
                 niGeometry.SkinReference = NIFReaderUtils.ReadRef(nifReader);
             }
 
-            if (header.BethesdaVersion != 0 && header.BethesdaVersion < 100)
+            if (header.BethesdaVersion < 100)
             {
                 niGeometry.DataReference = NIFReaderUtils.ReadRef(nifReader);
                 niGeometry.SkinInstanceReference = NIFReaderUtils.ReadRef(nifReader);
