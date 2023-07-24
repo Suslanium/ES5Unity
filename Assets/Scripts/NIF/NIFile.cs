@@ -55,6 +55,12 @@ namespace NIF
                     case "BSMultiBoundNode":
                         niFile.NiObjects.Add(BSMultiBoundNode.Parse(nifReader, "BSMultiBoundNode", header));
                         break;
+                    case "BSLightingShaderProperty":
+                        niFile.NiObjects.Add(BSLightingShaderProperty.Parse(nifReader, "BSLightingShaderProperty", header));
+                        break;
+                    case "BSShaderTextureSet":
+                        niFile.NiObjects.Add(BSShaderTextureSet.Parse(nifReader, "BSShaderTextureSet", header));
+                        break;
                     default:
                         Debug.LogWarning($"NIF Reader({fileName}): Unsupported NiObject type: {header.BlockTypes[header.BlockTypeIndex[i]]}");
                         if (header.BlockSizes != null)

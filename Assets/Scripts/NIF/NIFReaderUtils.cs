@@ -61,7 +61,7 @@ namespace NIF
             else if (header.Version >= 0x14010003)
             {
                 var stringIndex = binaryReader.ReadUInt32();
-                return header.Strings[stringIndex];
+                return stringIndex == 4294967295 ? null : header.Strings[stringIndex];
             }
 
             return null;
