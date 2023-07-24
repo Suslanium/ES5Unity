@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using UnityEngine;
 
 namespace NIF.NiObjects.Structures
 {
@@ -27,6 +28,11 @@ namespace NIF.NiObjects.Structures
                 A = binaryReader.ReadSingle()
             };
             return color;
+        }
+
+        public Color ToColor()
+        {
+            return new Color(R, G, B, A);
         }
     }
 }

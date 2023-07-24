@@ -171,13 +171,25 @@ namespace NIF.Converter
                 }
             }
 
+            Color[] vertexColors = null;
+            if (data.HasVertexColors)
+            {
+                vertexColors = new Color[data.VertexColors.Length];
+
+                for (var i = 0; i < vertexColors.Length; i++)
+                {
+                    vertexColors[i] = data.VertexColors[i].ToColor();
+                }
+            }
+
             var mesh = new Mesh
             {
                 vertices = vertices,
                 normals = normals,
                 tangents = tangents,
                 uv = UVs,
-                triangles = triangles
+                triangles = triangles,
+                colors = vertexColors
             };
 
             if (!data.HasNormals)
