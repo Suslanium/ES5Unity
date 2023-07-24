@@ -1,16 +1,71 @@
 ﻿using System.Collections.Generic;
+using System.IO;
 using NIF.NiObjects;
+using UnityEngine;
 
 namespace NIF
 {
     public class NIFile
     {
+        public string Name { get; private set; }
         public Header Header { get; private set; }
         public List<NiObject> NiObjects { get; private set; } = new List<NiObject>();
+        public Footer Footer { get; private set; }
 
-        public NIFile(Header header)
+        private NIFile(string name,Header header)
         {
+            Name = name;
             Header = header;
+        }
+        
+        public static NIFile ReadNIF(string fileName, BinaryReader nifReader, long startPosition)
+        {
+            string name = Path.GetFileName(fileName);
+            nifReader.BaseStream.Seek(startPosition, SeekOrigin.Begin);
+            Header header = Header.ParseHeader(nifReader);
+            var niFile = new NIFile(name, header);
+            for (int i = 0; i < header.NumberOfBlocks; i++)
+            {
+                switch (header.BlockTypes[header.BlockTypeIndex[i]])
+                {
+                    case "NiNode":
+                        niFile.NiObjects.Add(NiNode.Parse(nifReader, "NiNode", header));
+                        break;
+                    case "BSFadeNode":
+                        niFile.NiObjects.Add(BSFadeNode.Parse(nifReader, "BSFadeNode", header));
+                        break;
+                    case "NiExtraData":
+                        niFile.NiObjects.Add(NiExtraData.Parse(nifReader, "NiExtraData", header));
+                        break;
+                    case "NiIntegerExtraData":
+                        niFile.NiObjects.Add(NiIntegerExtraData.Parse(nifReader, "NiIntegerExtraData", header));
+                        break;
+                    case "BSXFlags":
+                        niFile.NiObjects.Add(BSXFlags.Parse(nifReader, "BSXFlags", header));
+                        break;
+                    case "NiTriShape":
+                        niFile.NiObjects.Add(NiTriShape.Parse(nifReader, "NiTriShape", header));
+                        break;
+                    case "NiTriShapeData":
+                        niFile.NiObjects.Add(NiTriShapeData.Parse(nifReader, "NiTriShapeData", header));
+                        break;
+                    default:
+                        Debug.LogWarning($"NIF Reader({fileName}): Unsupported NiObject type: {header.BlockTypes[header.BlockTypeIndex[i]]}");
+                        if (header.BlockSizes != null)
+                        {
+                            nifReader.BaseStream.Seek(header.BlockSizes[i], SeekOrigin.Current);
+                            niFile.NiObjects.Add(new UnsupportedNiObject(header.BlockTypes[header.BlockTypeIndex[i]]));
+                        }
+                        else
+                        {
+                            throw new InvalidDataException($"NIF Reader({fileName}): Block sizes are not present, could not skip the unsupported block.");
+                        }
+                        break;
+                }
+            }
+            niFile.Footer = Footer.ParseFooter(nifReader);
+
+            return niFile;
         }
     }
 }

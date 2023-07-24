@@ -21,7 +21,7 @@ namespace NIF.NiObjects
         {
         }
 
-        public new static NiTriBasedGeom Parse(BinaryReader nifReader, string ownerObjectName, Header header)
+        protected new static NiTriBasedGeom Parse(BinaryReader nifReader, string ownerObjectName, Header header)
         {
             var ancestor = NiGeometry.Parse(nifReader, ownerObjectName, header);
             return new NiTriBasedGeom(ancestor.ShaderType, ancestor.Name, ancestor.ExtraDataListLength,

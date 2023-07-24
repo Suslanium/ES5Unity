@@ -36,7 +36,7 @@ namespace NIF.NiObjects
             TrianglesNumber = trianglesNumber;
         }
 
-        public new static NiTriBasedGeomData Parse(BinaryReader nifReader, string ownerObjectName, Header header)
+        protected new static NiTriBasedGeomData Parse(BinaryReader nifReader, string ownerObjectName, Header header)
         {
             var ancestor = NiGeometryData.Parse(nifReader, ownerObjectName, header);
             var triBasedGeomData = new NiTriBasedGeomData(ancestor.GroupID, ancestor.VerticesNumber, ancestor.KeepFlags,

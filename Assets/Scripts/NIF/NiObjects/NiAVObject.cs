@@ -61,7 +61,7 @@ namespace NIF.NiObjects
             CollisionObjectReference = collisionObjectReference;
         }
 
-        public new static NiAVObject Parse(BinaryReader nifReader, string ownerObjectName, Header header)
+        protected new static NiAVObject Parse(BinaryReader nifReader, string ownerObjectName, Header header)
         {
             var ancestor = NiObjectNET.Parse(nifReader, ownerObjectName, header);
             var niAvObject = new NiAVObject(ancestor.ShaderType, ancestor.Name, ancestor.ExtraDataListLength,

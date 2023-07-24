@@ -33,5 +33,10 @@ namespace NIF.NiObjects.Structures
                 Z = binaryReader.ReadSingle()
             };
         }
+
+        public UnityEngine.Vector3 ToUnityVector()
+        {
+            return new UnityEngine.Vector3(X, Y, Z);
+        }
     }
 }

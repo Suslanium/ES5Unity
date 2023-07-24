@@ -51,9 +51,11 @@ namespace NIF.NiObjects
                 ancestor.CompressFlags, ancestor.HasVertices, ancestor.Vertices, ancestor.DataFlags,
                 ancestor.BSDataFlags, ancestor.MaterialCRC, ancestor.HasNormals, ancestor.Normals, ancestor.Tangents,
                 ancestor.Bitangents, ancestor.BoundingSphere, ancestor.HasVertexColors, ancestor.VertexColors,
-                ancestor.UVSets, ancestor.ConsistencyFlags, ancestor.AdditionalDataReference, ancestor.TrianglesNumber);
-            triBasedGeomData.TrianglePointsNumber = nifReader.ReadUInt32();
-            triBasedGeomData.HasTriangles = nifReader.ReadBoolean();
+                ancestor.UVSets, ancestor.ConsistencyFlags, ancestor.AdditionalDataReference, ancestor.TrianglesNumber)
+                {
+                    TrianglePointsNumber = nifReader.ReadUInt32(),
+                    HasTriangles = nifReader.ReadBoolean()
+                };
             if (triBasedGeomData.HasTriangles)
             {
                 triBasedGeomData.Triangles =

@@ -62,11 +62,9 @@ namespace NIF.NiObjects
             niNode.NumberOfChildren = nifReader.ReadUInt32();
             niNode.ChildrenReferences = NIFReaderUtils.ReadRefArray(nifReader, niNode.NumberOfChildren);
 
-            if (header.BethesdaVersion < 130)
-            {
-                niNode.NumberOfEffects = nifReader.ReadUInt32();
-                niNode.EffectReferences = NIFReaderUtils.ReadRefArray(nifReader, niNode.NumberOfEffects);
-            }
+            if (header.BethesdaVersion >= 130) return niNode;
+            niNode.NumberOfEffects = nifReader.ReadUInt32();
+            niNode.EffectReferences = NIFReaderUtils.ReadRefArray(nifReader, niNode.NumberOfEffects);
 
             return niNode;
         }

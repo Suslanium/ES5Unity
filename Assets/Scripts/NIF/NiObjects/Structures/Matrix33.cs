@@ -1,4 +1,6 @@
 ﻿using System.IO;
+using UnityEngine;
+
 
 namespace NIF.NiObjects.Structures
 {
@@ -31,6 +33,28 @@ namespace NIF.NiObjects.Structures
             //Bottom right
             matrix[2, 2] = binaryReader.ReadSingle();
             return new Matrix33(matrix);
+        }
+
+        public Matrix4x4 ToMatrix4x4()
+        {
+            var matrix = new Matrix4x4();
+
+            for (var rowIndex = 0; rowIndex < 4; rowIndex++)
+            {
+                for (var columnIndex = 0; columnIndex < 4; columnIndex++)
+                {
+                    if ((rowIndex <= 2) && (columnIndex <= 2))
+                    {
+                        matrix[rowIndex, columnIndex] = Matrix[rowIndex, columnIndex];
+                    }
+                    else
+                    {
+                        matrix[rowIndex, columnIndex] = (rowIndex == columnIndex) ? 1 : 0;
+                    }
+                }
+            }
+
+            return matrix;
         }
     }
 }

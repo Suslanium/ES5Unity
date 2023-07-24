@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using NIF.Converter;
 using UnityEngine;
 
 namespace NIF.Tests
@@ -11,7 +12,9 @@ namespace NIF.Tests
         private void Start()
         {
             using BinaryReader fileReader = new BinaryReader(File.Open(filePath, FileMode.Open));
-            var nif = NIFReader.ReadNIF(filePath, fileReader, 0);
+            var nif = NIFile.ReadNIF(filePath, fileReader, 0);
+            var builder = new NIFObjectBuilder(nif);
+            builder.BuildObject();
             Debug.Log(nif.Header.BlockTypes);
         }
     }

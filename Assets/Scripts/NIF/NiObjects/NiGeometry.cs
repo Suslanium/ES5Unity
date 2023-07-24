@@ -85,11 +85,9 @@ namespace NIF.NiObjects
                 niGeometry.MaterialData = MaterialData.Parse(nifReader, header);
             }
 
-            if (header.Version == 0x14020007 && header.BethesdaVersion > 34)
-            {
-                niGeometry.ShaderPropertyReference = NIFReaderUtils.ReadRef(nifReader);
-                niGeometry.AlphaPropertyReference = NIFReaderUtils.ReadRef(nifReader);
-            }
+            if (header.Version != 0x14020007 || header.BethesdaVersion <= 34) return niGeometry;
+            niGeometry.ShaderPropertyReference = NIFReaderUtils.ReadRef(nifReader);
+            niGeometry.AlphaPropertyReference = NIFReaderUtils.ReadRef(nifReader);
 
 
             return niGeometry;

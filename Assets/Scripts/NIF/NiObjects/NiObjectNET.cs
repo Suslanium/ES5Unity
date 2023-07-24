@@ -47,7 +47,7 @@ namespace NIF.NiObjects
             ControllerObjectReference = controllerObjectReference;
         }
 
-        public static NiObjectNET Parse(BinaryReader nifReader, string ownerObjectName, Header header)
+        protected static NiObjectNET Parse(BinaryReader nifReader, string ownerObjectName, Header header)
         {
             var niObjectNet = new NiObjectNET();
             if (ownerObjectName == "BSLightingShaderProperty" && header.Version == 0x14020007 &&

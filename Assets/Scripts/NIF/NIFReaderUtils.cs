@@ -7,7 +7,6 @@ namespace NIF
 {
     public class NIFReaderUtils
     {
-        //TODO !!!!Convert everything into generics (especially array-based stuff)!!!!
         public static string ReadExportString(BinaryReader binaryReader)
         {
             var stringSize = binaryReader.ReadByte();
@@ -90,6 +89,7 @@ namespace NIF
             return array;
         }
 
+        //These methods should have been done using generics, but I can't really do that because C# doesn't allow return type covariance
         public static Vector3[] ReadVector3Array(BinaryReader binaryReader, uint length)
         {
             var array = new Vector3[length];
@@ -100,7 +100,7 @@ namespace NIF
 
             return array;
         }
-        
+
         public static Color4[] ReadColor4Array(BinaryReader binaryReader, uint length)
         {
             var array = new Color4[length];
@@ -111,7 +111,7 @@ namespace NIF
 
             return array;
         }
-        
+
         public static TexCoord[] ReadTexCoordArray(BinaryReader binaryReader, uint length)
         {
             var array = new TexCoord[length];
@@ -122,7 +122,7 @@ namespace NIF
 
             return array;
         }
-        
+
         public static Triangle[] ReadTriangleArray(BinaryReader binaryReader, uint length)
         {
             var array = new Triangle[length];
@@ -133,7 +133,7 @@ namespace NIF
 
             return array;
         }
-        
+
         public static MatchGroup[] ReadMatchGroupArray(BinaryReader binaryReader, uint length)
         {
             var array = new MatchGroup[length];
