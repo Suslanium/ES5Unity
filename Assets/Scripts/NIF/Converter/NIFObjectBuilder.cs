@@ -74,6 +74,7 @@ namespace NIF.Converter
             {
                 NiNode node => InstantiateNiNode(node),
                 NiTriShape shape => InstantiateNiTriShape(shape),
+                BSLodTriShape shape => InstantiateNiTriShape(shape),
                 _ => null
             };
         }
@@ -98,7 +99,7 @@ namespace NIF.Converter
             return gameObject;
         }
 
-        private GameObject InstantiateNiTriShape(NiTriShape triShape)
+        private GameObject InstantiateNiTriShape(NiTriBasedGeom triShape)
         {
             var mesh = NiTriShapeDataToMesh((NiTriShapeData)file.NiObjects[triShape.DataReference]);
             var gameObject = new GameObject(triShape.Name);

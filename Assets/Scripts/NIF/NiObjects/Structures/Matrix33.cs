@@ -45,7 +45,7 @@ namespace NIF.NiObjects.Structures
                 {
                     if ((rowIndex <= 2) && (columnIndex <= 2))
                     {
-                        matrix[rowIndex, columnIndex] = Matrix[rowIndex, columnIndex];
+                        matrix[rowIndex, columnIndex] = Matrix[columnIndex, rowIndex];
                     }
                     else
                     {
