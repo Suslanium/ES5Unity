@@ -1,7 +1,8 @@
 using System;
+using MasterFile;
 using UnityEngine;
 
-namespace MasterFile
+namespace Tests
 {
     public class MasterFileParser : MonoBehaviour
     {

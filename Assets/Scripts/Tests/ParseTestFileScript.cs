@@ -1,9 +1,10 @@
 ﻿using System;
 using System.IO;
+using NIF;
 using NIF.Converter;
 using UnityEngine;
 
-namespace NIF.Tests
+namespace Tests
 {
     public class ParseTestFileScript : MonoBehaviour
     {
