@@ -1,4 +1,3 @@
-using System;
 using MasterFile;
 using UnityEngine;
 
@@ -6,11 +5,11 @@ namespace Tests
 {
     public class MasterFileParser : MonoBehaviour
     {
-        [SerializeField] private String filePath;
+        [SerializeField] private string filePath;
 
-        void Start()
+        private void Start()
         {
-            ESMasterFile masterFile = ESMasterFile.Parse(filePath);
+            var masterFile = ESMasterFile.Parse(filePath);
         }
     }
 }

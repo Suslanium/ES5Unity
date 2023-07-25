@@ -1,8 +1,5 @@
-﻿using System;
-using System.IO;
-using Ionic.Zlib;
+﻿using System.IO;
 using MasterFile.MasterFileContents.Records.Structures;
-using UnityEngine;
 
 namespace MasterFile.MasterFileContents.Records
 {
@@ -97,8 +94,8 @@ namespace MasterFile.MasterFileContents.Records
                 baseInfo.VersionControlInfo, baseInfo.InternalRecordVersion, baseInfo.UnknownData);
             while (fileReader.BaseStream.Position < position + baseInfo.DataSize)
             {
-                string fieldType = new string(fileReader.ReadChars(4));
-                ushort fieldSize = fileReader.ReadUInt16();
+                var fieldType = new string(fileReader.ReadChars(4));
+                var fieldSize = fileReader.ReadUInt16();
                 switch (fieldType)
                 {
                     case "EDID":
@@ -116,7 +113,7 @@ namespace MasterFile.MasterFileContents.Records
                         fileReader.ReadUInt32();
                         break;
                     case "XCLL":
-                        cell.CellLightingInfo = Lighting.parseFromCELL(fieldSize, fileReader);
+                        cell.CellLightingInfo = Lighting.ParseFromCell(fieldSize, fileReader);
                         break;
                     case "LTMP":
                         cell.LightingTemplateReference = fileReader.ReadUInt32();

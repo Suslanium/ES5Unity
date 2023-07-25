@@ -6,30 +6,30 @@ namespace NIF.Converter
     /// <summary>
     /// Based on https://github.com/ColeDeanShepherd/TESUnity/blob/f4d5e19f68da380da9da745356c7904f3428b9d6/Assets/Scripts/TES/NIF/NIFObjectBuilder.cs
     /// </summary>
-    public class NIFObjectBuilder
+    public class NifObjectBuilder
     {
-        private NIFile file;
+        private readonly NiFile _file;
 
-        public NIFObjectBuilder(NIFile file)
+        public NifObjectBuilder(NiFile file)
         {
-            this.file = file;
+            _file = file;
         }
 
         public GameObject BuildObject()
         {
-            Debug.Assert((file.Name != null) && (file.Footer.RootReferences.Length > 0));
+            Debug.Assert((_file.Name != null) && (_file.Footer.RootReferences.Length > 0));
 
-            if (file.Footer.RootReferences.Length == 1)
+            if (_file.Footer.RootReferences.Length == 1)
             {
-                var rootNiObject = file.NiObjects[file.Footer.RootReferences[0]];
+                var rootNiObject = _file.NiObjects[_file.Footer.RootReferences[0]];
 
-                GameObject gameObject = InstantiateRootNiObject(rootNiObject);
+                var gameObject = InstantiateRootNiObject(rootNiObject);
 
                 if (gameObject == null)
                 {
-                    Debug.Log(file.Name + " resulted in a null GameObject when instantiated.");
+                    Debug.Log(_file.Name + " resulted in a null GameObject when instantiated.");
 
-                    gameObject = new GameObject(file.Name);
+                    gameObject = new GameObject(_file.Name);
                 }
                 else if (rootNiObject is NiNode)
                 {
@@ -42,11 +42,11 @@ namespace NIF.Converter
             }
             else
             {
-                GameObject gameObject = new GameObject(file.Name);
+                GameObject gameObject = new GameObject(_file.Name);
 
-                foreach (var rootRef in file.Footer.RootReferences)
+                foreach (var rootRef in _file.Footer.RootReferences)
                 {
-                    var rootBlock = file.NiObjects[rootRef];
+                    var rootBlock = _file.NiObjects[rootRef];
                     var child = InstantiateRootNiObject(rootBlock);
 
                     if (child != null)
@@ -74,19 +74,19 @@ namespace NIF.Converter
             {
                 NiNode node => InstantiateNiNode(node),
                 NiTriShape shape => InstantiateNiTriShape(shape),
-                BSLodTriShape shape => InstantiateNiTriShape(shape),
+                BsLodTriShape shape => InstantiateNiTriShape(shape),
                 _ => null
             };
         }
 
         private GameObject InstantiateNiNode(NiNode node)
         {
-            GameObject gameObject = new GameObject(node.Name);
+            var gameObject = new GameObject(node.Name);
 
             foreach (var childRef in node.ChildrenReferences)
             {
                 if (childRef < 0) continue;
-                var child = InstantiateNiObject(file.NiObjects[childRef]);
+                var child = InstantiateNiObject(_file.NiObjects[childRef]);
 
                 if (child != null)
                 {
@@ -94,20 +94,20 @@ namespace NIF.Converter
                 }
             }
 
-            ApplyNiAVObject(node, gameObject);
+            ApplyNiAvObject(node, gameObject);
 
             return gameObject;
         }
 
         private GameObject InstantiateNiTriShape(NiTriBasedGeom triShape)
         {
-            var mesh = NiTriShapeDataToMesh((NiTriShapeData)file.NiObjects[triShape.DataReference]);
+            var mesh = NiTriShapeDataToMesh((NiTriShapeData)_file.NiObjects[triShape.DataReference]);
             var gameObject = new GameObject(triShape.Name);
 
             gameObject.AddComponent<MeshFilter>().mesh = mesh;
             var meshRenderer = gameObject.AddComponent<MeshRenderer>();
             
-            ApplyNiAVObject(triShape, gameObject);
+            ApplyNiAvObject(triShape, gameObject);
             return gameObject;
         }
 
@@ -119,7 +119,7 @@ namespace NIF.Converter
                 vertices = new Vector3[data.Vertices.Length];
                 for (var i = 0; i < vertices.Length; i++)
                 {
-                    vertices[i] = NIFUtils.NifPointToUnityPoint(data.Vertices[i].ToUnityVector());
+                    vertices[i] = NifUtils.NifPointToUnityPoint(data.Vertices[i].ToUnityVector());
                 }
             }
 
@@ -129,7 +129,7 @@ namespace NIF.Converter
                 normals = new Vector3[data.Normals.Length];
                 for (var i = 0; i < normals.Length; i++)
                 {
-                    normals[i] = NIFUtils.NifPointToUnityPoint(data.Normals[i].ToUnityVector());
+                    normals[i] = NifUtils.NifPointToUnityPoint(data.Normals[i].ToUnityVector());
                 }
             }
 
@@ -139,7 +139,7 @@ namespace NIF.Converter
                 tangents = new Vector4[data.Tangents.Length];
                 for (var i = 0; i < tangents.Length; i++)
                 {
-                    var convertedTangent = NIFUtils.NifPointToUnityPoint(data.Tangents[i].ToUnityVector());
+                    var convertedTangent = NifUtils.NifPointToUnityPoint(data.Tangents[i].ToUnityVector());
                     tangents[i] = new Vector4(convertedTangent.x, convertedTangent.y, convertedTangent.z, 1);
                 }
             }
@@ -202,11 +202,11 @@ namespace NIF.Converter
             return mesh;
         }
 
-        private void ApplyNiAVObject(NiAVObject anNiAVObject, GameObject obj)
+        private static void ApplyNiAvObject(NiAvObject anNiAvObject, GameObject obj)
         {
-            obj.transform.position = NIFUtils.NifPointToUnityPoint(anNiAVObject.Translation.ToUnityVector());
-            obj.transform.rotation = NIFUtils.NifRotationMatrixToUnityQuaternion(anNiAVObject.Rotation.ToMatrix4x4());
-            obj.transform.localScale = anNiAVObject.Scale * Vector3.one;
+            obj.transform.position = NifUtils.NifPointToUnityPoint(anNiAvObject.Translation.ToUnityVector());
+            obj.transform.rotation = NifUtils.NifRotationMatrixToUnityQuaternion(anNiAvObject.Rotation.ToMatrix4X4());
+            obj.transform.localScale = anNiAvObject.Scale * Vector3.one;
         }
     }
 }

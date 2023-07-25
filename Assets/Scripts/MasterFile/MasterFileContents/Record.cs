@@ -1,4 +1,3 @@
-using System;
 using System.IO;
 using Ionic.Zlib;
 using MasterFile.MasterFileContents.Records;
@@ -124,16 +123,16 @@ namespace MasterFile.MasterFileContents
 
         public static Record Parse(string recordType, BinaryReader fileReader, long position)
         {
-            Record basicRecordInfo = ParseBasicInfo(recordType, fileReader, position);
-            long startPos = fileReader.BaseStream.Position;
+            var basicRecordInfo = ParseBasicInfo(recordType, fileReader, position);
+            var startPos = fileReader.BaseStream.Position;
             Record toReturn;
             if ((basicRecordInfo.Flag & 0x00040000) != 0)
             {
                 //Record data is compressed
-                byte[] decompressedData = DecompressRecordData(fileReader, basicRecordInfo.DataSize);
-                MemoryStream decompressedDataStream = new MemoryStream(decompressedData, false);
-                BinaryReader decompressedDataReader = new BinaryReader(decompressedDataStream);
-                Record decompressedRecordInfo = new Record(basicRecordInfo.Type, (uint)decompressedData.Length, basicRecordInfo.Flag,
+                var decompressedData = DecompressRecordData(fileReader, basicRecordInfo.DataSize);
+                var decompressedDataStream = new MemoryStream(decompressedData, false);
+                var decompressedDataReader = new BinaryReader(decompressedDataStream);
+                var decompressedRecordInfo = new Record(basicRecordInfo.Type, (uint)decompressedData.Length, basicRecordInfo.Flag,
                     basicRecordInfo.FormID, basicRecordInfo.Timestamp, basicRecordInfo.VersionControlInfo, basicRecordInfo.InternalRecordVersion,
                     basicRecordInfo.UnknownData);
                 toReturn = GetSpecificRecord(decompressedDataReader, decompressedRecordInfo);

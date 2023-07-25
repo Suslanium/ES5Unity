@@ -7,7 +7,7 @@ namespace NIF.NiObjects
     /// <summary>
     /// Generic node object for grouping.
     /// </summary>
-    public class NiNode : NiAVObject
+    public class NiNode : NiAvObject
     {
         /// <summary>
         /// The number of child objects.
@@ -29,7 +29,7 @@ namespace NIF.NiObjects
         /// </summary>
         public int[] EffectReferences { get; private set; }
 
-        private NiNode(BSLightingShaderType shaderType, string name, uint extraDataListLength,
+        private NiNode(BsLightingShaderType shaderType, string name, uint extraDataListLength,
             int[] extraDataListReferences, int controllerObjectReference, uint flags, Vector3 translation,
             Matrix33 rotation, float scale, uint propertiesNumber, int[] propertiesReferences,
             int collisionObjectReference) : base(shaderType, name, extraDataListLength, extraDataListReferences,
@@ -38,7 +38,7 @@ namespace NIF.NiObjects
         {
         }
 
-        protected NiNode(BSLightingShaderType shaderType, string name, uint extraDataListLength,
+        protected NiNode(BsLightingShaderType shaderType, string name, uint extraDataListLength,
             int[] extraDataListReferences, int controllerObjectReference, uint flags, Vector3 translation,
             Matrix33 rotation, float scale, uint propertiesNumber, int[] propertiesReferences,
             int collisionObjectReference, uint numberOfChildren, int[] childrenReferences, uint numberOfEffects,
@@ -54,17 +54,19 @@ namespace NIF.NiObjects
 
         public new static NiNode Parse(BinaryReader nifReader, string ownerObjectName, Header header)
         {
-            var ancestor = NiAVObject.Parse(nifReader, ownerObjectName, header);
+            var ancestor = NiAvObject.Parse(nifReader, ownerObjectName, header);
             var niNode = new NiNode(ancestor.ShaderType, ancestor.Name, ancestor.ExtraDataListLength,
                 ancestor.ExtraDataListReferences, ancestor.ControllerObjectReference, ancestor.Flags,
                 ancestor.Translation, ancestor.Rotation, ancestor.Scale, ancestor.PropertiesNumber,
-                ancestor.PropertiesReferences, ancestor.CollisionObjectReference);
-            niNode.NumberOfChildren = nifReader.ReadUInt32();
-            niNode.ChildrenReferences = NIFReaderUtils.ReadRefArray(nifReader, niNode.NumberOfChildren);
+                ancestor.PropertiesReferences, ancestor.CollisionObjectReference)
+            {
+                NumberOfChildren = nifReader.ReadUInt32()
+            };
+            niNode.ChildrenReferences = NifReaderUtils.ReadRefArray(nifReader, niNode.NumberOfChildren);
 
-            if (header.BethesdaVersion >= 130) return niNode;
+            if (Conditions.BsGte130(header)) return niNode;
             niNode.NumberOfEffects = nifReader.ReadUInt32();
-            niNode.EffectReferences = NIFReaderUtils.ReadRefArray(nifReader, niNode.NumberOfEffects);
+            niNode.EffectReferences = NifReaderUtils.ReadRefArray(nifReader, niNode.NumberOfEffects);
 
             return niNode;
         }

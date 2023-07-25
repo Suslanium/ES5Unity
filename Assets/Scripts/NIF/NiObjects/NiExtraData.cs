@@ -22,7 +22,7 @@ namespace NIF.NiObjects
         {
             var niExtraData = new NiExtraData
             {
-                Name = NIFReaderUtils.ReadString(nifReader, header)
+                Name = NifReaderUtils.ReadString(nifReader, header)
             };
             return niExtraData;
         }

@@ -553,7 +553,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 963194225}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7f400e2780d24a84dac75f37a4762543, type: 3}
   m_Name: 
@@ -571,8 +571,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 33158fbb0ddf431cae528d6f5d20b9d9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  filePath: E:\Unity Projects\SkyrimModels\Original\meshes\actors\atronachfrost\character
-    assets\atronachfrost.nif
+  filePath: E:\Unity Projects\SkyrimModels\Original\meshes\architecture\whiterun\wrbuildings\wrjorvaskr01.nif
 --- !u!114 &963194231
 MonoBehaviour:
   m_ObjectHideFlags: 0

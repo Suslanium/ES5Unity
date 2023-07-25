@@ -5,7 +5,7 @@ using NIF.NiObjects.Structures;
 
 namespace NIF
 {
-    public class NIFReaderUtils
+    public static class NifReaderUtils
     {
         public static string ReadExportString(BinaryReader binaryReader)
         {
@@ -168,9 +168,9 @@ namespace NIF
         }
 
         //This was taken from Stackoverflow(https://stackoverflow.com/questions/37759848/convert-byte-array-to-16-bits-float)
-        public static float GetHalfPrecisionFloat(byte HO, byte LO)
+        public static float GetHalfPrecisionFloat(byte ho, byte lo)
         {
-            var intVal = BitConverter.ToInt32(new byte[] { HO, LO, 0, 0 }, 0);
+            var intVal = BitConverter.ToInt32(new byte[] { ho, lo, 0, 0 }, 0);
 
             int mant = intVal & 0x03ff;
             int exp = intVal & 0x7c00;

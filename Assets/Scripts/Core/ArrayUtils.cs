@@ -13,14 +13,14 @@
         {
             Debug.Assert(array.Length > 0);
 
-            return array[array.Length - 1];
+            return array[^1];
         }
 
         public static T Last<T>(List<T> list)
         {
             Debug.Assert(list.Count > 0);
 
-            return list[list.Count - 1];
+            return list[^1];
         }
 
         /// <summary>

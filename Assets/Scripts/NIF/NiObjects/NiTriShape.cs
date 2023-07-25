@@ -9,7 +9,7 @@ namespace NIF.NiObjects
     /// </summary>
     public class NiTriShape : NiTriBasedGeom
     {
-        public NiTriShape(BSLightingShaderType shaderType, string name, uint extraDataListLength,
+        public NiTriShape(BsLightingShaderType shaderType, string name, uint extraDataListLength,
             int[] extraDataListReferences, int controllerObjectReference, uint flags, Vector3 translation,
             Matrix33 rotation, float scale, uint propertiesNumber, int[] propertiesReferences,
             int collisionObjectReference, NiBound boundingSphere, float[] boundMinMax, int skinReference,

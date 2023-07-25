@@ -8,18 +8,19 @@ namespace DDS
     /// </summary>
     public class Texture2DInfo
     {
-        public int width, height;
-        public TextureFormat format;
-        public bool hasMipmaps;
-        public byte[] rawData;
+        public readonly int Width;
+        public readonly int Height;
+        public readonly TextureFormat Format;
+        public readonly bool HasMipmaps;
+        public readonly byte[] RawData;
 
         public Texture2DInfo(int width, int height, TextureFormat format, bool hasMipmaps, byte[] rawData)
         {
-            this.width = width;
-            this.height = height;
-            this.format = format;
-            this.hasMipmaps = hasMipmaps;
-            this.rawData = rawData;
+            this.Width = width;
+            this.Height = height;
+            this.Format = format;
+            this.HasMipmaps = hasMipmaps;
+            this.RawData = rawData;
         }
 
         /// <summary>
@@ -27,14 +28,12 @@ namespace DDS
         /// </summary>
         public Texture2D ToTexture2D()
         {
-            var texture = new Texture2D(width, height, format, hasMipmaps);
+            var texture = new Texture2D(Width, Height, Format, HasMipmaps);
 
-            if(rawData != null)
-            {
-                texture.LoadRawTextureData(rawData);
-                texture.Apply();
-            }
-		
+            if (RawData == null) return texture;
+            texture.LoadRawTextureData(RawData);
+            texture.Apply();
+
             return texture;
         }
     }

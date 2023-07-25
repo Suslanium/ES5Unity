@@ -38,7 +38,7 @@ namespace NIF.NiObjects
 
         public ushort DataFlags { get; private set; }
 
-        public ushort BSDataFlags { get; private set; }
+        public ushort BsDataFlags { get; private set; }
 
         public uint MaterialCRC { get; private set; }
 
@@ -102,7 +102,7 @@ namespace NIF.NiObjects
             HasVertices = hasVertices;
             Vertices = vertices;
             DataFlags = dataFlags;
-            BSDataFlags = bsDataFlags;
+            BsDataFlags = bsDataFlags;
             MaterialCRC = materialCRC;
             HasNormals = hasNormals;
             Normals = normals;
@@ -126,11 +126,11 @@ namespace NIF.NiObjects
             {
                 niGeomData.VerticesNumber = nifReader.ReadUInt16();
             }
-            else if (header.BethesdaVersion < 34)
+            else if (Conditions.NiBsLtFo3(header))
             {
                 niGeomData.VerticesNumber = nifReader.ReadUInt16();
             }
-            else if (header.Version == 0x14020007 && header.BethesdaVersion >= 34)
+            else if (header.Version == 0x14020007 && Conditions.BsGteFo3(header))
             {
                 niGeomData.VerticesNumber = nifReader.ReadUInt16();
             }
@@ -141,19 +141,19 @@ namespace NIF.NiObjects
             niGeomData.HasVertices = nifReader.ReadBoolean();
             if (niGeomData.HasVertices)
             {
-                niGeomData.Vertices = NIFReaderUtils.ReadVector3Array(nifReader, niGeomData.VerticesNumber);
+                niGeomData.Vertices = NifReaderUtils.ReadVector3Array(nifReader, niGeomData.VerticesNumber);
             }
 
-            if (header.Version == 0x14020007 && header.BethesdaVersion > 0)
+            if (Conditions.Bs202(header))
             {
-                niGeomData.BSDataFlags = nifReader.ReadUInt16();
+                niGeomData.BsDataFlags = nifReader.ReadUInt16();
             }
             else
             {
                 niGeomData.DataFlags = nifReader.ReadUInt16();
             }
 
-            if (header.Version == 0x14020007 && header.BethesdaVersion > 34)
+            if (header.Version == 0x14020007 && Conditions.BsGtFo3(header))
             {
                 niGeomData.MaterialCRC = nifReader.ReadUInt32();
             }
@@ -161,13 +161,13 @@ namespace NIF.NiObjects
             niGeomData.HasNormals = nifReader.ReadBoolean();
             if (niGeomData.HasNormals)
             {
-                niGeomData.Normals = NIFReaderUtils.ReadVector3Array(nifReader, niGeomData.VerticesNumber);
+                niGeomData.Normals = NifReaderUtils.ReadVector3Array(nifReader, niGeomData.VerticesNumber);
             }
 
-            if (niGeomData.HasNormals && ((niGeomData.DataFlags | niGeomData.BSDataFlags) & 4096) != 0)
+            if (niGeomData.HasNormals && ((niGeomData.DataFlags | niGeomData.BsDataFlags) & 4096) != 0)
             {
-                niGeomData.Tangents = NIFReaderUtils.ReadVector3Array(nifReader, niGeomData.VerticesNumber);
-                niGeomData.Bitangents = NIFReaderUtils.ReadVector3Array(nifReader, niGeomData.VerticesNumber);
+                niGeomData.Tangents = NifReaderUtils.ReadVector3Array(nifReader, niGeomData.VerticesNumber);
+                niGeomData.Bitangents = NifReaderUtils.ReadVector3Array(nifReader, niGeomData.VerticesNumber);
             }
 
             niGeomData.BoundingSphere = NiBound.Parse(nifReader);
@@ -175,12 +175,12 @@ namespace NIF.NiObjects
             niGeomData.HasVertexColors = nifReader.ReadBoolean();
             if (niGeomData.HasVertexColors)
             {
-                niGeomData.VertexColors = NIFReaderUtils.ReadColor4Array(nifReader, niGeomData.VerticesNumber);
+                niGeomData.VertexColors = NifReaderUtils.ReadColor4Array(nifReader, niGeomData.VerticesNumber);
             }
 
-            niGeomData.UVSets = new TexCoord[(niGeomData.DataFlags & 63) | (niGeomData.BSDataFlags & 1),
+            niGeomData.UVSets = new TexCoord[(niGeomData.DataFlags & 63) | (niGeomData.BsDataFlags & 1),
                 niGeomData.VerticesNumber];
-            for (var i = 0; i < ((niGeomData.DataFlags & 63) | (niGeomData.BSDataFlags & 1)); i++)
+            for (var i = 0; i < ((niGeomData.DataFlags & 63) | (niGeomData.BsDataFlags & 1)); i++)
             {
                 for (var j = 0; j < niGeomData.VerticesNumber; j++)
                 {
@@ -189,22 +189,17 @@ namespace NIF.NiObjects
             }
 
             var consType = nifReader.ReadUInt16();
-            switch (consType)
+            niGeomData.ConsistencyFlags = consType switch
             {
-                case 0x0000:
-                    niGeomData.ConsistencyFlags = ConsistencyType.CT_MUTABLE;
-                    break;
-                case 0x4000:
-                    niGeomData.ConsistencyFlags = ConsistencyType.CT_STATIC;
-                    break;
-                case 0x8000:
-                    niGeomData.ConsistencyFlags = ConsistencyType.CT_VOLATILE;
-                    break;
-            }
+                0x0000 => ConsistencyType.CtMutable,
+                0x4000 => ConsistencyType.CtStatic,
+                0x8000 => ConsistencyType.CtVolatile,
+                _ => niGeomData.ConsistencyFlags
+            };
 
             if (header.Version >= 0x14000004)
             {
-                niGeomData.AdditionalDataReference = NIFReaderUtils.ReadRef(nifReader);
+                niGeomData.AdditionalDataReference = NifReaderUtils.ReadRef(nifReader);
             }
 
             return niGeomData;

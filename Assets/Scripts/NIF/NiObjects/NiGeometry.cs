@@ -7,7 +7,7 @@ namespace NIF.NiObjects
     /// <summary>
     /// Describes a visible scene element with vertices like a mesh, a particle system, lines, etc.
     /// </summary>
-    public class NiGeometry : NiAVObject
+    public class NiGeometry : NiAvObject
     {
         public NiBound BoundingSphere { get; private set; }
 
@@ -25,7 +25,7 @@ namespace NIF.NiObjects
 
         public int AlphaPropertyReference { get; private set; }
 
-        private NiGeometry(BSLightingShaderType shaderType, string name, uint extraDataListLength,
+        private NiGeometry(BsLightingShaderType shaderType, string name, uint extraDataListLength,
             int[] extraDataListReferences, int controllerObjectReference, uint flags, Vector3 translation,
             Matrix33 rotation, float scale, uint propertiesNumber, int[] propertiesReferences,
             int collisionObjectReference) : base(shaderType, name, extraDataListLength, extraDataListReferences,
@@ -34,7 +34,7 @@ namespace NIF.NiObjects
         {
         }
 
-        protected NiGeometry(BSLightingShaderType shaderType, string name, uint extraDataListLength,
+        protected NiGeometry(BsLightingShaderType shaderType, string name, uint extraDataListLength,
             int[] extraDataListReferences, int controllerObjectReference, uint flags, Vector3 translation,
             Matrix33 rotation, float scale, uint propertiesNumber, int[] propertiesReferences,
             int collisionObjectReference, NiBound boundingSphere, float[] boundMinMax, int skinReference,
@@ -55,39 +55,39 @@ namespace NIF.NiObjects
 
         protected new static NiGeometry Parse(BinaryReader nifReader, string ownerObjectName, Header header)
         {
-            var ancestor = NiAVObject.Parse(nifReader, ownerObjectName, header);
+            var ancestor = NiAvObject.Parse(nifReader, ownerObjectName, header);
             var niGeometry = new NiGeometry(ancestor.ShaderType, ancestor.Name, ancestor.ExtraDataListLength,
                 ancestor.ExtraDataListReferences, ancestor.ControllerObjectReference, ancestor.Flags,
                 ancestor.Translation, ancestor.Rotation, ancestor.Scale, ancestor.PropertiesNumber,
                 ancestor.PropertiesReferences, ancestor.CollisionObjectReference);
-            if (header.Version == 0x14020007 && header.BethesdaVersion >= 100 && ownerObjectName == "NiParticleSystem")
+            if (header.Version == 0x14020007 && Conditions.BsGteSse(header) && ownerObjectName == "NiParticleSystem")
             {
                 niGeometry.BoundingSphere = NiBound.Parse(nifReader);
-                if (header.BethesdaVersion == 155)
+                if (Conditions.BsF76(header))
                 {
-                    niGeometry.BoundMinMax = NIFReaderUtils.ReadFloatArray(nifReader, 6);
+                    niGeometry.BoundMinMax = NifReaderUtils.ReadFloatArray(nifReader, 6);
                 }
 
-                niGeometry.SkinReference = NIFReaderUtils.ReadRef(nifReader);
+                niGeometry.SkinReference = NifReaderUtils.ReadRef(nifReader);
             }
 
-            if (header.BethesdaVersion < 100)
+            if (Conditions.NiBsLtSse(header))
             {
-                niGeometry.DataReference = NIFReaderUtils.ReadRef(nifReader);
-                niGeometry.SkinInstanceReference = NIFReaderUtils.ReadRef(nifReader);
+                niGeometry.DataReference = NifReaderUtils.ReadRef(nifReader);
+                niGeometry.SkinInstanceReference = NifReaderUtils.ReadRef(nifReader);
                 niGeometry.MaterialData = MaterialData.Parse(nifReader, header);
             }
-            else if (header.Version == 0x14020007 && header.BethesdaVersion >= 100 &&
+            else if (header.Version == 0x14020007 && Conditions.BsGteSse(header) &&
                      ownerObjectName != "NiParticleSystem")
             {
-                niGeometry.DataReference = NIFReaderUtils.ReadRef(nifReader);
-                niGeometry.SkinInstanceReference = NIFReaderUtils.ReadRef(nifReader);
+                niGeometry.DataReference = NifReaderUtils.ReadRef(nifReader);
+                niGeometry.SkinInstanceReference = NifReaderUtils.ReadRef(nifReader);
                 niGeometry.MaterialData = MaterialData.Parse(nifReader, header);
             }
 
-            if (header.Version != 0x14020007 || header.BethesdaVersion <= 34) return niGeometry;
-            niGeometry.ShaderPropertyReference = NIFReaderUtils.ReadRef(nifReader);
-            niGeometry.AlphaPropertyReference = NIFReaderUtils.ReadRef(nifReader);
+            if (header.Version != 0x14020007 || Conditions.NiBsLteFo3(header)) return niGeometry;
+            niGeometry.ShaderPropertyReference = NifReaderUtils.ReadRef(nifReader);
+            niGeometry.AlphaPropertyReference = NifReaderUtils.ReadRef(nifReader);
 
 
             return niGeometry;

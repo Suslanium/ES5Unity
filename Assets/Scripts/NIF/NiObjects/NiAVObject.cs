@@ -1,7 +1,6 @@
 ﻿using System.IO;
 using NIF.NiObjects.Enums;
 using NIF.NiObjects.Structures;
-using UnityEngine;
 using Vector3 = NIF.NiObjects.Structures.Vector3;
 
 namespace NIF.NiObjects
@@ -9,7 +8,7 @@ namespace NIF.NiObjects
     /// <summary>
     /// Abstract (again, not so abstract in this implementation) audio-visual base class from which all of Gamebryo's scene graph objects inherit.
     /// </summary>
-    public class NiAVObject : NiObjectNET
+    public class NiAvObject : NiObjectNet
     {
         /// <summary>
         /// (Well, I honestly don't know what these are for)
@@ -40,13 +39,13 @@ namespace NIF.NiObjects
 
         public int CollisionObjectReference { get; private set; }
 
-        private NiAVObject(BSLightingShaderType shaderType, string name, uint extraDataListLength,
+        private NiAvObject(BsLightingShaderType shaderType, string name, uint extraDataListLength,
             int[] extraDataListReferences, int controllerObjectReference) : base(shaderType, name, extraDataListLength,
             extraDataListReferences, controllerObjectReference)
         {
         }
 
-        protected NiAVObject(BSLightingShaderType shaderType, string name, uint extraDataListLength,
+        protected NiAvObject(BsLightingShaderType shaderType, string name, uint extraDataListLength,
             int[] extraDataListReferences, int controllerObjectReference, uint flags, Vector3 translation,
             Matrix33 rotation, float scale, uint propertiesNumber, int[] propertiesReferences,
             int collisionObjectReference) : base(shaderType, name, extraDataListLength, extraDataListReferences,
@@ -61,24 +60,25 @@ namespace NIF.NiObjects
             CollisionObjectReference = collisionObjectReference;
         }
 
-        protected new static NiAVObject Parse(BinaryReader nifReader, string ownerObjectName, Header header)
+        protected new static NiAvObject Parse(BinaryReader nifReader, string ownerObjectName, Header header)
         {
-            var ancestor = NiObjectNET.Parse(nifReader, ownerObjectName, header);
-            var niAvObject = new NiAVObject(ancestor.ShaderType, ancestor.Name, ancestor.ExtraDataListLength,
-                ancestor.ExtraDataListReferences, ancestor.ControllerObjectReference);
-            niAvObject.Flags = header.BethesdaVersion > 26 ? nifReader.ReadUInt32() : nifReader.ReadUInt16();
+            var ancestor = NiObjectNet.Parse(nifReader, ownerObjectName, header);
+            var niAvObject = new NiAvObject(ancestor.ShaderType, ancestor.Name, ancestor.ExtraDataListLength,
+                ancestor.ExtraDataListReferences, ancestor.ControllerObjectReference)
+            {
+                Flags = header.BethesdaVersion > 26 ? nifReader.ReadUInt32() : nifReader.ReadUInt16(),
+                Translation = Vector3.Parse(nifReader),
+                Rotation = Matrix33.Parse(nifReader),
+                Scale = nifReader.ReadSingle()
+            };
 
-            niAvObject.Translation = Vector3.Parse(nifReader);
-            niAvObject.Rotation = Matrix33.Parse(nifReader);
-            niAvObject.Scale = nifReader.ReadSingle();
-
-            if (header.BethesdaVersion <= 34)
+            if (Conditions.NiBsLteFo3(header))
             {
                 niAvObject.PropertiesNumber = nifReader.ReadUInt32();
-                niAvObject.PropertiesReferences = NIFReaderUtils.ReadRefArray(nifReader, niAvObject.PropertiesNumber);
+                niAvObject.PropertiesReferences = NifReaderUtils.ReadRefArray(nifReader, niAvObject.PropertiesNumber);
             }
 
-            niAvObject.CollisionObjectReference = NIFReaderUtils.ReadRef(nifReader);
+            niAvObject.CollisionObjectReference = NifReaderUtils.ReadRef(nifReader);
             return niAvObject;
         }
     }

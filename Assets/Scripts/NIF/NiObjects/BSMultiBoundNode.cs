@@ -7,12 +7,12 @@ namespace NIF.NiObjects
     /// <summary>
     /// Bethesda-specific node.
     /// </summary>
-    public class BSMultiBoundNode: NiNode
+    public class BsMultiBoundNode: NiNode
     {
         public int MultiBoundReference { get; private set; }
         public uint CullingMode { get; private set; }
         
-        private BSMultiBoundNode(BSLightingShaderType shaderType, string name, uint extraDataListLength,
+        private BsMultiBoundNode(BsLightingShaderType shaderType, string name, uint extraDataListLength,
             int[] extraDataListReferences, int controllerObjectReference, uint flags, Vector3 translation,
             Matrix33 rotation, float scale, uint propertiesNumber, int[] propertiesReferences,
             int collisionObjectReference, uint numberOfChildren, int[] childrenReferences, uint numberOfEffects,
@@ -22,18 +22,18 @@ namespace NIF.NiObjects
         {
         }
 
-        public new static BSMultiBoundNode Parse(BinaryReader nifReader, string ownerObjectName, Header header)
+        public new static BsMultiBoundNode Parse(BinaryReader nifReader, string ownerObjectName, Header header)
         {
             var niNode = NiNode.Parse(nifReader, ownerObjectName, header);
-            var node = new BSMultiBoundNode(niNode.ShaderType, niNode.Name, niNode.ExtraDataListLength,
+            var node = new BsMultiBoundNode(niNode.ShaderType, niNode.Name, niNode.ExtraDataListLength,
                 niNode.ExtraDataListReferences, niNode.ControllerObjectReference, niNode.Flags, niNode.Translation,
                 niNode.Rotation, niNode.Scale, niNode.PropertiesNumber, niNode.PropertiesReferences,
                 niNode.CollisionObjectReference, niNode.NumberOfChildren, niNode.ChildrenReferences,
                 niNode.NumberOfEffects, niNode.EffectReferences)
             {
-                MultiBoundReference = NIFReaderUtils.ReadRef(nifReader)
+                MultiBoundReference = NifReaderUtils.ReadRef(nifReader)
             };
-            if (header.BethesdaVersion >= 83)
+            if (Conditions.BsGteSky(header))
             {
                 node.CullingMode = nifReader.ReadUInt32();
             }

@@ -19,16 +19,16 @@ namespace NIF.NiObjects
     /// <para>Bit 12: bBreakable(Skyrim)</para>
     /// <para>Bit 13: bSearchedBreakable(Skyrim) .. Runtime only?</para>
     /// </summary>
-    public class BSXFlags : NiIntegerExtraData
+    public class BsxFlags : NiIntegerExtraData
     {
-        public BSXFlags(string name, uint integerData) : base(name, integerData)
+        public BsxFlags(string name, uint integerData) : base(name, integerData)
         {
         }
 
-        public new static BSXFlags Parse(BinaryReader nifReader, string ownerObjectName, Header header)
+        public new static BsxFlags Parse(BinaryReader nifReader, string ownerObjectName, Header header)
         {
             var niIntegerExtraData = NiIntegerExtraData.Parse(nifReader, ownerObjectName, header);
-            return new BSXFlags(niIntegerExtraData.Name, niIntegerExtraData.IntegerData);
+            return new BsxFlags(niIntegerExtraData.Name, niIntegerExtraData.IntegerData);
         }
     }
 }

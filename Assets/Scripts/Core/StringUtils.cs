@@ -8,16 +8,16 @@
         /// <summary>
         /// Quickly checks if an ASCII encoded string is equal to a C# string.
         /// </summary>
-        public static bool Equals(byte[] ASCIIBytes, string str)
+        public static bool Equals(byte[] asciiBytes, string str)
         {
-            if(ASCIIBytes.Length != str.Length)
+            if(asciiBytes.Length != str.Length)
             {
                 return false;
             }
 
-            for(int i = 0; i < ASCIIBytes.Length; i++)
+            for(int i = 0; i < asciiBytes.Length; i++)
             {
-                if(ASCIIBytes[i] != str[i])
+                if(asciiBytes[i] != str[i])
                 {
                     return false;
                 }

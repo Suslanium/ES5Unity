@@ -6,12 +6,12 @@ namespace NIF.NiObjects
     /// <summary>
     /// Abstract(well, not really abstract in this implementation) base class for NiObjects that support names, extra data, and time controllers.
     /// </summary>
-    public class NiObjectNET : NiObject
+    public class NiObjectNet : NiObject
     {
         /// <summary>
         /// Configures the main shader path
         /// </summary>
-        public BSLightingShaderType ShaderType { get; private set; }
+        public BsLightingShaderType ShaderType { get; private set; }
 
         /// <summary>
         /// Name of this controllable object, used to refer to the object in .kf files.
@@ -33,11 +33,11 @@ namespace NIF.NiObjects
         /// </summary>
         public int ControllerObjectReference { get; private set; }
 
-        private NiObjectNET()
+        private NiObjectNet()
         {
         }
 
-        protected NiObjectNET(BSLightingShaderType shaderType, string name, uint extraDataListLength,
+        protected NiObjectNet(BsLightingShaderType shaderType, string name, uint extraDataListLength,
             int[] extraDataListReferences, int controllerObjectReference)
         {
             ShaderType = shaderType;
@@ -47,20 +47,20 @@ namespace NIF.NiObjects
             ControllerObjectReference = controllerObjectReference;
         }
 
-        protected static NiObjectNET Parse(BinaryReader nifReader, string ownerObjectName, Header header)
+        protected static NiObjectNet Parse(BinaryReader nifReader, string ownerObjectName, Header header)
         {
-            var niObjectNet = new NiObjectNET();
+            var niObjectNet = new NiObjectNet();
             if (ownerObjectName == "BSLightingShaderProperty" && header.Version == 0x14020007 &&
-                header.BethesdaVersion is >= 83 and <= 139)
+                Conditions.BsGteSky(header) && Conditions.NiBsLteFo4(header))
             {
-                niObjectNet.ShaderType = (BSLightingShaderType)checked((int)nifReader.ReadUInt32());
+                niObjectNet.ShaderType = (BsLightingShaderType)checked((int)nifReader.ReadUInt32());
             }
 
-            niObjectNet.Name = NIFReaderUtils.ReadString(nifReader, header);
+            niObjectNet.Name = NifReaderUtils.ReadString(nifReader, header);
             niObjectNet.ExtraDataListLength = nifReader.ReadUInt32();
             niObjectNet.ExtraDataListReferences =
-                NIFReaderUtils.ReadRefArray(nifReader, niObjectNet.ExtraDataListLength);
-            niObjectNet.ControllerObjectReference = NIFReaderUtils.ReadRef(nifReader);
+                NifReaderUtils.ReadRefArray(nifReader, niObjectNet.ExtraDataListLength);
+            niObjectNet.ControllerObjectReference = NifReaderUtils.ReadRef(nifReader);
 
             return niObjectNet;
         }

@@ -75,9 +75,9 @@ namespace MasterFile.MasterFileContents
 
         public new static Group Parse(BinaryReader fileReader, long position)
         {
-            Group group = new Group(fileReader.ReadUInt32(), fileReader.ReadBytes(4), fileReader.ReadInt32(),
+            var group = new Group(fileReader.ReadUInt32(), fileReader.ReadBytes(4), fileReader.ReadInt32(),
                 fileReader.ReadUInt16(), fileReader.ReadUInt16(), fileReader.ReadUInt32());
-            long basePosition = fileReader.BaseStream.Position;
+            var basePosition = fileReader.BaseStream.Position;
             while (fileReader.BaseStream.Position < basePosition + group.Size - 24)
             {
                 group.GroupData.Add(MasterFileEntry.Parse(fileReader, fileReader.BaseStream.Position));

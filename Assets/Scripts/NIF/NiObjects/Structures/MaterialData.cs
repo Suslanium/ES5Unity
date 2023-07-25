@@ -41,7 +41,7 @@ namespace NIF.NiObjects.Structures
                 matData.HasShader = binaryReader.ReadBoolean();
                 if (matData.HasShader)
                 {
-                    matData.ShaderName = NIFReaderUtils.ReadString(binaryReader, header);
+                    matData.ShaderName = NifReaderUtils.ReadString(binaryReader, header);
                     matData.ShaderExtraData = binaryReader.ReadInt32();
                 }
             }
@@ -49,8 +49,8 @@ namespace NIF.NiObjects.Structures
             if (header.Version >= 0x14020005)
             {
                 matData.NumberOfMaterials = binaryReader.ReadUInt32();
-                matData.MaterialNames = NIFReaderUtils.ReadStringArray(binaryReader, header, matData.NumberOfMaterials);
-                matData.MaterialExtraData = NIFReaderUtils.ReadRefArray(binaryReader, matData.NumberOfMaterials);
+                matData.MaterialNames = NifReaderUtils.ReadStringArray(binaryReader, header, matData.NumberOfMaterials);
+                matData.MaterialExtraData = NifReaderUtils.ReadRefArray(binaryReader, matData.NumberOfMaterials);
                 matData.ActiveMaterialIndex = binaryReader.ReadInt32();
             }
 

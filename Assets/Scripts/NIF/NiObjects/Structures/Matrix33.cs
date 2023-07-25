@@ -35,7 +35,7 @@ namespace NIF.NiObjects.Structures
             return new Matrix33(matrix);
         }
 
-        public Matrix4x4 ToMatrix4x4()
+        public Matrix4x4 ToMatrix4X4()
         {
             var matrix = new Matrix4x4();
 

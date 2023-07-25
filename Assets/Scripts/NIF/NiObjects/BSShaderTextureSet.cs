@@ -5,7 +5,7 @@ namespace NIF.NiObjects
     /// <summary>
     /// Bethesda-specific Texture Set.
     /// </summary>
-    public class BSShaderTextureSet: NiObject
+    public class BsShaderTextureSet: NiObject
     {
         public uint NumberOfTextures { get; private set; }
         /// <summary>
@@ -20,17 +20,17 @@ namespace NIF.NiObjects
         /// </summary>
         public string[] Textures { get; private set; }
 
-        private BSShaderTextureSet()
+        private BsShaderTextureSet()
         {
         }
 
-        public static BSShaderTextureSet Parse(BinaryReader nifReader, string ownerObjectName, Header header)
+        public static BsShaderTextureSet Parse(BinaryReader nifReader, string ownerObjectName, Header header)
         {
-            var textureSet = new BSShaderTextureSet
+            var textureSet = new BsShaderTextureSet
             {
                 NumberOfTextures = nifReader.ReadUInt32()
             };
-            textureSet.Textures = NIFReaderUtils.ReadSizedStringArray(nifReader, textureSet.NumberOfTextures);
+            textureSet.Textures = NifReaderUtils.ReadSizedStringArray(nifReader, textureSet.NumberOfTextures);
             return textureSet;
         }
     }

@@ -10,7 +10,7 @@ namespace MasterFile.MasterFileContents
         public static MasterFileEntry Parse(BinaryReader fileReader, long position)
         {
             fileReader.BaseStream.Seek(position, SeekOrigin.Begin);
-            string entryType = new string(fileReader.ReadChars(4));
+            var entryType = new string(fileReader.ReadChars(4));
             if (entryType.Equals("GRUP"))
             {
                 return Group.Parse(fileReader, fileReader.BaseStream.Position);

@@ -6,47 +6,49 @@ namespace NIF.Converter
     /// <summary>
     /// Taken from https://github.com/ColeDeanShepherd/TESUnity/blob/f4d5e19f68da380da9da745356c7904f3428b9d6/Assets/Scripts/TES/NIF/NIFObjectBuilder.cs
     /// </summary>
-    public class NIFUtils
+    public static class NifUtils
     {
-        public static Vector3 NifVectorToUnityVector(Vector3 NIFVector)
+        public static Vector3 NifVectorToUnityVector(Vector3 nifVector)
         {
-            Utils.Swap(ref NIFVector.y, ref NIFVector.z);
+            Utils.Swap(ref nifVector.y, ref nifVector.z);
 
-            return NIFVector;
+            return nifVector;
         }
-        public static Vector3 NifPointToUnityPoint(Vector3 NIFPoint)
+        public static Vector3 NifPointToUnityPoint(Vector3 nifPoint)
         {
-            return NifVectorToUnityVector(NIFPoint) / Convert.meterInMWUnits;
+            return NifVectorToUnityVector(nifPoint) / Convert.meterInMWUnits;
         }
-        public static Matrix4x4 NifRotationMatrixToUnityRotationMatrix(Matrix4x4 NIFRotationMatrix)
+        public static Matrix4x4 NifRotationMatrixToUnityRotationMatrix(Matrix4x4 nifRotationMatrix)
         {
-            Matrix4x4 matrix = new Matrix4x4();
-            matrix.m00 = NIFRotationMatrix.m00;
-            matrix.m01 = NIFRotationMatrix.m02;
-            matrix.m02 = NIFRotationMatrix.m01;
-            matrix.m03 = 0;
-            matrix.m10 = NIFRotationMatrix.m20;
-            matrix.m11 = NIFRotationMatrix.m22;
-            matrix.m12 = NIFRotationMatrix.m21;
-            matrix.m13 = 0;
-            matrix.m20 = NIFRotationMatrix.m10;
-            matrix.m21 = NIFRotationMatrix.m12;
-            matrix.m22 = NIFRotationMatrix.m11;
-            matrix.m23 = 0;
-            matrix.m30 = 0;
-            matrix.m31 = 0;
-            matrix.m32 = 0;
-            matrix.m33 = 1;
+            var matrix = new Matrix4x4
+            {
+                m00 = nifRotationMatrix.m00,
+                m01 = nifRotationMatrix.m02,
+                m02 = nifRotationMatrix.m01,
+                m03 = 0,
+                m10 = nifRotationMatrix.m20,
+                m11 = nifRotationMatrix.m22,
+                m12 = nifRotationMatrix.m21,
+                m13 = 0,
+                m20 = nifRotationMatrix.m10,
+                m21 = nifRotationMatrix.m12,
+                m22 = nifRotationMatrix.m11,
+                m23 = 0,
+                m30 = 0,
+                m31 = 0,
+                m32 = 0,
+                m33 = 1
+            };
 
             return matrix;
         }
-        public static Quaternion NifRotationMatrixToUnityQuaternion(Matrix4x4 NIFRotationMatrix)
+        public static Quaternion NifRotationMatrixToUnityQuaternion(Matrix4x4 nifRotationMatrix)
         {
-            return Convert.RotationMatrixToQuaternion(NifRotationMatrixToUnityRotationMatrix(NIFRotationMatrix));
+            return Convert.RotationMatrixToQuaternion(NifRotationMatrixToUnityRotationMatrix(nifRotationMatrix));
         }
-        public static Quaternion NifEulerAnglesToUnityQuaternion(Vector3 NifEulerAngles)
+        public static Quaternion NifEulerAnglesToUnityQuaternion(Vector3 nifEulerAngles)
         {
-            var eulerAngles = NifVectorToUnityVector(NifEulerAngles);
+            var eulerAngles = NifVectorToUnityVector(nifEulerAngles);
 
             var xRot = Quaternion.AngleAxis(Mathf.Rad2Deg * eulerAngles.x, Vector3.right);
             var yRot = Quaternion.AngleAxis(Mathf.Rad2Deg * eulerAngles.y, Vector3.up);

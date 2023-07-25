@@ -33,7 +33,7 @@ namespace NIF.NiObjects.Structures
             {
                 VerticesNumber = binaryReader.ReadUInt16()
             };
-            group.VertexIndices = NIFReaderUtils.ReadUshortArray(binaryReader, group.VerticesNumber);
+            group.VertexIndices = NifReaderUtils.ReadUshortArray(binaryReader, group.VerticesNumber);
             return group;
         }
     }

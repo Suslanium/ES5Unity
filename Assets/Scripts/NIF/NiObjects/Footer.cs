@@ -25,7 +25,7 @@ namespace NIF.NiObjects
             {
                 RootsNumber = nifReader.ReadUInt32()
             };
-            footer.RootReferences = NIFReaderUtils.ReadRefArray(nifReader, footer.RootsNumber);
+            footer.RootReferences = NifReaderUtils.ReadRefArray(nifReader, footer.RootsNumber);
             return footer;
         }
     }

@@ -1,6 +1,6 @@
 ﻿namespace NIF.NiObjects.Enums
 {
-    public enum BSLightingShaderType
+    public enum BsLightingShaderType
     {
         Default,
         EnvironmentMap,
@@ -17,11 +17,11 @@
         TreeAnim,
         LODObjects,
         SparkleSnow,
-        LODObjectsHD,
+        LODObjectsHd,
         EyeEnvmap,
         Cloud,
         LODLandscapeNoise,
         MultitextureLandscapeLODBlend,
-        FO4Dismemberment
+        Fo4Dismemberment
     }
 }

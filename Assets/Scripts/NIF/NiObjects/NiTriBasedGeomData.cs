@@ -41,7 +41,7 @@ namespace NIF.NiObjects
             var ancestor = NiGeometryData.Parse(nifReader, ownerObjectName, header);
             var triBasedGeomData = new NiTriBasedGeomData(ancestor.GroupID, ancestor.VerticesNumber, ancestor.KeepFlags,
                 ancestor.CompressFlags, ancestor.HasVertices, ancestor.Vertices, ancestor.DataFlags,
-                ancestor.BSDataFlags, ancestor.MaterialCRC, ancestor.HasNormals, ancestor.Normals, ancestor.Tangents,
+                ancestor.BsDataFlags, ancestor.MaterialCRC, ancestor.HasNormals, ancestor.Normals, ancestor.Tangents,
                 ancestor.Bitangents, ancestor.BoundingSphere, ancestor.HasVertexColors, ancestor.VertexColors,
                 ancestor.UVSets, ancestor.ConsistencyFlags, ancestor.AdditionalDataReference)
             {

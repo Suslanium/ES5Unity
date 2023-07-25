@@ -49,7 +49,7 @@ namespace NIF.NiObjects
             var ancestor = NiTriBasedGeomData.Parse(nifReader, ownerObjectName, header);
             var triBasedGeomData = new NiTriShapeData(ancestor.GroupID, ancestor.VerticesNumber, ancestor.KeepFlags,
                 ancestor.CompressFlags, ancestor.HasVertices, ancestor.Vertices, ancestor.DataFlags,
-                ancestor.BSDataFlags, ancestor.MaterialCRC, ancestor.HasNormals, ancestor.Normals, ancestor.Tangents,
+                ancestor.BsDataFlags, ancestor.MaterialCRC, ancestor.HasNormals, ancestor.Normals, ancestor.Tangents,
                 ancestor.Bitangents, ancestor.BoundingSphere, ancestor.HasVertexColors, ancestor.VertexColors,
                 ancestor.UVSets, ancestor.ConsistencyFlags, ancestor.AdditionalDataReference, ancestor.TrianglesNumber)
                 {
@@ -59,12 +59,12 @@ namespace NIF.NiObjects
             if (triBasedGeomData.HasTriangles)
             {
                 triBasedGeomData.Triangles =
-                    NIFReaderUtils.ReadTriangleArray(nifReader, triBasedGeomData.TrianglesNumber);
+                    NifReaderUtils.ReadTriangleArray(nifReader, triBasedGeomData.TrianglesNumber);
             }
 
             triBasedGeomData.MatchGroupsNumber = nifReader.ReadUInt16();
             triBasedGeomData.MatchGroups =
-                NIFReaderUtils.ReadMatchGroupArray(nifReader, triBasedGeomData.MatchGroupsNumber);
+                NifReaderUtils.ReadMatchGroupArray(nifReader, triBasedGeomData.MatchGroupsNumber);
             return triBasedGeomData;
         }
     }

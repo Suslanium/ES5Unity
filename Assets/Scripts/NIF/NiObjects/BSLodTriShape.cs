@@ -7,7 +7,7 @@ namespace NIF.NiObjects
     /// <summary>
     /// A variation on NiTriShape, for visibility control over vertex groups.
     /// </summary>
-    public class BSLodTriShape : NiTriBasedGeom
+    public class BsLodTriShape : NiTriBasedGeom
     {
         public uint LOD0Size { get; private set; }
 
@@ -15,7 +15,7 @@ namespace NIF.NiObjects
 
         public uint LOD2Size { get; private set; }
 
-        public BSLodTriShape(BSLightingShaderType shaderType, string name, uint extraDataListLength,
+        public BsLodTriShape(BsLightingShaderType shaderType, string name, uint extraDataListLength,
             int[] extraDataListReferences, int controllerObjectReference, uint flags, Vector3 translation,
             Matrix33 rotation, float scale, uint propertiesNumber, int[] propertiesReferences,
             int collisionObjectReference, NiBound boundingSphere, float[] boundMinMax, int skinReference,
@@ -27,10 +27,10 @@ namespace NIF.NiObjects
         {
         }
 
-        public new static BSLodTriShape Parse(BinaryReader nifReader, string ownerObjectName, Header header)
+        public new static BsLodTriShape Parse(BinaryReader nifReader, string ownerObjectName, Header header)
         {
             var ancestor = NiTriBasedGeom.Parse(nifReader, ownerObjectName, header);
-            var triShape = new BSLodTriShape(ancestor.ShaderType, ancestor.Name, ancestor.ExtraDataListLength,
+            var triShape = new BsLodTriShape(ancestor.ShaderType, ancestor.Name, ancestor.ExtraDataListLength,
                 ancestor.ExtraDataListReferences, ancestor.ControllerObjectReference, ancestor.Flags,
                 ancestor.Translation, ancestor.Rotation, ancestor.Scale, ancestor.PropertiesNumber,
                 ancestor.PropertiesReferences, ancestor.CollisionObjectReference, ancestor.BoundingSphere,

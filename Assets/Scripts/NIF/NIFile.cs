@@ -5,26 +5,26 @@ using UnityEngine;
 
 namespace NIF
 {
-    public class NIFile
+    public class NiFile
     {
         public string Name { get; private set; }
         public Header Header { get; private set; }
         public List<NiObject> NiObjects { get; private set; } = new List<NiObject>();
         public Footer Footer { get; private set; }
 
-        private NIFile(string name,Header header)
+        private NiFile(string name,Header header)
         {
             Name = name;
             Header = header;
         }
         
-        public static NIFile ReadNIF(string fileName, BinaryReader nifReader, long startPosition)
+        public static NiFile ReadNif(string fileName, BinaryReader nifReader, long startPosition)
         {
-            string name = Path.GetFileName(fileName);
+            var name = Path.GetFileName(fileName);
             nifReader.BaseStream.Seek(startPosition, SeekOrigin.Begin);
-            Header header = Header.ParseHeader(nifReader);
-            var niFile = new NIFile(name, header);
-            for (int i = 0; i < header.NumberOfBlocks; i++)
+            var header = Header.ParseHeader(nifReader);
+            var niFile = new NiFile(name, header);
+            for (var i = 0; i < header.NumberOfBlocks; i++)
             {
                 switch (header.BlockTypes[header.BlockTypeIndex[i]])
                 {
@@ -32,7 +32,7 @@ namespace NIF
                         niFile.NiObjects.Add(NiNode.Parse(nifReader, "NiNode", header));
                         break;
                     case "BSFadeNode":
-                        niFile.NiObjects.Add(BSFadeNode.Parse(nifReader, "BSFadeNode", header));
+                        niFile.NiObjects.Add(BsFadeNode.Parse(nifReader, "BSFadeNode", header));
                         break;
                     case "NiExtraData":
                         niFile.NiObjects.Add(NiExtraData.Parse(nifReader, "NiExtraData", header));
@@ -41,7 +41,7 @@ namespace NIF
                         niFile.NiObjects.Add(NiIntegerExtraData.Parse(nifReader, "NiIntegerExtraData", header));
                         break;
                     case "BSXFlags":
-                        niFile.NiObjects.Add(BSXFlags.Parse(nifReader, "BSXFlags", header));
+                        niFile.NiObjects.Add(BsxFlags.Parse(nifReader, "BSXFlags", header));
                         break;
                     case "NiTriShape":
                         niFile.NiObjects.Add(NiTriShape.Parse(nifReader, "NiTriShape", header));
@@ -50,16 +50,16 @@ namespace NIF
                         niFile.NiObjects.Add(NiTriShapeData.Parse(nifReader, "NiTriShapeData", header));
                         break;
                     case "BSLODTriShape":
-                        niFile.NiObjects.Add(BSLodTriShape.Parse(nifReader, "BSLODTriShape", header));
+                        niFile.NiObjects.Add(BsLodTriShape.Parse(nifReader, "BSLODTriShape", header));
                         break;
                     case "BSMultiBoundNode":
-                        niFile.NiObjects.Add(BSMultiBoundNode.Parse(nifReader, "BSMultiBoundNode", header));
+                        niFile.NiObjects.Add(BsMultiBoundNode.Parse(nifReader, "BSMultiBoundNode", header));
                         break;
                     case "BSLightingShaderProperty":
-                        niFile.NiObjects.Add(BSLightingShaderProperty.Parse(nifReader, "BSLightingShaderProperty", header));
+                        niFile.NiObjects.Add(BsLightingShaderProperty.Parse(nifReader, "BSLightingShaderProperty", header));
                         break;
                     case "BSShaderTextureSet":
-                        niFile.NiObjects.Add(BSShaderTextureSet.Parse(nifReader, "BSShaderTextureSet", header));
+                        niFile.NiObjects.Add(BsShaderTextureSet.Parse(nifReader, "BSShaderTextureSet", header));
                         break;
                     default:
                         Debug.LogWarning($"NIF Reader({fileName}): Unsupported NiObject type: {header.BlockTypes[header.BlockTypeIndex[i]]}");

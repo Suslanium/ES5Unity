@@ -54,8 +54,8 @@ namespace MasterFile.MasterFileContents.Records
                 baseInfo.VersionControlInfo, baseInfo.InternalRecordVersion, baseInfo.UnknownData);
             while (fileReader.BaseStream.Position < position + baseInfo.DataSize)
             {
-                string fieldType = new string(fileReader.ReadChars(4));
-                ushort fieldSize = fileReader.ReadUInt16();
+                var fieldType = new string(fileReader.ReadChars(4));
+                var fieldSize = fileReader.ReadUInt16();
                 switch (fieldType)
                 {
                     case "EDID":

@@ -15,13 +15,13 @@ namespace NIF.NiObjects
         /// </summary>
         public ushort ShadeFlags { get; private set; }
 
-        private NiShadeProperty(BSLightingShaderType shaderType, string name, uint extraDataListLength,
+        private NiShadeProperty(BsLightingShaderType shaderType, string name, uint extraDataListLength,
             int[] extraDataListReferences, int controllerObjectReference) : base(shaderType, name, extraDataListLength,
             extraDataListReferences, controllerObjectReference)
         {
         }
 
-        public NiShadeProperty(BSLightingShaderType shaderType, string name, uint extraDataListLength,
+        public NiShadeProperty(BsLightingShaderType shaderType, string name, uint extraDataListLength,
             int[] extraDataListReferences, int controllerObjectReference, ushort shadeFlags) : base(shaderType, name,
             extraDataListLength, extraDataListReferences, controllerObjectReference)
         {
@@ -33,7 +33,7 @@ namespace NIF.NiObjects
             var ancestor = NiProperty.Parse(nifReader, ownerObjectName, header);
             var niShadeProperty = new NiShadeProperty(ancestor.ShaderType, ancestor.Name, ancestor.ExtraDataListLength,
                 ancestor.ExtraDataListReferences, ancestor.ControllerObjectReference);
-            if (header.BethesdaVersion <= 34)
+            if (Conditions.NiBsLteFo3(header))
             {
                 niShadeProperty.ShadeFlags = nifReader.ReadUInt16();
             }
