@@ -79,7 +79,7 @@ namespace BSA.Structures
             header.FileCount = binaryReader.ReadUInt32();
             header.TotalFolderNameLength = binaryReader.ReadUInt32();
             header.TotalFileNameLength = binaryReader.ReadUInt32();
-            var fileFlags = binaryReader.ReadUInt32();
+            var fileFlags = binaryReader.ReadUInt16();
             if ((fileFlags & 0x1) != 0)
             {
                 header.FileFlags.Add(FileTypeFlag.Meshes);

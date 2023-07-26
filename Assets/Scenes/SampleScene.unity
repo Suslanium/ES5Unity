@@ -599,4 +599,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4773f74a92d043ff949ace583af08081, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  filePath: E:\SteamLibrary\steamapps\common\Skyrim\Data\Skyrim - Sounds.bsa
+  meshesArchivePath: E:\SteamLibrary\steamapps\common\Skyrim\Data\Skyrim - Meshes.bsa
+  meshPath: meshes/dungeons/dwemer/lghalls/dwehalllg3way01.nif
