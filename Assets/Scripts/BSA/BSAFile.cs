@@ -98,6 +98,11 @@ namespace BSA
             return null;
         }
 
+        public void Close()
+        {
+            _binaryReader.Close();
+        }
+
         private static string ConvertFileName(string fullFileName)
         {
             fullFileName = fullFileName.ToLowerInvariant();
