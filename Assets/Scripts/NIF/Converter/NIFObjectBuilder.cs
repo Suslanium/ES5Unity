@@ -1,4 +1,5 @@
-﻿using Engine;
+﻿using System;
+using Engine;
 using NIF.NiObjects;
 using UnityEngine;
 
@@ -149,7 +150,7 @@ namespace NIF.Converter
             var isSpecular = (shaderInfo.ShaderPropertyFlags1 & 0x1) != 0;
             var uvOffset = shaderInfo.UVOffset.ToVector2();
             var uvScale = shaderInfo.UVScale.ToVector2();
-            var glossiness = shaderInfo.Glossiness / 1000f;
+            var glossiness = Math.Min(shaderInfo.Glossiness / 100f, 1f);
             var emissiveColor = shaderInfo.EmissiveColor.ToColor();
             var specularColor = shaderInfo.SpecularColor.ToColor();
             var alpha = shaderInfo.Alpha;
