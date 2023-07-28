@@ -32,6 +32,8 @@ namespace Engine
             }
 
             var material = new Material(SpecularShader);
+            
+            //Initialize emission if needed
             if (materialProperties.EmissiveColor != Color.black || materialProperties.GlowMapPath != "")
             {
                 material.EnableKeyword("_EMISSION");
@@ -42,36 +44,55 @@ namespace Engine
                 }
             }
 
+            //Set material alpha
             material.SetColor(AlphaColor, new Color(1, 1, 1, materialProperties.Alpha));
-            material.SetColor(SpecColor, materialProperties.SpecularColor);
+            
+            //Disable reflections if needed
             if (!materialProperties.EnableReflections)
             {
                 material.EnableKeyword("_GLOSSYREFLECTIONS_OFF");
                 material.SetFloat(GlossyReflections, 0f);
             }
+
+            //Set base texture
             material.SetTexture(MainTex, _textureManager.GetDiffuseMap(materialProperties.DiffuseMapPath));
+            
+            //Set normal and (maybe) specular map
             if (materialProperties.NormalMapPath != "")
             {
-                var textures = _textureManager.GetNormalAndSpecularMap(materialProperties.NormalMapPath);
+                var normalMap = _textureManager.GetNormalMapAndExtractSpecular(materialProperties.NormalMapPath, materialProperties.MetallicMaskPath);
+                material.EnableKeyword("_NORMALMAP");
+                material.SetTexture(BumpMap, normalMap);
+                //If material is specular - extract grayscale specular map cached from normal map alpha channel and apply tint to it
                 if (materialProperties.IsSpecular)
                 {
+                    var specularMap = _textureManager.GetTintedSpecularMap(materialProperties.SpecularColor,
+                        materialProperties.NormalMapPath);
                     material.EnableKeyword("_SPECGLOSSMAP");
-                    material.SetTexture(SpecGlossMap, textures.Item2);
+                    material.SetTexture(SpecGlossMap, specularMap);
                     material.SetFloat(GlossMapScale, materialProperties.Glossiness);
                 }
                 else
                 {
+                    //material.SetColor(SpecColor, materialProperties.SpecularColor);
                     material.SetFloat(Glossiness, materialProperties.Glossiness);
                 }
-                material.EnableKeyword ("_NORMALMAP");
-                material.SetTexture(BumpMap, textures.Item1);
             }
+
             _materialCache.Add(materialProperties, material);
             return material;
         }
 
+        /// <summary>
+        /// WARNING: Call this ONLY when textures and materials are not needed anymore
+        /// </summary>
         public void ClearCachedMaterialsAndTextures()
         {
+            foreach (var material in _materialCache.Values)
+            {
+                Object.Destroy(material);
+            }
+
             _materialCache.Clear();
             _textureManager.ClearCachedTextures();
         }

@@ -11,11 +11,13 @@ namespace NIF.Converter
     {
         private readonly NiFile _file;
         private readonly MaterialManager _materialManager;
+        private readonly EnvironmentalMapManager _environmentalMapManager;
 
-        public NifObjectBuilder(NiFile file, MaterialManager materialManager)
+        public NifObjectBuilder(NiFile file, MaterialManager materialManager, EnvironmentalMapManager environmentalMapManager)
         {
             _file = file;
             _materialManager = materialManager;
+            _environmentalMapManager = environmentalMapManager;
         }
 
         public GameObject BuildObject()
@@ -129,6 +131,15 @@ namespace NIF.Converter
             var meshRenderer = gameObject.AddComponent<MeshRenderer>();
             meshRenderer.material = material;
 
+            if (shaderInfo is BsLightingShaderProperty textureInfo)
+            {
+                var textureSet = (BsShaderTextureSet)_file.NiObjects[textureInfo.TextureSetReference];
+                if (textureSet.NumberOfTextures >= 5)
+                {
+                    _environmentalMapManager.ApplyEnvironmentalMapToMeshRenderer(meshRenderer, textureSet.Textures[4]);
+                }
+            }
+
             ApplyNiAvObject(triShape, gameObject);
             return gameObject;
         }
@@ -148,8 +159,9 @@ namespace NIF.Converter
             var glowMap = textureSet.NumberOfTextures >= 3 && (shaderInfo.ShaderPropertyFlags2 & 0x40) != 0
                 ? textureSet.Textures[2]
                 : "";
+            var metallicMap = textureSet.NumberOfTextures >= 6 ? textureSet.Textures[5] : "";
             return new MaterialProperties(isSpecular, uvOffset, uvScale, glossiness, emissiveColor, specularColor,
-                alpha, diffuseMap, normalMap, glowMap, false);
+                alpha, diffuseMap, normalMap, glowMap, metallicMap, textureSet.NumberOfTextures >= 5);
         }
 
         private Mesh NiTriShapeDataToMesh(NiTriShapeData data)
