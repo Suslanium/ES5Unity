@@ -472,10 +472,9 @@ GameObject:
   - component: {fileID: 963194227}
   - component: {fileID: 963194226}
   - component: {fileID: 963194229}
-  - component: {fileID: 963194230}
   - component: {fileID: 963194231}
-  - component: {fileID: 963194232}
   - component: {fileID: 963194233}
+  - component: {fileID: 963194234}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -562,19 +561,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   filePath: E:\SteamLibrary\steamapps\common\Skyrim\Data\Skyrim.esm
---- !u!114 &963194230
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 963194225}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 33158fbb0ddf431cae528d6f5d20b9d9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  filePath: E:\Unity Projects\SkyrimModels\Original\meshes\architecture\whiterun\wrbuildings\wrjorvaskr01.nif
 --- !u!114 &963194231
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -589,7 +575,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   texturePath: E:\Unity Projects\SkyrimModels\Original\textures\sky\secunda_full.dds
   rawImage: {fileID: 259010759}
---- !u!114 &963194232
+--- !u!114 &963194233
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -598,12 +584,14 @@ MonoBehaviour:
   m_GameObject: {fileID: 963194225}
   m_Enabled: 0
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4773f74a92d043ff949ace583af08081, type: 3}
+  m_Script: {fileID: 11500000, guid: df7d6dc411454a42a2fcfebec6299581, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  meshesArchivePath: E:\SteamLibrary\steamapps\common\Skyrim\Data\Skyrim - Meshes.bsa
-  meshPath: meshes/dungeons/dwemer/lghalls/dwehalllg3way01.nif
---- !u!114 &963194233
+  dataFolderPath: E:\SteamLibrary\steamapps\common\Skyrim\Data
+  normalWithSpecularMapPath: textures/dungeons/dwemerruins/dwemetalsheet01_n.dds
+  normalMapImage: {fileID: 259010759}
+  specularMapImage: {fileID: 1168830570}
+--- !u!114 &963194234
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -612,13 +600,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 963194225}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: df7d6dc411454a42a2fcfebec6299581, type: 3}
+  m_Script: {fileID: 11500000, guid: 15d6434f6a88400aaea087ec5232ff96, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   dataFolderPath: E:\SteamLibrary\steamapps\common\Skyrim\Data
-  normalWithSpecularMapPath: textures/dungeons/dwemerruins/dwemetalsheet01_n.dds
-  normalMapImage: {fileID: 259010759}
-  specularMapImage: {fileID: 1168830570}
+  meshPath: meshes/dungeons/dwemer/lghalls/dwehalllg1way01.nif
 --- !u!1 &1168830568
 GameObject:
   m_ObjectHideFlags: 0

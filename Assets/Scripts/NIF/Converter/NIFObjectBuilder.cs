@@ -1,4 +1,5 @@
-﻿using NIF.NiObjects;
+﻿using Engine;
+using NIF.NiObjects;
 using UnityEngine;
 
 namespace NIF.Converter
@@ -9,10 +10,12 @@ namespace NIF.Converter
     public class NifObjectBuilder
     {
         private readonly NiFile _file;
+        private readonly MaterialManager _materialManager;
 
-        public NifObjectBuilder(NiFile file)
+        public NifObjectBuilder(NiFile file, MaterialManager materialManager)
         {
             _file = file;
+            _materialManager = materialManager;
         }
 
         public GameObject BuildObject()
@@ -101,14 +104,52 @@ namespace NIF.Converter
 
         private GameObject InstantiateNiTriShape(NiTriBasedGeom triShape)
         {
+            if (triShape.ShaderPropertyReference == -1)
+            {
+                return null;
+            }
+
+            var shaderInfo = _file.NiObjects[triShape.ShaderPropertyReference];
+            MaterialProperties materialProperties;
+            if (shaderInfo is BsLightingShaderProperty info)
+            {
+                if (info.TextureSetReference == -1) return null;
+                materialProperties = CreateMaterialProps(info);
+            }
+            else
+            {
+                return null;
+            }
+
             var mesh = NiTriShapeDataToMesh((NiTriShapeData)_file.NiObjects[triShape.DataReference]);
             var gameObject = new GameObject(triShape.Name);
 
             gameObject.AddComponent<MeshFilter>().mesh = mesh;
+            var material = _materialManager.GetMaterialFromProperties(materialProperties);
             var meshRenderer = gameObject.AddComponent<MeshRenderer>();
-            
+            meshRenderer.material = material;
+
             ApplyNiAvObject(triShape, gameObject);
             return gameObject;
+        }
+
+        private MaterialProperties CreateMaterialProps(BsLightingShaderProperty shaderInfo)
+        {
+            var isSpecular = (shaderInfo.ShaderPropertyFlags1 & 0x1) != 0;
+            var uvOffset = shaderInfo.UVOffset.ToVector2();
+            var uvScale = shaderInfo.UVScale.ToVector2();
+            var glossiness = shaderInfo.Glossiness / 1000f;
+            var emissiveColor = shaderInfo.EmissiveColor.ToColor();
+            var specularColor = shaderInfo.SpecularColor.ToColor();
+            var alpha = shaderInfo.Alpha;
+            var textureSet = (BsShaderTextureSet)_file.NiObjects[shaderInfo.TextureSetReference];
+            var diffuseMap = textureSet.NumberOfTextures >= 1 ? textureSet.Textures[0] : "";
+            var normalMap = textureSet.NumberOfTextures >= 2 ? textureSet.Textures[1] : "";
+            var glowMap = textureSet.NumberOfTextures >= 3 && (shaderInfo.ShaderPropertyFlags2 & 0x40) != 0
+                ? textureSet.Textures[2]
+                : "";
+            return new MaterialProperties(isSpecular, uvOffset, uvScale, glossiness, emissiveColor, specularColor,
+                alpha, diffuseMap, normalMap, glowMap, false);
         }
 
         private Mesh NiTriShapeDataToMesh(NiTriShapeData data)

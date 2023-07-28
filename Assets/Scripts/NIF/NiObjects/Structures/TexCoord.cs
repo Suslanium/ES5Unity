@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using UnityEngine;
 
 namespace NIF.NiObjects.Structures
 {
@@ -21,6 +22,11 @@ namespace NIF.NiObjects.Structures
                 V = binaryReader.ReadSingle()
             };
             return texCoord;
+        }
+
+        public Vector2 ToVector2()
+        {
+            return new Vector2(U, V);
         }
     }
 }

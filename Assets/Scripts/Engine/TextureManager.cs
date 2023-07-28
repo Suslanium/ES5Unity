@@ -94,7 +94,7 @@ namespace Engine
 
             var originalTexture = DDSReader.LoadDDSTexture(fileStream);
             var normalMap = new Texture2D(originalTexture.Width, originalTexture.Height, originalTexture.Format,
-                originalTexture.HasMipmaps);
+                originalTexture.HasMipmaps, true);
             var specularMap = new Texture2D(originalTexture.Width, originalTexture.Height, originalTexture.Format,
                 originalTexture.HasMipmaps);
             var originalMap = originalTexture.ToTexture2D();
