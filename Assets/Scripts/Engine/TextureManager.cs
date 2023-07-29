@@ -12,7 +12,7 @@ namespace Engine
         private readonly Dictionary<string, Texture2D> _grayScaleSpecularMapStore = new();
         private readonly Dictionary<string, Dictionary<Color, Texture2D>> _tintedSpecularMapStore = new();
         private readonly Dictionary<string, Texture2D> _glowMapStore = new();
-        private readonly Dictionary<string, Texture2D> _environmentalMapStore = new();
+        private readonly Dictionary<string, Cubemap> _environmentalMapStore = new();
 
         private readonly ResourceManager _resourceManager;
 
@@ -49,7 +49,7 @@ namespace Engine
             return texture;
         }
 
-        public Texture2D GetEnvMap(string texturePath)
+        public Cubemap GetEnvMap(string texturePath)
         {
             if (_environmentalMapStore.TryGetValue(texturePath, out var envMap))
             {
@@ -57,7 +57,7 @@ namespace Engine
             }
 
             var fileStream = _resourceManager.GetFileOrNull(texturePath);
-            var texture = fileStream != null ? DDSReader.LoadDDSTexture(fileStream).ToTexture2D() : new Texture2D(1, 1);
+            var texture = fileStream != null ? DDSReader.LoadDDSTexture(fileStream).ToCubemap() : new Cubemap(1, TextureFormat.RGBA32, false);
             fileStream?.Close();
             _environmentalMapStore.Add(texturePath, texture);
             return texture;

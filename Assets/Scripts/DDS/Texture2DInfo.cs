@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.IO;
+using UnityEngine;
 
 namespace DDS
 {
@@ -35,6 +36,33 @@ namespace DDS
             texture.Apply();
 
             return texture;
+        }
+
+        public Cubemap ToCubemap()
+        {
+            if (Width != Height)
+                throw new InvalidDataException(
+                    "Cubemap cannot be created from texture with non-equal width and height");
+
+            var cubemap = new Cubemap(Width, Format, HasMipmaps);
+            var texture = ToTexture2D();
+            for (var i = 0; i < texture.mipmapCount; i++)
+            {
+                cubemap.SetPixels(texture.GetPixels(i), CubemapFace.NegativeX, i);
+
+                cubemap.SetPixels(texture.GetPixels(i), CubemapFace.NegativeY, i);
+
+                cubemap.SetPixels(texture.GetPixels(i), CubemapFace.NegativeZ, i);
+
+                cubemap.SetPixels(texture.GetPixels(i), CubemapFace.PositiveX, i);
+
+                cubemap.SetPixels(texture.GetPixels(i), CubemapFace.PositiveY, i);
+
+                cubemap.SetPixels(texture.GetPixels(i), CubemapFace.PositiveZ, i);
+            }
+            cubemap.Apply();
+            Object.Destroy(texture);
+            return cubemap;
         }
     }
 }

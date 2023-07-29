@@ -397,4 +397,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   dataFolderPath: E:\SteamLibrary\steamapps\common\Skyrim\Data
-  meshPath: meshes/dungeons/mines/minedoorload01.nif
+  meshPath: meshes/clutter/eyeofmagnus/eyeofmagnus01.nif
