@@ -12,7 +12,6 @@ namespace Engine
         private static readonly int EmissionColor = Shader.PropertyToID("_EmissionColor");
         private static readonly int EmissionMap = Shader.PropertyToID("_EmissionMap");
         private static readonly int AlphaColor = Shader.PropertyToID("_Color");
-        private static readonly int SpecColor = Shader.PropertyToID("_SpecColor");
         private static readonly int GlossyReflections = Shader.PropertyToID("_GlossyReflections");
         private static readonly int MainTex = Shader.PropertyToID("_MainTex");
         private static readonly int SpecGlossMap = Shader.PropertyToID("_SpecGlossMap");
@@ -30,7 +29,12 @@ namespace Engine
             {
                 return cachedMaterial;
             }
-
+            
+            _textureManager.PreloadDiffuseMap(materialProperties.DiffuseMapPath);
+            if (!string.IsNullOrEmpty(materialProperties.NormalMapPath)) _textureManager.PreloadNormalMap(materialProperties.NormalMapPath);
+            if (!string.IsNullOrEmpty(materialProperties.MetallicMaskPath)) _textureManager.PreloadMetallicMap(materialProperties.NormalMapPath, materialProperties.MetallicMaskPath);
+            if (!string.IsNullOrEmpty(materialProperties.GlowMapPath)) _textureManager.PreloadGlowMap(materialProperties.GlowMapPath);
+            
             var material = new Material(SpecularShader);
             
             //Initialize emission if needed
@@ -38,7 +42,7 @@ namespace Engine
             {
                 material.EnableKeyword("_EMISSION");
                 material.SetColor(EmissionColor, materialProperties.EmissiveColor);
-                if (materialProperties.GlowMapPath != "")
+                if (!string.IsNullOrEmpty(materialProperties.GlowMapPath))
                 {
                     material.SetTexture(EmissionMap, _textureManager.GetGlowMap(materialProperties.GlowMapPath));
                 }
@@ -58,7 +62,7 @@ namespace Engine
             material.SetTexture(MainTex, _textureManager.GetDiffuseMap(materialProperties.DiffuseMapPath));
             
             //Set normal and (maybe) specular map
-            if (materialProperties.NormalMapPath != "")
+            if (!string.IsNullOrEmpty(materialProperties.NormalMapPath))
             {
                 var normalMap = _textureManager.GetNormalMapAndExtractSpecular(materialProperties.NormalMapPath, materialProperties.MetallicMaskPath);
                 material.EnableKeyword("_NORMALMAP");

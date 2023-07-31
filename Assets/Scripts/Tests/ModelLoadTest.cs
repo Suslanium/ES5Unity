@@ -1,8 +1,4 @@
-﻿using System;
-using System.IO;
-using Engine;
-using NIF;
-using NIF.Converter;
+﻿using Engine;
 using UnityEngine;
 
 namespace Tests
@@ -10,7 +6,7 @@ namespace Tests
     public class ModelLoadTest: MonoBehaviour
     {
         [SerializeField] private string dataFolderPath;
-        [SerializeField] private string meshPath;
+        [SerializeField] private string[] meshPaths;
 
         private void Start()
         {
@@ -18,12 +14,11 @@ namespace Tests
             var textureManager = new TextureManager(resourceManager);
             var materialManager = new MaterialManager(textureManager);
             var envMapManager = new EnvironmentalMapManager(textureManager);
-            var nif = new BinaryReader(resourceManager.GetFileOrNull(meshPath));
-            var niFile = NiFile.ReadNif(meshPath, nif, 0);
-            var niObjectBuilder = new NifObjectBuilder(niFile, materialManager, envMapManager);
-            niObjectBuilder.BuildObject();
-            nif.Close();
-            //materialManager.ClearCachedMaterialsAndTextures();
+            var nifManager = new NifManager(materialManager, envMapManager, resourceManager);
+            foreach (var path in meshPaths)
+            {
+                nifManager.InstantiateNif(path);
+            }
             resourceManager.Close();
         }
     }

@@ -100,7 +100,10 @@ namespace BSA
 
         public void Close()
         {
-            _binaryReader.Close();
+            lock (_binaryReader)
+            {
+                _binaryReader.Close();
+            }
         }
 
         private static string ConvertFileName(string fullFileName)
@@ -117,50 +120,59 @@ namespace BSA
 
         private void LoadFolder(long folderHash)
         {
-            var folder = Folders[folderHash];
-            var fileRecordBlock = FileRecordBlock.Parse(_binaryReader, folder, Header);
-            folder.Files = fileRecordBlock;
+            lock (_binaryReader)
+            {
+                var folder = Folders[folderHash];
+                if (folder.Files != null) return;
+                var fileRecordBlock = FileRecordBlock.Parse(_binaryReader, folder, Header);
+                folder.Files = fileRecordBlock;
+            }
         }
 
         private byte[] ReadFile(FileRecord fileRecord)
         {
-            _binaryReader.BaseStream.Seek(fileRecord.Offset, SeekOrigin.Begin);
-            if (Header.ArchiveFlags.Contains(ArchiveFlag.EmbedFileNames))
+            lock (_binaryReader)
             {
-                var nameSize = _binaryReader.ReadByte();
-                var name = new string(_binaryReader.ReadChars(nameSize));
-            }
-
-            if (fileRecord.IsCompressed)
-            {
-                var originalSize = _binaryReader.ReadUInt32();
-                switch (Header.Version)
+                _binaryReader.BaseStream.Seek(fileRecord.Offset, SeekOrigin.Begin);
+                if (Header.ArchiveFlags.Contains(ArchiveFlag.EmbedFileNames))
                 {
-                    case 0x68:
-                    {
-                        //zLib
-                        var compressedData = _binaryReader.ReadBytes(checked((int)fileRecord.Size));
-                        var decompressedData = new byte[originalSize];
-                        using var compressedDataStream = new MemoryStream(compressedData, false);
-                        using var decompressStream = new ZlibStream(compressedDataStream, CompressionMode.Decompress);
-                        var readAmount = decompressStream.Read(decompressedData, 0, checked((int)originalSize));
-                        if (readAmount != originalSize)
-                        {
-                            Debug.LogError("Decompressed file size doesn't match with the original decompressed size");
-                        }
-
-                        return decompressedData;
-                    }
-                    case 0x69:
-                        //LZ4
-                        throw new NotImplementedException("Skyrim SE archives are not supported yet");
-                    default:
-                        throw new NotImplementedException($@"Unsupported archive version: {Header.Version}");
+                    var nameSize = _binaryReader.ReadByte();
+                    var name = new string(_binaryReader.ReadChars(nameSize));
                 }
-            }
-            else
-            {
-                return _binaryReader.ReadBytes(checked((int)fileRecord.Size));
+
+                if (fileRecord.IsCompressed)
+                {
+                    var originalSize = _binaryReader.ReadUInt32();
+                    switch (Header.Version)
+                    {
+                        case 0x68:
+                        {
+                            //zLib
+                            var compressedData = _binaryReader.ReadBytes(checked((int)fileRecord.Size));
+                            var decompressedData = new byte[originalSize];
+                            using var compressedDataStream = new MemoryStream(compressedData, false);
+                            using var decompressStream =
+                                new ZlibStream(compressedDataStream, CompressionMode.Decompress);
+                            var readAmount = decompressStream.Read(decompressedData, 0, checked((int)originalSize));
+                            if (readAmount != originalSize)
+                            {
+                                Debug.LogError(
+                                    "Decompressed file size doesn't match with the original decompressed size");
+                            }
+
+                            return decompressedData;
+                        }
+                        case 0x69:
+                            //LZ4
+                            throw new NotImplementedException("Skyrim SE archives are not supported yet");
+                        default:
+                            throw new NotImplementedException($@"Unsupported archive version: {Header.Version}");
+                    }
+                }
+                else
+                {
+                    return _binaryReader.ReadBytes(checked((int)fileRecord.Size));
+                }
             }
         }
     }

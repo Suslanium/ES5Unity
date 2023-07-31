@@ -179,6 +179,14 @@ namespace MasterFile.MasterFileContents
             return specificRecord;
         }
 
+        public static Record ParseHeaderAndSkip(string recordType, BinaryReader fileReader, long position)
+        {
+            var basicRecordInfo = ParseBasicInfo(recordType, fileReader, position);
+            var startPos = fileReader.BaseStream.Position;
+            fileReader.BaseStream.Seek(startPos+basicRecordInfo.DataSize, SeekOrigin.Begin);
+            return basicRecordInfo;
+        }
+
         private static byte[] DecompressRecordData(BinaryReader fileReader, uint compressedDataSize)
         {
             var decompressedSize = fileReader.ReadUInt32();

@@ -73,7 +73,7 @@ namespace MasterFile.MasterFileContents
             UnknownData = unknownData;
         }
 
-        public new static Group Parse(BinaryReader fileReader, long position)
+        public static Group Parse(BinaryReader fileReader)
         {
             var group = new Group(fileReader.ReadUInt32(), fileReader.ReadBytes(4), fileReader.ReadInt32(),
                 fileReader.ReadUInt16(), fileReader.ReadUInt16(), fileReader.ReadUInt32());
@@ -85,6 +85,13 @@ namespace MasterFile.MasterFileContents
 
             fileReader.BaseStream.Seek(basePosition + group.Size - 24, SeekOrigin.Begin);
 
+            return group;
+        }
+
+        public static Group ParseHeader(BinaryReader fileReader)
+        {
+            var group = new Group(fileReader.ReadUInt32(), fileReader.ReadBytes(4), fileReader.ReadInt32(),
+                fileReader.ReadUInt16(), fileReader.ReadUInt16(), fileReader.ReadUInt32());
             return group;
         }
     }

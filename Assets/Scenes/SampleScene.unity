@@ -298,6 +298,7 @@ GameObject:
   - component: {fileID: 963194226}
   - component: {fileID: 963194229}
   - component: {fileID: 963194234}
+  - component: {fileID: 963194235}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -391,10 +392,33 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 963194225}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 15d6434f6a88400aaea087ec5232ff96, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   dataFolderPath: E:\SteamLibrary\steamapps\common\Skyrim\Data
-  meshPath: meshes/clutter/eyeofmagnus/eyeofmagnus01.nif
+  meshPaths:
+  - meshes/loadscreenart/loadscreensteam.nif
+  - meshes/loadscreenart/loadscreensteam.nif
+  - meshes/loadscreenart/loadscreensteam.nif
+  - meshes/loadscreenart/loadscreensphere.nif
+  - meshes/loadscreenart/loadscreendwarvenarmor.nif
+  - meshes/loadscreenart/loadscreendwarvenspider.nif
+  - meshes/loadscreenart/loadscreenwrjorvaskr01.nif
+  - meshes/loadscreenart/loadscreensinister01.nif
+--- !u!114 &963194235
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 963194225}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 597a600f81b84395875e4d83e80f536a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  dataPath: E:\SteamLibrary\steamapps\common\Skyrim\Data
+  masterFilePath: E:\SteamLibrary\steamapps\common\Skyrim\Data\Skyrim.esm
+  cellId: WhiterunBanneredMare

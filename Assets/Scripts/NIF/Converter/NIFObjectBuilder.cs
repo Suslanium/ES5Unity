@@ -23,6 +23,7 @@ namespace NIF.Converter
 
         public GameObject BuildObject()
         {
+            if (_file == null) return null;
             Debug.Assert((_file.Name != null) && (_file.Footer.RootReferences.Length > 0));
 
             if (_file.Footer.RootReferences.Length == 1)

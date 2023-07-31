@@ -22,7 +22,7 @@ namespace Engine
 
         public void ApplyEnvironmentalMapToMeshRenderer(MeshRenderer meshRenderer, string envMapPath)
         {
-            if (envMapPath == "")
+            if (string.IsNullOrEmpty(envMapPath))
             {
                 return;
             }
@@ -48,6 +48,15 @@ namespace Engine
             meshRenderer.reflectionProbeUsage = ReflectionProbeUsage.Simple;
             meshRenderer.probeAnchor = reflectionProbe.transform;
             _reflectionProbes.Add(envMapPath, reflectionProbeGameObject);
+        }
+
+        public void DestroyAllCubeMaps()
+        {
+            foreach (var reflectionProbe in _reflectionProbes.Values)
+            {
+                Object.Destroy(reflectionProbe);
+            }
+            _reflectionProbes.Clear();
         }
     }
 }
