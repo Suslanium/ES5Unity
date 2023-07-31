@@ -18,3 +18,20 @@ Some screenshots:
   <img src="https://github.com/Suslanium/ES5Unity/assets/84632927/993d433b-9cf3-4d33-8268-b739d92e4e8a" width="960" height="540">
   <img src="https://github.com/Suslanium/ES5Unity/assets/84632927/c0b93bbd-63a3-4595-abf9-5d08a08a71da" width="960" height="540">
 </p>
+
+##### TODO list:
++ Add support for cell lighting import
++ Add support for transparent materials
++ Figure out glossiness and specular map tint(currently some objects are too glossy, and some objects have an exagerrated specular highlight tint)
++ Add support for collisions
++ Add support for Skyrim SE meshes and archives
++ Add support for billboards
++ Add support for doors inside cells
++ Figure out exterior cell loading
++ Add a player that can walk around and explore the world
++ Add collectable items
++ Add support for nif-embedded animations
++ Add support for skinned meshes and skeletons
++ Add support for .hkx animations (this may be not possible)
++ Add support for effects (magic, fx, etc.) (this may be not possible)
++ Etc.
