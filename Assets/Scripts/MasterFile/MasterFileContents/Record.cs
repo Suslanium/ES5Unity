@@ -174,6 +174,12 @@ namespace MasterFile.MasterFileContents
                 case "FURN":
                     specificRecord = FURN.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position);
                     break;
+                case "LGTM":
+                    specificRecord = LGTM.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position);
+                    break;
+                case "LIGH":
+                    specificRecord = LIGH.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position);
+                    break;
             }
 
             return specificRecord;

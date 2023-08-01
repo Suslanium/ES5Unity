@@ -113,7 +113,7 @@ namespace MasterFile.MasterFileContents.Records
                         fileReader.ReadUInt32();
                         break;
                     case "XCLL":
-                        cell.CellLightingInfo = Lighting.ParseFromCell(fieldSize, fileReader);
+                        cell.CellLightingInfo = Lighting.Parse(fieldSize, fileReader);
                         break;
                     case "LTMP":
                         cell.LightingTemplateReference = fileReader.ReadUInt32();

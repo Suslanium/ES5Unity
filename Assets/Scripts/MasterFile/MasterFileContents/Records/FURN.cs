@@ -5,23 +5,23 @@ namespace MasterFile.MasterFileContents.Records
     /// <summary>
     /// FURN records contain information on furniture.
     /// </summary>
-    public class FURN: Record
+    public class FURN : Record
     {
         /// <summary>
         /// Editor id
         /// </summary>
         public string EditorID { get; private set; }
-        
+
         /// <summary>
         /// Full (in-game) id (localized string id)
         /// </summary>
         public uint InGameNameID { get; private set; }
-        
+
         /// <summary>
         /// World model filename(path)
         /// </summary>
         public string NifModelFilename { get; private set; }
-        
+
         /// <summary>
         /// <para>0 : None</para>
         /// <para>1 : Create Object</para>
@@ -33,18 +33,20 @@ namespace MasterFile.MasterFileContents.Records
         /// <para>7 : Smithing Armor</para>
         /// </summary>
         public byte WorkbenchType { get; private set; }
-        
+
         /// <summary>
         /// ActorValue Skill for using the workbench (one of 18 AV or 0xFF for none)
         /// </summary>
         public byte WorkbenchSkill { get; private set; }
-        
+
         /// <summary>
         /// KYWD FormID
         /// </summary>
         public uint InteractionKeyword { get; private set; }
 
-        private FURN(string type, uint dataSize, uint flag, uint formID, ushort timestamp, ushort versionControlInfo, ushort internalRecordVersion, ushort unknownData) : base(type, dataSize, flag, formID, timestamp, versionControlInfo, internalRecordVersion, unknownData)
+        private FURN(string type, uint dataSize, uint flag, uint formID, ushort timestamp, ushort versionControlInfo,
+            ushort internalRecordVersion, ushort unknownData) : base(type, dataSize, flag, formID, timestamp,
+            versionControlInfo, internalRecordVersion, unknownData)
         {
         }
 
@@ -72,7 +74,8 @@ namespace MasterFile.MasterFileContents.Records
                         furn.InteractionKeyword = fileReader.ReadUInt32();
                         break;
                     case "MODL":
-                        furn.NifModelFilename = "Meshes/" + new string(fileReader.ReadChars(fieldSize)).Replace("\0", string.Empty);
+                        furn.NifModelFilename = "Meshes/" +
+                                                new string(fileReader.ReadChars(fieldSize)).Replace("\0", string.Empty);
                         break;
                     default:
                         fileReader.BaseStream.Seek(fieldSize, SeekOrigin.Current);

@@ -41,7 +41,7 @@ namespace MasterFile.MasterFileContents.Records.Structures
         /// <summary>
         /// ONLY to be used inside ParseSpecific function of CELL Record
         /// </summary>
-        public static Lighting ParseFromCell(ushort fieldSize, BinaryReader fileReader)
+        public static Lighting Parse(ushort fieldSize, BinaryReader fileReader)
         {
             if (fieldSize == 92)
             {
