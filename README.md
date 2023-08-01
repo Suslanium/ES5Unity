@@ -11,13 +11,11 @@ A WIP project whose goal is to run TES V: Skyrim on the Unity engine.
 # Current state
 This project is in a very early stage of development. Currently it can load interior cells from Skyrim at a very basic level (no lighting, no doors, no collisions, not all objects are imported, materials are not quite right).
 Some screenshots:
-<p>
-  <img src="https://github.com/Suslanium/ES5Unity/assets/84632927/a8e1e268-59d1-4d51-be10-d59798d347f2" width="960" height="540">
-  <img src="https://github.com/Suslanium/ES5Unity/assets/84632927/9a994c69-359d-40b1-ad1f-76e595a06229" width="960" height="540">
-  <img src="https://github.com/Suslanium/ES5Unity/assets/84632927/57979a2c-e025-49be-b763-882b7a50bd14" width="960" height="540">
-  <img src="https://github.com/Suslanium/ES5Unity/assets/84632927/993d433b-9cf3-4d33-8268-b739d92e4e8a" width="960" height="540">
-  <img src="https://github.com/Suslanium/ES5Unity/assets/84632927/c0b93bbd-63a3-4595-abf9-5d08a08a71da" width="960" height="540">
-</p>
+![Screenshot 1](https://github.com/Suslanium/ES5Unity/assets/84632927/0b1ce4a7-0b9c-4b22-a32d-07d636c01414)
+![Screenshot 2](https://github.com/Suslanium/ES5Unity/assets/84632927/bfd2bfbc-a217-4cb2-a374-23c837eb7b28)
+![Screenshot 3](https://github.com/Suslanium/ES5Unity/assets/84632927/11a898f1-956c-4f40-a3f4-489bc27a07b2)
+![Screenshot 4](https://github.com/Suslanium/ES5Unity/assets/84632927/e4a85442-9ec9-4973-b810-a529729eedf0)
+![Screenshot 5](https://github.com/Suslanium/ES5Unity/assets/84632927/aa940035-fb04-4cf4-83a5-456547295e64)
 
 ##### TODO list:
 + Add support for cell lighting import
