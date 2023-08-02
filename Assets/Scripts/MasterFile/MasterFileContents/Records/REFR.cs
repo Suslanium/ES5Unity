@@ -76,6 +76,11 @@ namespace MasterFile.MasterFileContents.Records
         /// </summary>
         public uint LocationReference { get; private set; }
 
+        /// <summary>
+        /// Fade Offset from Base Object
+        /// </summary>
+        public float FadeOffset { get; private set; }
+
         private REFR(string type, uint dataSize, uint flag, uint formID, ushort timestamp, ushort versionControlInfo,
             ushort internalRecordVersion, ushort unknownData) : base(type, dataSize, flag, formID, timestamp,
             versionControlInfo, internalRecordVersion, unknownData)
@@ -135,6 +140,11 @@ namespace MasterFile.MasterFileContents.Records
                         break;
                     case "XRDS":
                         refr.Radius = fileReader.ReadSingle();
+                        break;
+                    case "XLIG":
+                        fileReader.BaseStream.Seek(4, SeekOrigin.Current);
+                        refr.FadeOffset = fileReader.ReadSingle();
+                        fileReader.BaseStream.Seek(fieldSize == 16 ? 8 : 12, SeekOrigin.Current);
                         break;
                     default:
                         fileReader.BaseStream.Seek(fieldSize, SeekOrigin.Current);

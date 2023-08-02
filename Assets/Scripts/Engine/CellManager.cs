@@ -22,7 +22,7 @@ namespace Engine
             CellRecord = cellRecord;
         }
     }
-    
+
     public class CellManager
     {
         private readonly ESMasterFile _masterFile;
@@ -57,6 +57,7 @@ namespace Engine
                     cellInfo.ObjectCreationCoroutines.Add(objectInstantiationTask);
                 }
             }
+
             _cells.Add(cellInfo);
         }
 
@@ -77,6 +78,10 @@ namespace Engine
                         break;
                     case FURN furniture:
                         _nifManager.PreloadNifFile(furniture.NifModelFilename);
+                        break;
+                    case LIGH light:
+                        if (!string.IsNullOrEmpty(light.NifModelFilename))
+                            _nifManager.PreloadNifFile(light.NifModelFilename);
                         break;
                 }
             }
@@ -111,6 +116,11 @@ namespace Engine
                         InstantiateModelAtPositionAndRotation(furniture.NifModelFilename, referenceRecord.Position,
                             referenceRecord.Rotation, referenceRecord.Scale, parent);
                         break;
+                    case LIGH light:
+                        InstantiateLightAtPositionAndRotation(referenceRecord, light, referenceRecord.Position,
+                            referenceRecord.Rotation,
+                            referenceRecord.Scale, parent);
+                        break;
                 }
             }
         }
@@ -119,20 +129,57 @@ namespace Engine
             float scale, GameObject parent)
         {
             var modelObject = _nifManager.InstantiateNif(modelPath);
+            ApplyPositionAndRotation(position, rotation, scale, parent, modelObject);
+
+            return modelObject;
+        }
+
+        private GameObject InstantiateLightAtPositionAndRotation(REFR refr, LIGH lightRecord, float[] position,
+            float[] rotation,
+            float scale, GameObject parent)
+        {
+            GameObject modelObject = null;
+            if (!string.IsNullOrEmpty(lightRecord.NifModelFilename))
+                modelObject = _nifManager.InstantiateNif(lightRecord.NifModelFilename);
+            if (modelObject == null)
+                modelObject = new GameObject(lightRecord.EditorID);
+
+            InstantiateLightOnGameObject(refr, lightRecord, modelObject);
+            ApplyPositionAndRotation(position, rotation, scale, parent, modelObject);
+
+            return modelObject;
+        }
+
+        private void InstantiateLightOnGameObject(REFR reference, LIGH lightRecord, GameObject gameObject)
+        {
+            if (gameObject != null)
+            {
+                var light = gameObject.AddComponent<Light>();
+                //For some interesting reason the actual radius shown in CK is Base light radius + XRDS value of refr
+                light.range = (lightRecord.Radius + reference.Radius) / Convert.meterInMWUnits;
+                light.color = new Color32(lightRecord.ColorRGBA[0], lightRecord.ColorRGBA[1], lightRecord.ColorRGBA[2],
+                    255);
+                //Intensity in Unity != intensity in Skyrim
+                light.intensity = 3 * (lightRecord.Fade + reference.FadeOffset);
+            }
+        }
+
+        private static void ApplyPositionAndRotation(float[] position, float[] rotation, float scale, GameObject parent,
+            GameObject modelObject)
+        {
             if (modelObject != null)
             {
                 if (scale != 0f)
                 {
                     modelObject.transform.localScale = Vector3.one * scale;
                 }
+
                 modelObject.transform.position +=
                     NifUtils.NifPointToUnityPoint(new Vector3(position[0], position[1], position[2]));
                 modelObject.transform.rotation *=
                     NifUtils.NifEulerAnglesToUnityQuaternion(new Vector3(rotation[0], rotation[1], rotation[2]));
                 modelObject.transform.parent = parent.transform;
             }
-
-            return modelObject;
         }
 
         public void DestroyAllCells()
@@ -145,6 +192,7 @@ namespace Engine
                     _temporalLoadBalancer.CancelTask(task);
                 }
             }
+
             _cells.Clear();
         }
     }
