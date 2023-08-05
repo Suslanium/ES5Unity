@@ -149,9 +149,11 @@ namespace NIF.Converter
         private MaterialProperties CreateMaterialProps(BsLightingShaderProperty shaderInfo)
         {
             var isSpecular = (shaderInfo.ShaderPropertyFlags1 & 0x1) != 0;
+            var useVertexColors = (shaderInfo.ShaderPropertyFlags2 & 0x20) != 0;
+            var specularStrength = shaderInfo.SpecularStrength;
             var uvOffset = shaderInfo.UVOffset.ToVector2();
             var uvScale = shaderInfo.UVScale.ToVector2();
-            var glossiness = Math.Min(shaderInfo.Glossiness / 100f, 1f);
+            var glossiness = shaderInfo.Glossiness;
             var emissiveColor = shaderInfo.EmissiveColor.ToColor();
             var specularColor = shaderInfo.SpecularColor.ToColor();
             var alpha = shaderInfo.Alpha;
@@ -162,8 +164,8 @@ namespace NIF.Converter
                 ? textureSet.Textures[2]
                 : "";
             var metallicMap = textureSet.NumberOfTextures >= 6 ? textureSet.Textures[5] : "";
-            return new MaterialProperties(isSpecular, uvOffset, uvScale, glossiness, emissiveColor, specularColor,
-                alpha, diffuseMap, normalMap, glowMap, metallicMap, textureSet.NumberOfTextures >= 5);
+            return new MaterialProperties(isSpecular, useVertexColors, specularStrength, uvOffset, uvScale, glossiness, emissiveColor, specularColor,
+                alpha, diffuseMap, normalMap, glowMap, metallicMap);
         }
 
         private Mesh NiTriShapeDataToMesh(NiTriShapeData data)

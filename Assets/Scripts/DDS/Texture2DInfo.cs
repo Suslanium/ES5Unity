@@ -38,6 +38,21 @@ namespace DDS
             return texture;
         }
 
+        public Texture2D ToLinearTexture2D()
+        {
+            var texture = ToTexture2D();
+
+            var linearTexture = new Texture2D(Width, Height, Format, HasMipmaps, true);
+            for (var i = 0; i < texture.mipmapCount; i++)
+            {
+                linearTexture.SetPixels(texture.GetPixels(i), i);
+            }
+            linearTexture.Apply();
+
+            Object.Destroy(texture);
+            return linearTexture;
+        }
+
         public Cubemap ToCubemap()
         {
             if (Width != Height)

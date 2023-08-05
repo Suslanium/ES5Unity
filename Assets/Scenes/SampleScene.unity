@@ -399,14 +399,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   dataFolderPath: E:\SteamLibrary\steamapps\common\Skyrim\Data
   meshPaths:
-  - meshes/loadscreenart/loadscreensteam.nif
-  - meshes/loadscreenart/loadscreensteam.nif
-  - meshes/loadscreenart/loadscreensteam.nif
-  - meshes/loadscreenart/loadscreensphere.nif
-  - meshes/loadscreenart/loadscreendwarvenarmor.nif
-  - meshes/loadscreenart/loadscreendwarvenspider.nif
-  - meshes/loadscreenart/loadscreenwrjorvaskr01.nif
-  - meshes/loadscreenart/loadscreensinister01.nif
+  - meshes/dungeons/dwemer/pipes/dwepipe1way01.nif
 --- !u!114 &963194235
 MonoBehaviour:
   m_ObjectHideFlags: 0
