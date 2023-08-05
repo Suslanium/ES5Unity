@@ -61,6 +61,9 @@ namespace NIF
                     case "BSShaderTextureSet":
                         niFile.NiObjects.Add(BsShaderTextureSet.Parse(nifReader, "BSShaderTextureSet", header));
                         break;
+                    case "NiAlphaProperty":
+                        niFile.NiObjects.Add(NiAlphaProperty.Parse(nifReader, "NiAlphaProperty", header));
+                        break;
                     default:
                         Debug.LogWarning($"NIF Reader({fileName}): Unsupported NiObject type: {header.BlockTypes[header.BlockTypeIndex[i]]}");
                         if (header.BlockSizes != null)
