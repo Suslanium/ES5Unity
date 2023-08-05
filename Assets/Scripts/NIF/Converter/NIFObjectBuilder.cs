@@ -1,5 +1,4 @@
-﻿using System;
-using Engine;
+﻿using Engine;
 using NIF.NiObjects;
 using UnityEngine;
 
@@ -133,6 +132,7 @@ namespace NIF.Converter
             var meshRenderer = gameObject.AddComponent<MeshRenderer>();
             meshRenderer.material = material;
 
+            //TODO remove environmental map manager (currently used shader does not support reflection probes)
             if (shaderInfo is BsLightingShaderProperty textureInfo)
             {
                 var textureSet = (BsShaderTextureSet)_file.NiObjects[textureInfo.TextureSetReference];
@@ -164,8 +164,9 @@ namespace NIF.Converter
                 ? textureSet.Textures[2]
                 : "";
             var metallicMap = textureSet.NumberOfTextures >= 6 ? textureSet.Textures[5] : "";
+            var environmentalMap = textureSet.NumberOfTextures >= 5 ? textureSet.Textures[4] : "";
             return new MaterialProperties(isSpecular, useVertexColors, specularStrength, uvOffset, uvScale, glossiness, emissiveColor, specularColor,
-                alpha, diffuseMap, normalMap, glowMap, metallicMap);
+                alpha, diffuseMap, normalMap, glowMap, metallicMap, environmentalMap, shaderInfo.EnvironmentMapScale);
         }
 
         private Mesh NiTriShapeDataToMesh(NiTriShapeData data)
@@ -242,10 +243,10 @@ namespace NIF.Converter
             var mesh = new Mesh
             {
                 vertices = vertices,
+                triangles = triangles,
                 normals = normals,
                 tangents = tangents,
                 uv = UVs,
-                triangles = triangles,
                 colors = vertexColors
             };
 

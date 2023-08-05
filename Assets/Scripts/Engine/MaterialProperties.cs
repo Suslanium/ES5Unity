@@ -17,10 +17,13 @@ namespace Engine
         public string NormalMapPath { get; private set; }
         public string GlowMapPath { get; private set; }
         public string MetallicMaskPath { get; private set; }
+        public string EnvironmentalMapPath { get; private set; }
+        public float EnvironmentalMapScale { get; private set; }
 
-        public MaterialProperties(bool isSpecular, bool useVertexColors, float specularStrength, Vector2 uvOffset, Vector2 uvScale, float glossiness,
+        public MaterialProperties(bool isSpecular, bool useVertexColors, float specularStrength, Vector2 uvOffset,
+            Vector2 uvScale, float glossiness,
             Color emissiveColor, Color specularColor, float alpha, string diffuseMapPath, string normalMapPath,
-            string glowMapPath, string metallicMaskPath)
+            string glowMapPath, string metallicMaskPath, string environmentalMapPath, float environmentalMapScale)
         {
             IsSpecular = isSpecular;
             UseVertexColors = useVertexColors;
@@ -35,6 +38,8 @@ namespace Engine
             NormalMapPath = normalMapPath;
             GlowMapPath = glowMapPath;
             MetallicMaskPath = metallicMaskPath;
+            EnvironmentalMapPath = environmentalMapPath;
+            EnvironmentalMapScale = environmentalMapScale;
         }
     }
 }

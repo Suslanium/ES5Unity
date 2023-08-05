@@ -270,11 +270,11 @@ namespace Engine
             if (gameObject == null) return;
             var light = gameObject.AddComponent<Light>();
             //For some interesting reason the actual radius shown in CK is Base light radius + XRDS value of refr
-            light.range = (lightRecord.Radius + reference.Radius) / Convert.meterInMWUnits;
+            light.range = 3 * ((lightRecord.Radius + reference.Radius) / Convert.meterInMWUnits);
             light.color = new Color32(lightRecord.ColorRGBA[0], lightRecord.ColorRGBA[1], lightRecord.ColorRGBA[2],
                 255);
             //Intensity in Unity != intensity in Skyrim
-            light.intensity = 2 * (lightRecord.Fade + reference.FadeOffset);
+            light.intensity = (lightRecord.Fade + reference.FadeOffset);
             if ((lightRecord.Flags & 0x0400) != 0)
             {
                 light.type = LightType.Spot;
