@@ -79,6 +79,7 @@ namespace MasterFile
 
         public CELL FindCellByEditorID(string editorID)
         {
+            editorID += "\0";
             var cellRecordDictionary = RecordTypeDictionary["CELL"];
             return cellRecordDictionary.Keys.Select(formId => (CELL)GetFromFormID(formId))
                 .FirstOrDefault(record => record.EditorID == editorID);

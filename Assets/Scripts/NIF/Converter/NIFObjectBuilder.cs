@@ -1,6 +1,8 @@
 ﻿using Engine;
 using NIF.NiObjects;
 using UnityEngine;
+using UnityEngine.Rendering;
+using Vector3 = UnityEngine.Vector3;
 
 namespace NIF.Converter
 {
@@ -11,13 +13,11 @@ namespace NIF.Converter
     {
         private readonly NiFile _file;
         private readonly MaterialManager _materialManager;
-        private readonly EnvironmentalMapManager _environmentalMapManager;
 
-        public NifObjectBuilder(NiFile file, MaterialManager materialManager, EnvironmentalMapManager environmentalMapManager)
+        public NifObjectBuilder(NiFile file, MaterialManager materialManager)
         {
             _file = file;
             _materialManager = materialManager;
-            _environmentalMapManager = environmentalMapManager;
         }
 
         public GameObject BuildObject()
@@ -117,7 +117,10 @@ namespace NIF.Converter
             if (shaderInfo is BsLightingShaderProperty info)
             {
                 if (info.TextureSetReference == -1) return null;
-                materialProperties = CreateMaterialProps(info);
+                materialProperties = CreateMaterialProps(info,
+                    triShape.AlphaPropertyReference >= 0
+                        ? (NiAlphaProperty)_file.NiObjects[triShape.AlphaPropertyReference]
+                        : null);
             }
             else
             {
@@ -131,22 +134,13 @@ namespace NIF.Converter
             var material = _materialManager.GetMaterialFromProperties(materialProperties);
             var meshRenderer = gameObject.AddComponent<MeshRenderer>();
             meshRenderer.material = material;
-
-            //TODO remove environmental map manager (currently used shader does not support reflection probes)
-            if (shaderInfo is BsLightingShaderProperty textureInfo)
-            {
-                var textureSet = (BsShaderTextureSet)_file.NiObjects[textureInfo.TextureSetReference];
-                if (textureSet.NumberOfTextures >= 5)
-                {
-                    _environmentalMapManager.ApplyEnvironmentalMapToMeshRenderer(meshRenderer, textureSet.Textures[4]);
-                }
-            }
-
+            
             ApplyNiAvObject(triShape, gameObject);
             return gameObject;
         }
 
-        private MaterialProperties CreateMaterialProps(BsLightingShaderProperty shaderInfo)
+        private MaterialProperties CreateMaterialProps(BsLightingShaderProperty shaderInfo,
+            NiAlphaProperty alphaProperty)
         {
             var isSpecular = (shaderInfo.ShaderPropertyFlags1 & 0x1) != 0;
             var useVertexColors = (shaderInfo.ShaderPropertyFlags2 & 0x20) != 0;
@@ -165,8 +159,18 @@ namespace NIF.Converter
                 : "";
             var metallicMap = textureSet.NumberOfTextures >= 6 ? textureSet.Textures[5] : "";
             var environmentalMap = textureSet.NumberOfTextures >= 5 ? textureSet.Textures[4] : "";
-            return new MaterialProperties(isSpecular, useVertexColors, specularStrength, uvOffset, uvScale, glossiness, emissiveColor, specularColor,
-                alpha, diffuseMap, normalMap, glowMap, metallicMap, environmentalMap, shaderInfo.EnvironmentMapScale);
+            var alphaBlend = alphaProperty != null && alphaProperty.AlphaFlags.AlphaBlend;
+            var srcFunction = alphaProperty != null ? alphaProperty.AlphaFlags.SourceBlendMode : BlendMode.SrcAlpha;
+            var destFunction = alphaProperty != null
+                ? alphaProperty.AlphaFlags.DestinationBlendMode
+                : BlendMode.OneMinusSrcAlpha;
+            var alphaTest = alphaProperty != null && alphaProperty.AlphaFlags.AlphaTest;
+            var alphaTestThreshold = alphaProperty?.Threshold ?? 128;
+            return new MaterialProperties(isSpecular, useVertexColors, specularStrength, uvOffset, uvScale, glossiness,
+                emissiveColor, specularColor,
+                alpha, diffuseMap, normalMap, glowMap, metallicMap, environmentalMap, shaderInfo.EnvironmentMapScale,
+                new AlphaInfo(
+                    alphaBlend, srcFunction, destFunction, alphaTest, alphaTestThreshold));
         }
 
         private Mesh NiTriShapeDataToMesh(NiTriShapeData data)

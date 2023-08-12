@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
 using NIF;
@@ -12,14 +13,12 @@ namespace Engine
         private readonly Dictionary<string, GameObject> _nifPrefabs = new();
         private readonly Dictionary<string, Task<NiFile>> _niFileTasks = new();
         private readonly MaterialManager _materialManager;
-        private readonly EnvironmentalMapManager _environmentalMapManager;
         private readonly ResourceManager _resourceManager;
         private GameObject _prefabContainerObject;
 
-        public NifManager(MaterialManager materialManager, EnvironmentalMapManager environmentalMapManager, ResourceManager resourceManager)
+        public NifManager(MaterialManager materialManager, ResourceManager resourceManager)
         {
             _materialManager = materialManager;
-            _environmentalMapManager = environmentalMapManager;
             _resourceManager = resourceManager;
         }
 
@@ -40,6 +39,7 @@ namespace Engine
         public void PreloadNifFile(string filePath)
         {
             if (string.IsNullOrEmpty(filePath)) return;
+            FormatMeshString(ref filePath);
             if (_nifPrefabs.ContainsKey(filePath)) return;
 
             if (!_niFileTasks.TryGetValue(filePath, out var newTask))
@@ -61,6 +61,7 @@ namespace Engine
         public GameObject InstantiateNif(string filePath)
         {
             if (string.IsNullOrEmpty(filePath)) return null;
+            FormatMeshString(ref filePath);
             EnsurePrefabContainerObjectExists();
 
             if (!_nifPrefabs.TryGetValue(filePath, out var prefab))
@@ -77,7 +78,7 @@ namespace Engine
             PreloadNifFile(filePath);
             var file = _niFileTasks[filePath].Result;
             _niFileTasks.Remove(filePath);
-            var objectBuilder = new NifObjectBuilder(file, _materialManager, _environmentalMapManager);
+            var objectBuilder = new NifObjectBuilder(file, _materialManager);
             var prefab = objectBuilder.BuildObject();
             if (prefab != null)
             {
@@ -99,6 +100,16 @@ namespace Engine
             
             _nifPrefabs.Clear();
             _niFileTasks.Clear();
+        }
+
+        private static void FormatMeshString(ref string path)
+        {
+            if (!path.StartsWith("meshes", true, CultureInfo.InvariantCulture))
+            {
+                path = $@"meshes{Path.DirectorySeparatorChar}{path}";
+            }
+
+            path = path.Replace("\0", string.Empty);
         }
     }
 }

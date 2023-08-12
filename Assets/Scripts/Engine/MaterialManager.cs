@@ -6,6 +6,8 @@ namespace Engine
     public class MaterialManager
     {
         private static readonly Shader DefaultShader = Shader.Find("SkyrimDefaultShader");
+        private static readonly Shader BlendShader = Shader.Find("SkyrimBlendShader");
+        private static readonly Shader AlphaTestShader = Shader.Find("SkyrimAlphaTestShader");
         private readonly TextureManager _textureManager;
         private readonly Dictionary<MaterialProperties, Material> _materialCache = new();
         private static readonly int MainTex = Shader.PropertyToID("_MainTex");
@@ -21,6 +23,9 @@ namespace Engine
         private static readonly int UsesVertexColors = Shader.PropertyToID("_UsesVertexColors");
         private static readonly int Cube = Shader.PropertyToID("_Cube");
         private static readonly int CubeScale = Shader.PropertyToID("_CubeScale");
+        private static readonly int BlendSrc = Shader.PropertyToID("_BlendSrc");
+        private static readonly int BlendDst = Shader.PropertyToID("_BlendDst");
+        private static readonly int Cutoff = Shader.PropertyToID("_Cutoff");
 
         public MaterialManager(TextureManager textureManager)
         {
@@ -42,7 +47,22 @@ namespace Engine
             if (!string.IsNullOrEmpty(materialProperties.GlowMapPath))
                 _textureManager.PreloadGlowMap(materialProperties.GlowMapPath);
 
-            var material = new Material(DefaultShader);
+            var material = materialProperties.AlphaInfo.AlphaBlend == false
+                ? materialProperties.AlphaInfo.AlphaTest == false
+                    ? new Material(DefaultShader)
+                    : new Material(AlphaTestShader)
+                : new Material(BlendShader);
+
+            if (materialProperties.AlphaInfo.AlphaBlend)
+            {
+                material.SetInt(BlendSrc, (int)materialProperties.AlphaInfo.SourceBlendMode);
+                material.SetInt(BlendDst, (int)materialProperties.AlphaInfo.DestinationBlendMode);
+            }
+
+            if (materialProperties.AlphaInfo.AlphaTest)
+            {
+                material.SetFloat(Cutoff, materialProperties.AlphaInfo.AlphaTestThreshold/256f);
+            }
 
             material.SetTexture(MainTex, _textureManager.GetDiffuseMap(materialProperties.DiffuseMapPath));
             material.SetInt(UsesVertexColors, materialProperties.UseVertexColors ? 1 : 0);
@@ -73,7 +93,7 @@ namespace Engine
                 material.SetTexture(Cube, _textureManager.GetEnvMap(materialProperties.EnvironmentalMapPath));
                 material.SetFloat(CubeScale, materialProperties.EnvironmentalMapScale);
             }
-            
+
             _materialCache.Add(materialProperties, material);
 
             return material;

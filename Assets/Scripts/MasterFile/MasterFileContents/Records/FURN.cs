@@ -74,8 +74,7 @@ namespace MasterFile.MasterFileContents.Records
                         furn.InteractionKeyword = fileReader.ReadUInt32();
                         break;
                     case "MODL":
-                        furn.NifModelFilename = "Meshes/" +
-                                                new string(fileReader.ReadChars(fieldSize)).Replace("\0", string.Empty);
+                        furn.NifModelFilename = new string(fileReader.ReadChars(fieldSize));
                         break;
                     default:
                         fileReader.BaseStream.Seek(fieldSize, SeekOrigin.Current);

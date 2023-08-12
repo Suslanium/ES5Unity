@@ -1,4 +1,4 @@
-Shader "SkyrimDefaultShader"
+Shader "SkyrimAlphaTestShader"
 {
     Properties
     {
@@ -15,18 +15,16 @@ Shader "SkyrimDefaultShader"
         _EmissionMap ("Emission map", 2D) = "white" {}
         _Cube ("Environmental map", Cube) = "" {}
         _CubeScale ("Environmental map scale", Float) = 0
+        _Cutoff ("Alpha cutoff", Range(0,1)) = 0.5
     }
     SubShader
     {
-        Tags
-        {
-            "RenderType"="Opaque"
-        }
+        Tags {"Queue"="AlphaTest" "IgnoreProjector"="True" "RenderType"="TransparentCutout"}
         LOD 200
 
         CGPROGRAM
         // Physically based Standard lighting model, and enable shadows on all light types
-        #pragma surface surf BlinnPhong fullforwardshadows
+        #pragma surface surf BlinnPhong fullforwardshadows alphatest:_Cutoff
 
         // Use shader model 3.0 target, to get nicer looking lighting
         #pragma target 3.0
@@ -83,7 +81,7 @@ Shader "SkyrimDefaultShader"
                 o.Specular = 65504;
             }
             //Get normal and invert green channel (because Skyrim uses negative-Y normal maps)
-            packedNormal.g = 1-packedNormal.g;
+            packedNormal.g = 1 - packedNormal.g;
             //Use this instead of UnpackNormal(packedNormal), because UnpackNormal gives really weird results
             half3 normal = packedNormal * 2 - 1;
             o.Normal = normal;

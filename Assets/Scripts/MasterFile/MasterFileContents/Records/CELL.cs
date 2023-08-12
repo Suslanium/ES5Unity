@@ -99,7 +99,7 @@ namespace MasterFile.MasterFileContents.Records
                 switch (fieldType)
                 {
                     case "EDID":
-                        cell.EditorID = new string(fileReader.ReadChars(fieldSize)).Replace("\0", string.Empty);
+                        cell.EditorID = new string(fileReader.ReadChars(fieldSize));
                         break;
                     case "FULL":
                         cell.LocalizedNameID = fileReader.ReadUInt32();

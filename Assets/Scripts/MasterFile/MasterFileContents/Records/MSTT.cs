@@ -40,7 +40,7 @@ namespace MasterFile.MasterFileContents.Records
                         mstt.EditorID = new string(fileReader.ReadChars(fieldSize));
                         break;
                     case "MODL":
-                        mstt.NifModelFilename = "Meshes/" + new string(fileReader.ReadChars(fieldSize)).Replace("\0", string.Empty);
+                        mstt.NifModelFilename = new string(fileReader.ReadChars(fieldSize));
                         break;
                     case "SNAM":
                         mstt.AmbientLoopingSoundReference = fileReader.ReadUInt32();

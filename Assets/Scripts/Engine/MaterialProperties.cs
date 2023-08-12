@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace Engine
 {
@@ -19,11 +20,13 @@ namespace Engine
         public string MetallicMaskPath { get; private set; }
         public string EnvironmentalMapPath { get; private set; }
         public float EnvironmentalMapScale { get; private set; }
+        public AlphaInfo AlphaInfo { get; private set; }
 
         public MaterialProperties(bool isSpecular, bool useVertexColors, float specularStrength, Vector2 uvOffset,
             Vector2 uvScale, float glossiness,
             Color emissiveColor, Color specularColor, float alpha, string diffuseMapPath, string normalMapPath,
-            string glowMapPath, string metallicMaskPath, string environmentalMapPath, float environmentalMapScale)
+            string glowMapPath, string metallicMaskPath, string environmentalMapPath, float environmentalMapScale,
+            AlphaInfo alphaInfo)
         {
             IsSpecular = isSpecular;
             UseVertexColors = useVertexColors;
@@ -40,6 +43,30 @@ namespace Engine
             MetallicMaskPath = metallicMaskPath;
             EnvironmentalMapPath = environmentalMapPath;
             EnvironmentalMapScale = environmentalMapScale;
+            AlphaInfo = alphaInfo;
+        }
+    }
+
+    public struct AlphaInfo
+    {
+        public bool AlphaBlend { get; private set; }
+
+        public BlendMode SourceBlendMode { get; private set; }
+
+        public BlendMode DestinationBlendMode { get; private set; }
+
+        public bool AlphaTest { get; private set; }
+
+        public byte AlphaTestThreshold { get; private set; }
+
+        public AlphaInfo(bool alphaBlend, BlendMode sourceBlendMode, BlendMode destinationBlendMode, bool alphaTest,
+            byte alphaTestThreshold)
+        {
+            AlphaBlend = alphaBlend;
+            SourceBlendMode = sourceBlendMode;
+            DestinationBlendMode = destinationBlendMode;
+            AlphaTest = alphaTest;
+            AlphaTestThreshold = alphaTestThreshold;
         }
     }
 }

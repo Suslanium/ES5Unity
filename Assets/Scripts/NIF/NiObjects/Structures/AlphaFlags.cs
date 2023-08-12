@@ -6,23 +6,28 @@ namespace NIF.NiObjects.Structures
     public class AlphaFlags
     {
         public bool AlphaBlend { get; private set; }
-        
-        public BlendMode SourceBlendMode { get; private set; }
-        
-        public BlendMode DestinationBlendMode { get; private set; }
-        
-        public bool AlphaTest { get; private set; }
 
-        private AlphaFlags() {}
+        public BlendMode SourceBlendMode { get; private set; }
+
+        public BlendMode DestinationBlendMode { get; private set; }
+
+        public bool AlphaTest { get; private set; }
         
+        public ushort RawValue { get; private set; }
+
+        private AlphaFlags()
+        {
+        }
+
         public static AlphaFlags Parse(BinaryReader binaryReader)
         {
             var alphaFlagsVal = binaryReader.ReadUInt16();
             var alphaFlags = new AlphaFlags();
+            alphaFlags.RawValue = alphaFlagsVal;
             if ((alphaFlagsVal & 0x0001) != 0) alphaFlags.AlphaBlend = true;
-            var srcBlendMode = alphaFlagsVal & 0x001E;
+            var srcBlendMode = (alphaFlagsVal >> 1) & 0xF;
             alphaFlags.SourceBlendMode = ParseAlphaFunction(srcBlendMode, BlendMode.SrcAlpha);
-            var destBlendMode = alphaFlagsVal & 0x01E0;
+            var destBlendMode = (alphaFlagsVal >> 5) & 0xF;
             alphaFlags.DestinationBlendMode = ParseAlphaFunction(destBlendMode, BlendMode.OneMinusSrcAlpha);
             if ((alphaFlagsVal & 0x0200) != 0) alphaFlags.AlphaTest = true;
             return alphaFlags;

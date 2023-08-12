@@ -45,7 +45,7 @@ namespace MasterFile.MasterFileContents.Records
                         stat.EditorID = new string(fileReader.ReadChars(fieldSize));
                         break;
                     case "MODL":
-                        stat.NifModelFilename = "Meshes/" + new string(fileReader.ReadChars(fieldSize)).Replace("\0", string.Empty);
+                        stat.NifModelFilename = new string(fileReader.ReadChars(fieldSize));
                         break;
                     case "DNAM":
                         stat.DirMaterialMaxAngle = fileReader.ReadSingle();

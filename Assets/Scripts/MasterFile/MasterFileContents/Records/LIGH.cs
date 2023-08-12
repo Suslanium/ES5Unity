@@ -63,8 +63,7 @@ namespace MasterFile.MasterFileContents.Records
                         ligh.EditorID = new string(fileReader.ReadChars(fieldSize));
                         break;
                     case "MODL":
-                        ligh.NifModelFilename = "Meshes/" +
-                                                new string(fileReader.ReadChars(fieldSize)).Replace("\0", string.Empty);
+                        ligh.NifModelFilename = new string(fileReader.ReadChars(fieldSize));
                         break;
                     case "ICON":
                         ligh.InventoryIconFilename = new string(fileReader.ReadChars(fieldSize));

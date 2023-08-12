@@ -48,7 +48,7 @@ namespace Engine
                 throw new InvalidDataException("Cell children group not found");
             var cellGameObject = new GameObject(editorID);
             var cellInfo = new CellInfo(cellGameObject, cell);
-            ConfigureCellLighting(cell);
+            if (cell.CellLightingInfo != null) ConfigureCellLighting(cell);
             foreach (var subGroup in childrenGroup.GroupData)
             {
                 if (subGroup is not Group group) continue;
@@ -270,11 +270,11 @@ namespace Engine
             if (gameObject == null) return;
             var light = gameObject.AddComponent<Light>();
             //For some interesting reason the actual radius shown in CK is Base light radius + XRDS value of refr
-            light.range = 3 * ((lightRecord.Radius + reference.Radius) / Convert.meterInMWUnits);
+            light.range = (lightRecord.Radius + reference.Radius) / Convert.meterInMWUnits;
             light.color = new Color32(lightRecord.ColorRGBA[0], lightRecord.ColorRGBA[1], lightRecord.ColorRGBA[2],
                 255);
             //Intensity in Unity != intensity in Skyrim
-            light.intensity = (lightRecord.Fade + reference.FadeOffset);
+            light.intensity = 2 * (lightRecord.Fade + reference.FadeOffset);
             if ((lightRecord.Flags & 0x0400) != 0)
             {
                 light.type = LightType.Spot;

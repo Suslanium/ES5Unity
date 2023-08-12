@@ -9,15 +9,15 @@ namespace NIF
     {
         public string Name { get; private set; }
         public Header Header { get; private set; }
-        public List<NiObject> NiObjects { get; private set; } = new List<NiObject>();
+        public List<NiObject> NiObjects { get; private set; } = new();
         public Footer Footer { get; private set; }
 
-        private NiFile(string name,Header header)
+        private NiFile(string name, Header header)
         {
             Name = name;
             Header = header;
         }
-        
+
         public static NiFile ReadNif(string fileName, BinaryReader nifReader, long startPosition)
         {
             var name = Path.GetFileName(fileName);
@@ -56,7 +56,8 @@ namespace NIF
                         niFile.NiObjects.Add(BsMultiBoundNode.Parse(nifReader, "BSMultiBoundNode", header));
                         break;
                     case "BSLightingShaderProperty":
-                        niFile.NiObjects.Add(BsLightingShaderProperty.Parse(nifReader, "BSLightingShaderProperty", header));
+                        niFile.NiObjects.Add(BsLightingShaderProperty.Parse(nifReader, "BSLightingShaderProperty",
+                            header));
                         break;
                     case "BSShaderTextureSet":
                         niFile.NiObjects.Add(BsShaderTextureSet.Parse(nifReader, "BSShaderTextureSet", header));
@@ -65,7 +66,8 @@ namespace NIF
                         niFile.NiObjects.Add(NiAlphaProperty.Parse(nifReader, "NiAlphaProperty", header));
                         break;
                     default:
-                        Debug.LogWarning($"NIF Reader({fileName}): Unsupported NiObject type: {header.BlockTypes[header.BlockTypeIndex[i]]}");
+                        Debug.LogWarning(
+                            $"NIF Reader({fileName}): Unsupported NiObject type: {header.BlockTypes[header.BlockTypeIndex[i]]}");
                         if (header.BlockSizes != null)
                         {
                             nifReader.BaseStream.Seek(header.BlockSizes[i], SeekOrigin.Current);
@@ -73,11 +75,14 @@ namespace NIF
                         }
                         else
                         {
-                            throw new InvalidDataException($"NIF Reader({fileName}): Block sizes are not present, could not skip the unsupported block.");
+                            throw new InvalidDataException(
+                                $"NIF Reader({fileName}): Block sizes are not present, could not skip the unsupported block.");
                         }
+
                         break;
                 }
             }
+
             niFile.Footer = Footer.ParseFooter(nifReader);
 
             return niFile;
