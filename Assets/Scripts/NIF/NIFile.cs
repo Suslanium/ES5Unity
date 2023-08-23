@@ -65,6 +65,9 @@ namespace NIF
                     case "NiAlphaProperty":
                         niFile.NiObjects.Add(NiAlphaProperty.Parse(nifReader, "NiAlphaProperty", header));
                         break;
+                    case "bhkCollisionObject":
+                        niFile.NiObjects.Add(BhkCollisionObject.Parse(nifReader, "bhkCollisionObject", header));
+                        break;
                     default:
                         Debug.LogWarning(
                             $"NIF Reader({fileName}): Unsupported NiObject type: {header.BlockTypes[header.BlockTypeIndex[i]]}");
