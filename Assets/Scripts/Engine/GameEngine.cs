@@ -25,12 +25,28 @@ namespace Engine
             _cellManager = new CellManager(_esMasterFile, _nifManager, _loadBalancer);
         }
 
-        public void LoadInteriorCell(string editorId)
+        public void LoadInteriorCell(string editorId, bool clearPrevious = false)
         {
-            _cellManager.DestroyAllCells();
-            _nifManager.ClearModelCache();
-            _materialManager.ClearCachedMaterialsAndTextures();
+            if (clearPrevious)
+            {
+                _cellManager.DestroyAllCells();
+                _nifManager.ClearModelCache();
+                _materialManager.ClearCachedMaterialsAndTextures();
+            }
+
             _cellManager.LoadInteriorCell(editorId);
+        }
+        
+        public void LoadInteriorCell(uint formID, bool clearPrevious = false)
+        {
+            if (clearPrevious)
+            {
+                _cellManager.DestroyAllCells();
+                _nifManager.ClearModelCache();
+                _materialManager.ClearCachedMaterialsAndTextures();
+            }
+            
+            _cellManager.LoadInteriorCell(formID);
         }
 
         public void Update()

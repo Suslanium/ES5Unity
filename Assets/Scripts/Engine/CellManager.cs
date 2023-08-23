@@ -41,12 +41,24 @@ namespace Engine
         public void LoadInteriorCell(string editorID, bool persistentOnly = false)
         {
             var cell = _masterFile.FindCellByEditorID(editorID);
+            LoadInteriorCellRecord(cell, persistentOnly);
+        }
+
+        public void LoadInteriorCell(uint formID, bool persistentOnly = false)
+        {
+            var cell = (CELL)_masterFile.GetFromFormID(formID);
+            LoadInteriorCellRecord(cell, persistentOnly);
+        }
+
+        private void LoadInteriorCellRecord(CELL cell, bool persistentOnly = false)
+        {
             if ((cell.CellFlag & 0x0001) == 0)
                 throw new InvalidDataException("Trying to load exterior cell as interior");
             var children = _masterFile.ReadNext();
             if (children is not Group { GroupType: 6 } childrenGroup)
                 throw new InvalidDataException("Cell children group not found");
-            var cellGameObject = new GameObject(editorID);
+            var cellGameObject =
+                new GameObject(string.IsNullOrEmpty(cell.EditorID) ? cell.FormID.ToString() : cell.EditorID);
             var cellInfo = new CellInfo(cellGameObject, cell);
             if (cell.CellLightingInfo != null) ConfigureCellLighting(cell);
             foreach (var subGroup in childrenGroup.GroupData)
@@ -259,8 +271,8 @@ namespace Engine
             if (modelObject == null)
                 modelObject = new GameObject(lightRecord.EditorID);
 
-            InstantiateLightOnGameObject(lightReference, lightRecord, modelObject);
             ApplyPositionAndRotation(position, rotation, scale, parent, modelObject);
+            InstantiateLightOnGameObject(lightReference, lightRecord, modelObject);
 
             return modelObject;
         }
@@ -268,13 +280,23 @@ namespace Engine
         private void InstantiateLightOnGameObject(REFR reference, LIGH lightRecord, GameObject gameObject)
         {
             if (gameObject == null) return;
+            //Create separate gameobject and rotate it in case of a spot light
+            if ((lightRecord.Flags & 0x0400) != 0)
+            {
+                var spotGameObject = new GameObject(gameObject.name);
+                spotGameObject.transform.parent = gameObject.transform;
+                spotGameObject.transform.position = gameObject.transform.position;
+                spotGameObject.transform.rotation = Quaternion.LookRotation(Vector3.down);
+                gameObject = spotGameObject;
+            }
+
             var light = gameObject.AddComponent<Light>();
             //For some interesting reason the actual radius shown in CK is Base light radius + XRDS value of refr
-            light.range = (lightRecord.Radius + reference.Radius) / Convert.meterInMWUnits;
+            light.range = 2 * ((lightRecord.Radius + reference.Radius) / Convert.meterInMWUnits);
             light.color = new Color32(lightRecord.ColorRGBA[0], lightRecord.ColorRGBA[1], lightRecord.ColorRGBA[2],
                 255);
             //Intensity in Unity != intensity in Skyrim
-            light.intensity = 2 * (lightRecord.Fade + reference.FadeOffset);
+            light.intensity = lightRecord.Fade + reference.FadeOffset;
             if ((lightRecord.Flags & 0x0400) != 0)
             {
                 light.type = LightType.Spot;
