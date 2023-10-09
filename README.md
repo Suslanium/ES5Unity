@@ -24,6 +24,7 @@ Some screenshots:
 + ~Add support for cell lighting import~ Done(at a basic level)
 + ~Add support for transparent materials~ Done
 + ~Figure out glossiness and specular map tint(currently some objects are too glossy, and some objects have an exagerrated specular highlight tint)~ Kind of done, though shaders are still not perfect at all
++ **Add occlusion culling** (this is the main problem right now, large locations cause extremely low fps because the GPU is trying to render stuff that the player can't see)
 + Add support for collisions
 + Add support for Skyrim SE meshes and archives
 + Add support for billboards
