@@ -52,8 +52,8 @@ namespace Engine
 
         private void LoadInteriorCellRecord(CELL cell, bool persistentOnly = false)
         {
-            if ((cell.CellFlag & 0x0001) == 0)
-                throw new InvalidDataException("Trying to load exterior cell as interior");
+            //if ((cell.CellFlag & 0x0001) == 0)
+            //    throw new InvalidDataException("Trying to load exterior cell as interior");
             var children = _masterFile.ReadNext();
             if (children is not Group { GroupType: 6 } childrenGroup)
                 throw new InvalidDataException("Cell children group not found");

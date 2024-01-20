@@ -24,7 +24,7 @@ namespace NIF.NiObjects
             BodyReference = bodyReference;
         }
 
-        public new static BhkNiCollisionObject Parse(BinaryReader nifReader, string ownerObjectName, Header header)
+        protected new static BhkNiCollisionObject Parse(BinaryReader nifReader, string ownerObjectName, Header header)
         {
             var ancestor = NiCollisionObject.Parse(nifReader, ownerObjectName, header);
             var bhkNiCollisionObject = new BhkNiCollisionObject(ancestor.Target)

@@ -20,6 +20,14 @@ namespace NIF.NiObjects
         {
         }
 
+        protected BhkWorldObject(int shapeReference, SkyrimLayer layer, byte collisionFilterFlags, ushort group)
+        {
+            ShapeReference = shapeReference;
+            Layer = layer;
+            CollisionFilterFlags = collisionFilterFlags;
+            Group = group;
+        }
+
         public static BhkWorldObject Parse(BinaryReader nifReader, string ownerObjectName, Header header)
         {
             var bhkWorldObject = new BhkWorldObject
