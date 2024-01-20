@@ -1,3 +1,5 @@
+# ❄️This project is currently frozen as I don't really have enough time to work on it (and spoiler alert, I probably won't be working on this anytime soon). Right now the code quality is pretty rough, but this is more like a draft. I just want to implement some basic stuff (loading locations and being able to walk) and then refactor the code, add other features, etc. Currently this works ONLY with Skyrim LE (aka Oldrim). SE/AE support will be added once basic features are implemented.
+
 # ES5Unity
 A WIP project whose goal is to run TES V: Skyrim on the Unity engine.
 
@@ -9,18 +11,20 @@ A WIP project whose goal is to run TES V: Skyrim on the Unity engine.
 + [BSAManager (code for hash calculation was taken from here)](https://github.com/philjord/BSAManager)
 
 # Current state
-This project is in a very early stage of development. Currently it can load interior cells from Skyrim at a very basic level (no lighting, no doors, no collisions, not all objects are imported, materials are not quite right).
+This project is in a *very* early stage of development. Currently it can load interior cells from Skyrim at a very basic level (no doors, no collisions, not all objects are imported, etc).
 Some screenshots:
-![Screenshot 1](https://github.com/Suslanium/ES5Unity/assets/84632927/0b1ce4a7-0b9c-4b22-a32d-07d636c01414)
-![Screenshot 2](https://github.com/Suslanium/ES5Unity/assets/84632927/bfd2bfbc-a217-4cb2-a374-23c837eb7b28)
-![Screenshot 3](https://github.com/Suslanium/ES5Unity/assets/84632927/11a898f1-956c-4f40-a3f4-489bc27a07b2)
-![Screenshot 4](https://github.com/Suslanium/ES5Unity/assets/84632927/e4a85442-9ec9-4973-b810-a529729eedf0)
-![Screenshot 5](https://github.com/Suslanium/ES5Unity/assets/84632927/aa940035-fb04-4cf4-83a5-456547295e64)
+![Screenshot1](https://github.com/Suslanium/ES5Unity/assets/84632927/e421be83-2705-43c4-acaa-31e6edb41fd8)
+![Screenshot2](https://github.com/Suslanium/ES5Unity/assets/84632927/df8542ea-e79d-4df0-9a9f-5ffda1cb2812)
+![Screenshot3](https://github.com/Suslanium/ES5Unity/assets/84632927/d42ca88f-82db-4c60-bd5f-c57063e441b7)
+![Screenshot4](https://github.com/Suslanium/ES5Unity/assets/84632927/ac75c897-fcc7-441f-934c-87597e827620)
+![Screenshot5](https://github.com/Suslanium/ES5Unity/assets/84632927/d2459143-593f-4af1-ab7c-af198e8c11af)
+![Screenshot6](https://github.com/Suslanium/ES5Unity/assets/84632927/ab9491ba-46ee-4c7b-aab3-0814fffecc1c)
 
 ##### TODO list:
-+ Add support for cell lighting import
-+ Add support for transparent materials
-+ Figure out glossiness and specular map tint(currently some objects are too glossy, and some objects have an exagerrated specular highlight tint)
++ ~Add support for cell lighting import~ Done(at a basic level)
++ ~Add support for transparent materials~ Done
++ ~Figure out glossiness and specular map tint(currently some objects are too glossy, and some objects have an exagerrated specular highlight tint)~ Kind of done, though shaders are still not perfect at all
++ **Add occlusion culling** (~this is the main problem right now, large locations cause extremely low fps because the GPU is trying to render stuff that the player can't see~ EDIT: a solution to this problem has been found, but it has not yet been implemented (Room Markers and Occlusion Planes))
 + Add support for collisions
 + Add support for Skyrim SE meshes and archives
 + Add support for billboards
