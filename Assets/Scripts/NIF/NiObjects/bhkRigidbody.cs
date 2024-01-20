@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using NIF.NiObjects.Enums;
 using NIF.NiObjects.Structures;
 
@@ -170,7 +171,7 @@ namespace NIF.NiObjects
             }
 
             //Skipping unused/duplicated data
-            nifReader.BaseStream.Seek(14, SeekOrigin.Current);
+            nifReader.BaseStream.Seek(20, SeekOrigin.Current);
             bhkRigidBody.Translation = Vector4.Parse(nifReader);
             bhkRigidBody.Rotation = HkQuaternion.Parse(nifReader);
             bhkRigidBody.LinearVelocity = Vector4.Parse(nifReader);
@@ -204,14 +205,7 @@ namespace NIF.NiObjects
             nifReader.BaseStream.Seek(12, SeekOrigin.Current);
             bhkRigidBody.NumConstraints = nifReader.ReadUInt32();
             bhkRigidBody.ConstraintRefs = NifReaderUtils.ReadRefArray(nifReader, bhkRigidBody.NumConstraints);
-            if (header.BethesdaVersion >= 76)
-            {
-                bhkRigidBody.BodyFlags = nifReader.ReadUInt16();
-            }
-            else
-            {
-                bhkRigidBody.BodyFlags = nifReader.ReadUInt32();
-            }
+            bhkRigidBody.BodyFlags = header.BethesdaVersion >= 76 ? nifReader.ReadUInt16() : nifReader.ReadUInt32();
 
             return bhkRigidBody;
         }

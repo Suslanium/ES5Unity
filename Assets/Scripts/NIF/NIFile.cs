@@ -68,6 +68,12 @@ namespace NIF
                     case "bhkCollisionObject":
                         niFile.NiObjects.Add(BhkCollisionObject.Parse(nifReader, "bhkCollisionObject", header));
                         break;
+                    case "bhkRigidBody":
+                        niFile.NiObjects.Add(BhkRigidBody.Parse(nifReader, "bhkRigidBody", header));
+                        break;
+                    case "bhkRigidBodyT":
+                        niFile.NiObjects.Add(BhkRigidBodyT.Parse(nifReader, "bhkRigidBody", header));
+                        break;
                     default:
                         Debug.LogWarning(
                             $"NIF Reader({fileName}): Unsupported NiObject type: {header.BlockTypes[header.BlockTypeIndex[i]]}");
