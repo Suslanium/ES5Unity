@@ -74,6 +74,16 @@ namespace NIF
                     case "bhkRigidBodyT":
                         niFile.NiObjects.Add(BhkRigidBodyT.Parse(nifReader, "bhkRigidBody", header));
                         break;
+                    case "bhkCompressedMeshShape":
+                        niFile.NiObjects.Add(BhkCompressedMeshShape.Parse(nifReader, "bhkCompressedMeshShape", header));
+                        break;
+                    case "bhkCompressedMeshShapeData":
+                        niFile.NiObjects.Add(BhkCompressedMeshShapeData.Parse(nifReader, "bhkCompressedMeshShapeData",
+                            header));
+                        break;
+                    case "bhkMoppBvTreeShape":
+                        niFile.NiObjects.Add(BhkMoppBvTreeShape.Parse(nifReader, "bhkMoppBvTreeShape", header));
+                        break;
                     default:
                         Debug.LogWarning(
                             $"NIF Reader({fileName}): Unsupported NiObject type: {header.BlockTypes[header.BlockTypeIndex[i]]}");

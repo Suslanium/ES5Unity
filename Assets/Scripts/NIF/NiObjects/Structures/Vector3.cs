@@ -23,6 +23,16 @@ namespace NIF.NiObjects.Structures
         public float Z { get; private set; }
         
         private Vector3() {}
+        
+        /// <summary>
+        /// Constructor for conversion from UShortVector3 (all values are divided by 1000).
+        /// </summary>
+        public Vector3(ushort x, ushort y, ushort z)
+        {
+            X = (float)x/1000;
+            Y = (float)y/1000;
+            Z = (float)z/1000;
+        }
 
         public static Vector3 Parse(BinaryReader binaryReader)
         {
