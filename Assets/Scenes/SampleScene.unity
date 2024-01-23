@@ -711,14 +711,14 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 963194225}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 15d6434f6a88400aaea087ec5232ff96, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   dataFolderPath: E:\SteamLibrary\steamapps\common\Skyrim\Data
   meshPaths:
-  - meshes/dungeons/dwemer/pipes/dwepipe1way01.nif
+  - meshes\dungeons\dwemer\animated\astrolabe\dweastrolabechamber01.nif
 --- !u!114 &963194235
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -726,7 +726,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 963194225}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 597a600f81b84395875e4d83e80f536a, type: 3}
   m_Name: 

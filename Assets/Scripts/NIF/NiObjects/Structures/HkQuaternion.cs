@@ -28,7 +28,7 @@ namespace NIF.NiObjects.Structures
             };
         }
 
-        public UnityEngine.Quaternion ToUnityVector()
+        public UnityEngine.Quaternion ToUnityQuaternion()
         {
             return new UnityEngine.Quaternion(X, Y, Z, W);
         }

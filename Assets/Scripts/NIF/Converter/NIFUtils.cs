@@ -56,5 +56,11 @@ namespace NIF.Converter
 
             return xRot * zRot * yRot;
         }
+        
+        public static Quaternion HavokQuaternionToUnityQuaternion(Quaternion havokQuaternion)
+        {
+            Quaternion unityQuat = new Quaternion(havokQuaternion.x, havokQuaternion.z, havokQuaternion.y, -havokQuaternion.w);
+            return unityQuat;
+        }
     }
 }
