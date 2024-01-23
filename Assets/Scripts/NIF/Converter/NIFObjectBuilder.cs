@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using Engine;
 using NIF.NiObjects;
 using NIF.NiObjects.Structures;
@@ -296,51 +297,88 @@ namespace NIF.Converter
         private GameObject InstantiateBhkCollisionObject(BhkCollisionObject collisionObject)
         {
             var body = _file.NiObjects[collisionObject.BodyReference];
-            if (body is BhkRigidBodyT bhkRigidBodyT)
+            switch (body)
             {
-                var gameObject = InstantiateRigidBody(bhkRigidBodyT);
-                gameObject.transform.position =
-                    NifUtils.NifVectorToUnityVector(bhkRigidBodyT.Translation.ToUnityVector());
-                gameObject.transform.rotation =
-                    NifUtils.HavokQuaternionToUnityQuaternion(bhkRigidBodyT.Rotation.ToUnityQuaternion());
-                return gameObject;
-            }
-            else if (body is BhkRigidBody bhkRigidBody)
-            {
-                return InstantiateRigidBody(bhkRigidBody);
-            }
-            else
-            {
-                Debug.LogWarning($"Unsupported collision object body type: {body.GetType().Name}");
-                return null;
+                case BhkRigidBodyT bhkRigidBodyT:
+                {
+                    var gameObject = InstantiateRigidBody(bhkRigidBodyT);
+                    gameObject.transform.position =
+                        NifUtils.NifVectorToUnityVector(bhkRigidBodyT.Translation.ToUnityVector());
+                    gameObject.transform.rotation =
+                        NifUtils.HavokQuaternionToUnityQuaternion(bhkRigidBodyT.Rotation.ToUnityQuaternion());
+                    return gameObject;
+                }
+                case BhkRigidBody bhkRigidBody:
+                    return InstantiateRigidBody(bhkRigidBody);
+                default:
+                    Debug.LogWarning($"Unsupported collision object body type: {body.GetType().Name}");
+                    return null;
             }
         }
 
         private GameObject InstantiateRigidBody(BhkRigidBody bhkRigidBody)
         {
             var shapeInfo = _file.NiObjects[bhkRigidBody.ShapeReference];
-            if (shapeInfo is BhkMoppBvTreeShape bhkMoppBvTreeShape)
+            switch (shapeInfo)
             {
-                return BvTreeShapeToGameObject(bhkMoppBvTreeShape);
-            }
-            else
-            {
-                Debug.LogWarning($"Unsupported rigidbody shape type: {shapeInfo.GetType().Name}");
-                return null;
+                case BhkListShape bhkListShape:
+                    return InstantiateBhkListShape(bhkListShape);
+                case BhkConvexVerticesShape bhkConvexVerticesShape:
+                    return BhkConvexVerticesShapeToGameObject(bhkConvexVerticesShape);
+                case BhkMoppBvTreeShape bhkMoppBvTreeShape:
+                    return BvTreeShapeToGameObject(bhkMoppBvTreeShape);
+                default:
+                    Debug.LogWarning($"Unsupported rigidbody shape type: {shapeInfo.GetType().Name}");
+                    return null;
             }
         }
 
+        private GameObject InstantiateBhkListShape(BhkListShape bhkListShape)
+        {
+            var shapeRefs = bhkListShape.SubShapeReferences.Select(subShapeRef => _file.NiObjects[subShapeRef]);
+            var rootGameObject = new GameObject("bhkListShape");
+            foreach (var subShape in shapeRefs)
+            {
+                if (subShape is BhkConvexVerticesShape convexVerticesShape)
+                {
+                    var shapeObject = BhkConvexVerticesShapeToGameObject(convexVerticesShape);
+                    shapeObject.transform.SetParent(rootGameObject.transform, false);
+                }
+                else
+                {
+                    Debug.LogWarning($"Unsupported list shape subshape type: {subShape.GetType().Name}");
+                }
+            }
+
+            return rootGameObject;
+        }
+
+        private static GameObject BhkConvexVerticesShapeToGameObject(BhkConvexVerticesShape convexVerticesShape)
+        {
+            var gameObject = new GameObject("bhkConvexVerticesShape");
+            var vertices = convexVerticesShape.Vertices.Select(vertex => NifUtils.NifVectorToUnityVector(vertex.ToUnityVector())).ToArray();
+            var mesh = new Mesh
+            {
+                vertices = vertices
+            };
+            var collider = gameObject.AddComponent<MeshCollider>();
+            collider.convex = true;
+            collider.sharedMesh = mesh;
+            return gameObject;
+        }
+        
         private GameObject BvTreeShapeToGameObject(BhkBvTreeShape treeShape)
         {
             var shapeInfo = _file.NiObjects[treeShape.ShapeReference];
-            if (shapeInfo is BhkCompressedMeshShape compressedMeshShape)
+            switch (shapeInfo)
             {
-                return CompressedShapeToGameObject(compressedMeshShape);
-            }
-            else
-            {
-                Debug.LogWarning($"Unsupported BV tree shape type: {shapeInfo.GetType().Name}");
-                return null;
+                case BhkCompressedMeshShape compressedMeshShape:
+                    return CompressedShapeToGameObject(compressedMeshShape);
+                case BhkListShape bhkListShape:
+                    return InstantiateBhkListShape(bhkListShape);
+                default:
+                    Debug.LogWarning($"Unsupported BV tree shape type: {shapeInfo.GetType().Name}");
+                    return null;
             }
         }
 
