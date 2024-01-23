@@ -302,6 +302,7 @@ namespace NIF.Converter
                 case BhkRigidBodyT bhkRigidBodyT:
                 {
                     var gameObject = InstantiateRigidBody(bhkRigidBodyT);
+                    if (gameObject == null) return null;
                     gameObject.transform.position =
                         NifUtils.NifVectorToUnityVector(bhkRigidBodyT.Translation.ToUnityVector());
                     gameObject.transform.rotation =
