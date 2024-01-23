@@ -84,6 +84,12 @@ namespace NIF
                     case "bhkMoppBvTreeShape":
                         niFile.NiObjects.Add(BhkMoppBvTreeShape.Parse(nifReader, "bhkMoppBvTreeShape", header));
                         break;
+                    case "bhkListShape":
+                        niFile.NiObjects.Add(BhkListShape.Parse(nifReader, "bhkListShape", header));
+                        break;
+                    case "bhkConvexVerticesShape":
+                        niFile.NiObjects.Add(BhkConvexVerticesShape.Parse(nifReader, "bhkConvexVerticesShape", header));
+                        break;
                     default:
                         Debug.LogWarning(
                             $"NIF Reader({fileName}): Unsupported NiObject type: {header.BlockTypes[header.BlockTypeIndex[i]]}");
