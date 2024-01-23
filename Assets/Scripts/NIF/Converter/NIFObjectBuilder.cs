@@ -386,9 +386,7 @@ namespace NIF.Converter
                     vertices = vertices,
                     triangles = triangles
                 };
-                //TODO change to mesh collider
-                rootGameObject.AddComponent<MeshFilter>().mesh = mesh;
-                rootGameObject.AddComponent<MeshRenderer>();
+                rootGameObject.AddComponent<MeshCollider>().sharedMesh = mesh;
             }
 
             for (var i = 0; i < compressedMeshShapeData.NumChunks; i++)
@@ -406,9 +404,7 @@ namespace NIF.Converter
                             .ToUnityQuaternion())
                     }
                 };
-                //TODO change to mesh collider
-                chunkObject.AddComponent<MeshFilter>().mesh = chunkMesh;
-                chunkObject.AddComponent<MeshRenderer>();
+                chunkObject.AddComponent<MeshCollider>().sharedMesh = chunkMesh;
                 chunkObject.transform.SetParent(rootGameObject.transform, false);
             }
 
