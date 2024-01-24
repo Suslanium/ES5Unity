@@ -25,7 +25,7 @@ Some screenshots:
 + ~Add support for transparent materials~ Done
 + ~Figure out glossiness and specular map tint(currently some objects are too glossy, and some objects have an exagerrated specular highlight tint)~ Kind of done, though shaders are still not perfect at all
 + **Add occlusion culling** (~this is the main problem right now, large locations cause extremely low fps because the GPU is trying to render stuff that the player can't see~ EDIT: a solution to this problem has been found, but it has not yet been implemented (Room Markers and Occlusion Planes))
-+ Add support for collisions
++ ~Add support for collisions~ Almost done(convex shapes and compressed meshes are supported as of now)
 + Add support for Skyrim SE meshes and archives
 + Add support for billboards
 + Add support for doors inside cells
