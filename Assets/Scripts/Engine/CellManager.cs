@@ -39,6 +39,8 @@ namespace Engine
         private static readonly int PortalLayer = LayerMask.NameToLayer("Portal");
         private readonly List<Tuple<GameObject, uint, uint>> _tempPortals = new();
         private readonly Dictionary<uint, GameObject> _tempRooms = new();
+        private Vector3 _tempPlayerPosition;
+        private Quaternion _tempPlayerRotation;
 
         public CellManager(ESMasterFile masterFile, NifManager nifManager, TemporalLoadBalancer temporalLoadBalancer)
         {
@@ -80,6 +82,7 @@ namespace Engine
                     cellInfo.ObjectCreationCoroutines.Add(objectInstantiationTask);
                 }
             }
+
             var postProcessTask = PostProcessRoomsAndPortals(cellGameObject);
             _temporalLoadBalancer.AddTask(postProcessTask);
             cellInfo.ObjectCreationCoroutines.Add(postProcessTask);
@@ -99,30 +102,54 @@ namespace Engine
                 if (originRoomInstance == null)
                 {
                     originRoomInstance = originRoom.AddComponent<Room>();
-                    originRoomInstance.RoomObjects = GetRoomGameObjects(cellGameObject, originRoom.GetComponent<BoxCollider>());
+                    originRoomInstance.RoomObjects =
+                        GetRoomGameObjects(cellGameObject, originRoom.GetComponent<BoxCollider>());
                     rooms.Add(originFormID, originRoomInstance);
+                    originRoomInstance.FormId = originFormID;
                 }
+
                 var destinationRoomInstance = rooms.GetValueOrDefault(destinationFormID);
                 if (destinationRoomInstance == null)
                 {
                     destinationRoomInstance = destinationRoom.AddComponent<Room>();
-                    destinationRoomInstance.RoomObjects = GetRoomGameObjects(cellGameObject, destinationRoom.GetComponent<BoxCollider>());
+                    destinationRoomInstance.RoomObjects =
+                        GetRoomGameObjects(cellGameObject, destinationRoom.GetComponent<BoxCollider>());
                     rooms.Add(destinationFormID, destinationRoomInstance);
+                    destinationRoomInstance.FormId = destinationFormID;
                 }
-                
-                var portal = new Portal(originRoomInstance, destinationRoomInstance, portalObject, portalObject.GetComponent<BoxCollider>());
+
+                var portal = new Portal(originRoomInstance, destinationRoomInstance, originFormID, destinationFormID, portalObject,
+                    portalObject.GetComponent<BoxCollider>());
                 originRoomInstance.Portals.Add(portal);
                 destinationRoomInstance.Portals.Add(portal);
                 portals.Add(portal);
                 yield return null;
             }
-            
+
+            foreach (var roomWithoutPortalsFormId in _tempRooms.Keys.Except(rooms.Keys))
+            {
+                var room = _tempRooms[roomWithoutPortalsFormId];
+                var roomInstance = room.AddComponent<Room>();
+                roomInstance.RoomObjects = GetRoomGameObjects(cellGameObject, room.GetComponent<BoxCollider>());
+                roomInstance.FormId = roomWithoutPortalsFormId;
+                rooms.Add(roomWithoutPortalsFormId, roomInstance);
+            }
+
             var cellOcclusion = cellGameObject.AddComponent<CellOcclusion>();
             cellOcclusion.Portals = portals.ToArray();
-            cellOcclusion.Rooms = rooms.Values.ToArray();
-            
+            cellOcclusion.Rooms = rooms;
+            cellOcclusion.Init();
+
             _tempPortals.Clear();
             _tempRooms.Clear();
+
+            var player = GameObject.FindGameObjectWithTag("Player");
+            player.SetActive(false);
+            player.transform.position = _tempPlayerPosition;
+            player.transform.rotation = _tempPlayerRotation;
+            player.SetActive(true);
+            _tempPlayerPosition = Vector3.zero;
+            _tempPlayerRotation = Quaternion.identity;
             yield return null;
         }
 
@@ -137,7 +164,10 @@ namespace Engine
                            gameObject.transform.IsChildOf(cellGameObject.transform);
                 }).Select(collider => GetDirectChild(collider.gameObject, cellGameObject))
                 .Where(directChild => directChild != null).ToList();
-            childrenInCollider.AddRange(from Transform child in cellGameObject.transform where roomTrigger.bounds.Contains(child.transform.position) select child.gameObject);
+            childrenInCollider.AddRange(from Transform child in cellGameObject.transform
+                where roomTrigger.bounds.Contains(child.transform.position) && child.gameObject.layer != RoomLayer &&
+                      child.gameObject.layer != PortalLayer
+                select child.gameObject);
 
             return childrenInCollider.Distinct().ToArray();
         }
@@ -320,6 +350,14 @@ namespace Engine
                                 gameObject);
                             _tempRooms.Add(reference.FormID, gameObject);
                             break;
+                        }
+
+                        if (staticRecord.FormID == 0x32)
+                        {
+                            _tempPlayerPosition = NifUtils.NifPointToUnityPoint(new Vector3(reference.Position[0],
+                                reference.Position[1], reference.Position[2]));
+                            _tempPlayerRotation = NifUtils.NifEulerAnglesToUnityQuaternion(
+                                new Vector3(reference.Rotation[0], reference.Rotation[1], reference.Rotation[2]));
                         }
 
                         _nifManager.PreloadNifFile(staticRecord.NifModelFilename);
