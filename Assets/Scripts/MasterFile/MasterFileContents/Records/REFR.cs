@@ -1,5 +1,6 @@
 ﻿using System.IO;
 using MasterFile.MasterFileContents.Records.Structures;
+using UnityEngine;
 
 namespace MasterFile.MasterFileContents.Records
 {
@@ -81,6 +82,8 @@ namespace MasterFile.MasterFileContents.Records
         /// </summary>
         public float FadeOffset { get; private set; }
 
+        public Primitive Primitive { get; private set; }
+
         private REFR(string type, uint dataSize, uint flag, uint formID, ushort timestamp, ushort versionControlInfo,
             ushort internalRecordVersion, ushort unknownData) : base(type, dataSize, flag, formID, timestamp,
             versionControlInfo, internalRecordVersion, unknownData)
@@ -102,6 +105,18 @@ namespace MasterFile.MasterFileContents.Records
                         break;
                     case "NAME":
                         refr.BaseObjectReference = fileReader.ReadUInt32();
+                        break;
+                    case "XPRM":
+                        var boundsX = fileReader.ReadSingle();
+                        var boundsY = fileReader.ReadSingle();
+                        var boundsZ = fileReader.ReadSingle();
+                        var colorR = fileReader.ReadSingle();
+                        var colorG = fileReader.ReadSingle();
+                        var colorB = fileReader.ReadSingle();
+                        var unknownFloat = fileReader.ReadSingle();
+                        var unknownInt = fileReader.ReadUInt32();
+                        refr.Primitive = new Primitive(new Vector3(boundsX, boundsY, boundsZ),
+                            new Color(colorR, colorG, colorB), unknownFloat, unknownInt);
                         break;
                     case "XPOD":
                         var originFormID = fileReader.ReadUInt32();

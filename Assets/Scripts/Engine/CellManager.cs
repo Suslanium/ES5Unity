@@ -197,6 +197,26 @@ namespace Engine
                 switch (referencedRecord)
                 {
                     case STAT staticRecord:
+                        if (staticRecord.FormID == 0x20)
+                        {
+                            //Portal marker
+                            var gameObject = new GameObject("Portal marker");
+                            var collider = gameObject.AddComponent<BoxCollider>();
+                            collider.isTrigger = true;
+                            collider.size = NifUtils.NifPointToUnityPoint(reference.Primitive.Bounds) * 2;
+                            ApplyPositionAndRotation(reference.Position, reference.Rotation, reference.Scale, parent, gameObject);
+                            break;
+                        }
+                        if (staticRecord.FormID == 0x1F)
+                        {
+                            //Room marker
+                            var gameObject = new GameObject("Room marker");
+                            var collider = gameObject.AddComponent<BoxCollider>();
+                            collider.isTrigger = true;
+                            collider.size = NifUtils.NifPointToUnityPoint(reference.Primitive.Bounds) * 2;
+                            ApplyPositionAndRotation(reference.Position, reference.Rotation, reference.Scale, parent, gameObject);
+                            break;
+                        }
                         _nifManager.PreloadNifFile(staticRecord.NifModelFilename);
                         break;
                     case MSTT movableStatic:
