@@ -1,13 +1,18 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Core;
+using Engine.Occlusion;
 using MasterFile;
 using MasterFile.MasterFileContents;
 using MasterFile.MasterFileContents.Records;
 using NIF.Converter;
 using UnityEngine;
 using UnityEngine.Rendering;
+using Convert = Core.Convert;
+using Object = UnityEngine.Object;
 
 namespace Engine
 {
@@ -30,6 +35,10 @@ namespace Engine
         private readonly NifManager _nifManager;
         private readonly TemporalLoadBalancer _temporalLoadBalancer;
         private readonly List<CellInfo> _cells = new();
+        private static readonly int RoomLayer = LayerMask.NameToLayer("Room");
+        private static readonly int PortalLayer = LayerMask.NameToLayer("Portal");
+        private readonly List<Tuple<GameObject, uint, uint>> _tempPortals = new();
+        private readonly Dictionary<uint, GameObject> _tempRooms = new();
 
         public CellManager(ESMasterFile masterFile, NifManager nifManager, TemporalLoadBalancer temporalLoadBalancer)
         {
@@ -71,8 +80,83 @@ namespace Engine
                     cellInfo.ObjectCreationCoroutines.Add(objectInstantiationTask);
                 }
             }
-
+            var postProcessTask = PostProcessRoomsAndPortals(cellGameObject);
+            _temporalLoadBalancer.AddTask(postProcessTask);
+            cellInfo.ObjectCreationCoroutines.Add(postProcessTask);
             _cells.Add(cellInfo);
+        }
+
+        private IEnumerator PostProcessRoomsAndPortals(GameObject cellGameObject)
+        {
+            var rooms = new Dictionary<uint, Room>();
+            var portals = new List<Portal>();
+            foreach (var (portalObject, originFormID, destinationFormID) in _tempPortals)
+            {
+                if (!_tempRooms.ContainsKey(originFormID) || !_tempRooms.ContainsKey(destinationFormID)) continue;
+                var originRoom = _tempRooms[originFormID];
+                var destinationRoom = _tempRooms[destinationFormID];
+                var originRoomInstance = rooms.GetValueOrDefault(originFormID);
+                if (originRoomInstance == null)
+                {
+                    originRoomInstance = originRoom.AddComponent<Room>();
+                    originRoomInstance.RoomObjects = GetRoomGameObjects(cellGameObject, originRoom.GetComponent<BoxCollider>());
+                    rooms.Add(originFormID, originRoomInstance);
+                }
+                var destinationRoomInstance = rooms.GetValueOrDefault(destinationFormID);
+                if (destinationRoomInstance == null)
+                {
+                    destinationRoomInstance = destinationRoom.AddComponent<Room>();
+                    destinationRoomInstance.RoomObjects = GetRoomGameObjects(cellGameObject, destinationRoom.GetComponent<BoxCollider>());
+                    rooms.Add(destinationFormID, destinationRoomInstance);
+                }
+                
+                var portal = new Portal(originRoomInstance, destinationRoomInstance, portalObject, portalObject.GetComponent<BoxCollider>());
+                originRoomInstance.Portals.Add(portal);
+                destinationRoomInstance.Portals.Add(portal);
+                portals.Add(portal);
+                yield return null;
+            }
+            
+            var cellOcclusion = cellGameObject.AddComponent<CellOcclusion>();
+            cellOcclusion.Portals = portals.ToArray();
+            cellOcclusion.Rooms = rooms.Values.ToArray();
+            
+            _tempPortals.Clear();
+            _tempRooms.Clear();
+            yield return null;
+        }
+
+        private static GameObject[] GetRoomGameObjects(GameObject cellGameObject, BoxCollider roomTrigger)
+        {
+            var bounds = roomTrigger.bounds;
+            var colliders = Physics.OverlapBox(bounds.center, bounds.extents, roomTrigger.transform.rotation);
+            var childrenInCollider = colliders.Where(collider =>
+                {
+                    GameObject gameObject;
+                    return (gameObject = collider.gameObject).layer != RoomLayer && gameObject.layer != PortalLayer &&
+                           gameObject.transform.IsChildOf(cellGameObject.transform);
+                }).Select(collider => GetDirectChild(collider.gameObject, cellGameObject))
+                .Where(directChild => directChild != null).ToList();
+            childrenInCollider.AddRange(from Transform child in cellGameObject.transform where roomTrigger.bounds.Contains(child.transform.position) select child.gameObject);
+
+            return childrenInCollider.Distinct().ToArray();
+        }
+
+        private static GameObject GetDirectChild(GameObject nestedChild, GameObject parent)
+        {
+            var currentParent = nestedChild.transform.parent;
+
+            while (currentParent != null)
+            {
+                if (currentParent.parent == parent.transform)
+                {
+                    return currentParent.gameObject;
+                }
+
+                currentParent = currentParent.parent;
+            }
+
+            return null;
         }
 
         private void ConfigureCellLighting(CELL cellRecord)
@@ -200,23 +284,44 @@ namespace Engine
                         if (staticRecord.FormID == 0x20)
                         {
                             //Portal marker
-                            var gameObject = new GameObject("Portal marker");
+                            var gameObject = new GameObject("Portal marker")
+                            {
+                                layer = PortalLayer
+                            };
                             var collider = gameObject.AddComponent<BoxCollider>();
                             collider.isTrigger = true;
                             collider.size = NifUtils.NifPointToUnityPoint(reference.Primitive.Bounds) * 2;
-                            ApplyPositionAndRotation(reference.Position, reference.Rotation, reference.Scale, parent, gameObject);
+                            ApplyPositionAndRotation(reference.Position, reference.Rotation, reference.Scale, parent,
+                                gameObject);
+                            if (reference.PortalDestinations != null)
+                            {
+                                _tempPortals.Add(Tuple.Create(gameObject, reference.PortalDestinations.OriginReference,
+                                    reference.PortalDestinations.DestinationReference));
+                            }
+                            else
+                            {
+                                gameObject.SetActive(false);
+                            }
+
                             break;
                         }
+
                         if (staticRecord.FormID == 0x1F)
                         {
                             //Room marker
-                            var gameObject = new GameObject("Room marker");
+                            var gameObject = new GameObject("Room marker")
+                            {
+                                layer = RoomLayer
+                            };
                             var collider = gameObject.AddComponent<BoxCollider>();
                             collider.isTrigger = true;
                             collider.size = NifUtils.NifPointToUnityPoint(reference.Primitive.Bounds) * 2;
-                            ApplyPositionAndRotation(reference.Position, reference.Rotation, reference.Scale, parent, gameObject);
+                            ApplyPositionAndRotation(reference.Position, reference.Rotation, reference.Scale, parent,
+                                gameObject);
+                            _tempRooms.Add(reference.FormID, gameObject);
                             break;
                         }
+
                         _nifManager.PreloadNifFile(staticRecord.NifModelFilename);
                         break;
                     case MSTT movableStatic:
