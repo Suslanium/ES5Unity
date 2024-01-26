@@ -107,6 +107,7 @@ namespace Engine.Occlusion
             }
         }
 
+        //TODO the algorithm itself works. It determines the rooms that should be visible and invisible correctly. BUT the whole room activation/deactivation thing is glitchy. Part of the problem is that the Room's IsVisible attribute is inaccurate. But most of the problems here come from the fact that there are intersections between rooms (some objects belong to multiple rooms).
         public void Update()
         {
             _frustumPlanes = GeometryUtility.CalculateFrustumPlanes(_mainCamera);
