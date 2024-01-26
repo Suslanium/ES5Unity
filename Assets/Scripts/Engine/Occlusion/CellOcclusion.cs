@@ -129,7 +129,7 @@ namespace Engine.Occlusion
             foreach (var (formId, room) in _currentFrameVisibleRooms)
             {
                 _previousFrameVisibleRooms.Add(formId, room);
-                if (!room.IsVisible) 
+                //if (!room.IsVisible) 
                     room.SetVisibility(true);
             }
 
