@@ -91,6 +91,7 @@ namespace Engine
 
         private IEnumerator PostProcessRoomsAndPortals(GameObject cellGameObject)
         {
+            StaticBatchingUtility.Combine(cellGameObject);
             var rooms = new Dictionary<uint, Room>();
             var portals = new List<Portal>();
             foreach (var (portalObject, originFormID, destinationFormID) in _tempPortals)
@@ -166,7 +167,7 @@ namespace Engine
                 .Where(directChild => directChild != null).ToList();
             childrenInCollider.AddRange(from Transform child in cellGameObject.transform
                 where roomTrigger.bounds.Contains(child.transform.position) && child.gameObject.layer != RoomLayer &&
-                      child.gameObject.layer != PortalLayer
+                      child.gameObject.layer != PortalLayer && child.GetComponent<Light>() == null
                 select child.gameObject);
 
             return childrenInCollider.Distinct().ToArray();
