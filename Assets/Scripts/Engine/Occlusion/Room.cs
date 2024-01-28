@@ -7,22 +7,9 @@ namespace Engine.Occlusion
     {
         public uint FormId { get; set; }
         
-        public GameObject[] RoomObjects { get; set; }
-
-        public bool IsVisible { get; set; } = true;
-        
         public CellOcclusion OcclusionObject { private get; set; }
         
         public List<Portal> Portals { get; private set; } = new();
-        
-        public void SetVisibility(bool visible)
-        {
-            IsVisible = visible;
-            foreach (var roomObject in RoomObjects)
-            {
-                roomObject.SetActive(visible);
-            }
-        }
         
         private void OnTriggerEnter(Collider other)
         {

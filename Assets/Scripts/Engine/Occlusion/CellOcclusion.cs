@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
@@ -14,14 +13,12 @@ namespace Engine.Occlusion
         private Plane[] _frustumPlanes;
 
         private Dictionary<uint, Room> CurrentRooms { get; set; } = new();
+        
+        private readonly Dictionary<(uint, uint), GameObject> _intersectionGameObjects = new();
 
-        public Portal[] Portals { get; set; }
-
-        private readonly Dictionary<(uint, uint), GameObject[]> _intersectingGameObjects = new();
+        private readonly Dictionary<uint, GameObject> _roomGameObjects = new();
 
         private readonly Dictionary<uint, Room> _currentFrameVisibleRooms = new(30);
-
-        private readonly Dictionary<uint, Room> _previousFrameVisibleRooms = new(30);
 
         private readonly HashSet<uint> _checkedRooms = new(30);
 
@@ -45,30 +42,53 @@ namespace Engine.Occlusion
 
         private Color[] _colors = { Color.red, Color.green, Color.blue, Color.yellow, Color.cyan };
 
-        public void Init()
+        public void Init(Dictionary<uint, List<GameObject>> roomObjects, GameObject parent)
         {
-            foreach (var room in Rooms.Values)
-            {
-                room.OcclusionObject = this;
-                room.SetVisibility(false);
-            }
-
             _mainCamera = Camera.main;
-
-            foreach (var (formId, room) in Rooms)
+            Dictionary<uint, List<GameObject>> newRoomObjects = new(roomObjects);
+            foreach (var formId in roomObjects.Keys)
             {
-                foreach (var (formId2, room2) in Rooms)
+                foreach (var formId2 in roomObjects.Keys.Where(formId2 => formId != formId2))
                 {
-                    if (formId == formId2) continue;
-                    if (_intersectingGameObjects.ContainsKey((formId2, formId)))
+                    if (_intersectionGameObjects.ContainsKey((formId2, formId)))
                     {
-                        _intersectingGameObjects.Add((formId, formId2), _intersectingGameObjects[(formId2, formId)]);
+                        _intersectionGameObjects.Add((formId, formId2), _intersectionGameObjects[(formId2, formId)]);
                         continue;
                     }
 
-                    var intersectingGameObjects = room.RoomObjects.Intersect(room2.RoomObjects).ToArray();
-                    _intersectingGameObjects.Add((formId, formId2), intersectingGameObjects);
+                    var room = roomObjects[formId];
+                    var room2 = roomObjects[formId2];
+                    var intersectingRoomObjects = room.Intersect(room2).ToList();
+                    var intersectionObject = new GameObject($"Intersection {formId} {formId2}");
+                    intersectionObject.transform.SetParent(parent.transform, false);
+                    foreach (var intersectionGameObject in intersectingRoomObjects)
+                    {
+                        intersectionGameObject.transform.SetParent(intersectionObject.transform, true);
+                    }
+
+                    intersectionObject.SetActive(false);
+                    _intersectionGameObjects.Add((formId, formId2), intersectionObject);
+                    newRoomObjects[formId] = newRoomObjects[formId].Except(intersectingRoomObjects).ToList();
+                    newRoomObjects[formId2] = newRoomObjects[formId2].Except(intersectingRoomObjects).ToList();
                 }
+            }
+
+            foreach (var (formId, currentRoomObjects) in newRoomObjects)
+            {
+                var roomObject = new GameObject($"Room {formId}");
+                roomObject.transform.SetParent(parent.transform, false);
+                foreach (var currentRoomObject in currentRoomObjects)
+                {
+                    currentRoomObject.transform.SetParent(roomObject.transform, true);
+                }
+
+                roomObject.SetActive(false);
+                _roomGameObjects.Add(formId, roomObject);
+            }
+
+            foreach (var room in Rooms.Values)
+            {
+                room.OcclusionObject = this;
             }
         }
 
@@ -82,29 +102,13 @@ namespace Engine.Occlusion
 
         public void AddCurrentRoom(uint formId, Room room)
         {
-            if (!CurrentRooms.TryAdd(formId, room)) return;
-            if (room.IsVisible) return;
-            room.SetVisibility(true);
+            CurrentRooms.TryAdd(formId, room);
         }
 
         public void RemoveCurrentRoom(uint formId, Room room)
         {
             if (!CurrentRooms.ContainsKey(formId)) return;
             CurrentRooms.Remove(formId);
-            if (!room.IsVisible) return;
-            DisableRoom(formId, room);
-        }
-
-        private void DisableRoom(uint formId, Room room)
-        {
-            room.SetVisibility(false);
-            foreach (var intersection in CurrentRooms.Keys.SelectMany(visibleFormId =>
-                         visibleFormId != formId
-                             ? _intersectingGameObjects[(formId, visibleFormId)]
-                             : Array.Empty<GameObject>()))
-            {
-                intersection.SetActive(true);
-            }
         }
 
         //TODO the algorithm itself works. It determines the rooms that should be visible and invisible correctly. BUT the whole room activation/deactivation thing is glitchy. Part of the problem is that the Room's IsVisible attribute is inaccurate. But most of the problems here come from the fact that there are intersections between rooms (some objects belong to multiple rooms).
@@ -118,22 +122,20 @@ namespace Engine.Occlusion
 
             _checkedRooms.Clear();
 
-            foreach (var (formId, room) in _previousFrameVisibleRooms)
+            foreach (var (formId, roomObject) in _roomGameObjects)
             {
-                if (_currentFrameVisibleRooms.ContainsKey(formId)) continue;
-                if (CurrentRooms.ContainsKey(formId)) continue;
-                if (room.IsVisible) 
-                    DisableRoom(formId, room);
+                if (CurrentRooms.ContainsKey(formId) || _currentFrameVisibleRooms.ContainsKey(formId))
+                    roomObject.SetActive(true);
+                else roomObject.SetActive(false);
             }
 
-            _previousFrameVisibleRooms.Clear();
-            foreach (var (formId, room) in _currentFrameVisibleRooms)
+            foreach (var ((formId, formId2), intersection) in _intersectionGameObjects)
             {
-                _previousFrameVisibleRooms.Add(formId, room);
-                //if (!room.IsVisible) 
-                    room.SetVisibility(true);
+                if (CurrentRooms.ContainsKey(formId) || _currentFrameVisibleRooms.ContainsKey(formId) ||
+                    CurrentRooms.ContainsKey(formId2) ||
+                    _currentFrameVisibleRooms.ContainsKey(formId2)) intersection.SetActive(true);
+                else intersection.SetActive(false);
             }
-
             _currentFrameVisibleRooms.Clear();
         }
 
@@ -144,7 +146,7 @@ namespace Engine.Occlusion
             while (_roomsToCheck.TryDequeue(out var roomToCheck))
             {
                 var (formId, room, excludedPortal) = roomToCheck;
-                
+
                 foreach (var portal in room.Portals)
                 {
                     if (portal == excludedPortal) continue;
@@ -152,19 +154,14 @@ namespace Engine.Occlusion
                     var checkedRoom = portal.Room1FormId == formId
                         ? (portal.Room2FormId, portal.Room2)
                         : (portal.Room1FormId, portal.Room1);
-                    
+
                     if (!_checkedRooms.Add(checkedRoom.Item1)) continue;
                     if (CurrentRooms.ContainsKey(checkedRoom.Item1)) continue;
-                    
+
                     var portalCollider = portal.PortalCollider;
                     var bounds = portalCollider.bounds;
-                    
-                    if (!GeometryUtility.TestPlanesAABB(_frustumPlanes, bounds))
-                    {
-                        // if (!checkedRoom.Item2.IsVisible) continue;
-                        // DisableRoom(checkedRoom.Item1, checkedRoom.Item2);
-                        continue;
-                    }
+
+                    if (!GeometryUtility.TestPlanesAABB(_frustumPlanes, bounds)) continue;
 
                     var portalTransform = portalCollider.transform;
                     var portalPosition = portalTransform.position;
@@ -197,6 +194,7 @@ namespace Engine.Occlusion
                             Vector3.Distance(portalPosition - right * bounds.extents.z, cameraPosition) +
                             RayCastLengthDelta;
                     }
+
                     _rayCastDirections[3] = portalPosition + up * bounds.extents.y - cameraPosition;
                     _rayCastDirections[4] = portalPosition - up * bounds.extents.y - cameraPosition;
                     _rayCastLengths[3] = Vector3.Distance(portalPosition + up * bounds.extents.y, cameraPosition) +
@@ -204,7 +202,6 @@ namespace Engine.Occlusion
                     _rayCastLengths[4] = Vector3.Distance(portalPosition - up * bounds.extents.y, cameraPosition) +
                                          RayCastLengthDelta;
 
-                    //var portalIsVisible = false;
                     for (var j = 0; j < 5; j++)
                     {
                         var size = Physics.RaycastNonAlloc(cameraPosition, _rayCastDirections[j], _results,
@@ -240,9 +237,6 @@ namespace Engine.Occlusion
                         _portalHits.Clear();
 
                         if (rayIntersectsRoom) continue;
-                        // portalIsVisible = true;
-                        //  if (!checkedRoom.Item2.IsVisible)
-                        //      checkedRoom.Item2.SetVisibility(true);
                         _currentFrameVisibleRooms.Add(checkedRoom.Item1, checkedRoom.Item2);
                         _roomsToCheck.Enqueue((checkedRoom.Item1, checkedRoom.Item2, portal));
                         for (var z = 0; z < 5; z++)
@@ -250,13 +244,8 @@ namespace Engine.Occlusion
                             Debug.DrawRay(cameraPosition, _rayCastDirections[z], _colors[z]);
                         }
 
-                        //CheckRoomPortals(checkedRoom.Item1, checkedRoom.Item2, portal);
                         break;
                     }
-
-                    // if (portalIsVisible) continue;
-                    //  if (!checkedRoom.Item2.IsVisible) continue;
-                    //  DisableRoom(checkedRoom.Item1, checkedRoom.Item2);
                 }
             }
         }

@@ -93,7 +93,7 @@ namespace Engine
         {
             StaticBatchingUtility.Combine(cellGameObject);
             var rooms = new Dictionary<uint, Room>();
-            var portals = new List<Portal>();
+            var roomObjects = new Dictionary<uint, List<GameObject>>();
             foreach (var (portalObject, originFormID, destinationFormID) in _tempPortals)
             {
                 if (!_tempRooms.ContainsKey(originFormID) || !_tempRooms.ContainsKey(destinationFormID)) continue;
@@ -103,8 +103,8 @@ namespace Engine
                 if (originRoomInstance == null)
                 {
                     originRoomInstance = originRoom.AddComponent<Room>();
-                    originRoomInstance.RoomObjects =
-                        GetRoomGameObjects(cellGameObject, originRoom.GetComponent<BoxCollider>());
+                    roomObjects.Add(originFormID,
+                        GetRoomGameObjects(cellGameObject, originRoom.GetComponent<BoxCollider>()));
                     rooms.Add(originFormID, originRoomInstance);
                     originRoomInstance.FormId = originFormID;
                 }
@@ -113,17 +113,17 @@ namespace Engine
                 if (destinationRoomInstance == null)
                 {
                     destinationRoomInstance = destinationRoom.AddComponent<Room>();
-                    destinationRoomInstance.RoomObjects =
-                        GetRoomGameObjects(cellGameObject, destinationRoom.GetComponent<BoxCollider>());
+                    roomObjects.Add(destinationFormID,
+                        GetRoomGameObjects(cellGameObject, destinationRoom.GetComponent<BoxCollider>()));
                     rooms.Add(destinationFormID, destinationRoomInstance);
                     destinationRoomInstance.FormId = destinationFormID;
                 }
 
-                var portal = new Portal(originRoomInstance, destinationRoomInstance, originFormID, destinationFormID, portalObject,
+                var portal = new Portal(originRoomInstance, destinationRoomInstance, originFormID, destinationFormID,
+                    portalObject,
                     portalObject.GetComponent<BoxCollider>());
                 originRoomInstance.Portals.Add(portal);
                 destinationRoomInstance.Portals.Add(portal);
-                portals.Add(portal);
                 yield return null;
             }
 
@@ -131,15 +131,14 @@ namespace Engine
             {
                 var room = _tempRooms[roomWithoutPortalsFormId];
                 var roomInstance = room.AddComponent<Room>();
-                roomInstance.RoomObjects = GetRoomGameObjects(cellGameObject, room.GetComponent<BoxCollider>());
+                roomObjects.Add(roomWithoutPortalsFormId, GetRoomGameObjects(cellGameObject, room.GetComponent<BoxCollider>()));
                 roomInstance.FormId = roomWithoutPortalsFormId;
                 rooms.Add(roomWithoutPortalsFormId, roomInstance);
             }
 
             var cellOcclusion = cellGameObject.AddComponent<CellOcclusion>();
-            cellOcclusion.Portals = portals.ToArray();
             cellOcclusion.Rooms = rooms;
-            cellOcclusion.Init();
+            cellOcclusion.Init(roomObjects, cellGameObject);
 
             _tempPortals.Clear();
             _tempRooms.Clear();
@@ -154,7 +153,7 @@ namespace Engine
             yield return null;
         }
 
-        private static GameObject[] GetRoomGameObjects(GameObject cellGameObject, BoxCollider roomTrigger)
+        private static List<GameObject> GetRoomGameObjects(GameObject cellGameObject, BoxCollider roomTrigger)
         {
             var bounds = roomTrigger.bounds;
             var colliders = Physics.OverlapBox(bounds.center, bounds.extents, roomTrigger.transform.rotation);
@@ -170,7 +169,7 @@ namespace Engine
                       child.gameObject.layer != PortalLayer && child.GetComponent<Light>() == null
                 select child.gameObject);
 
-            return childrenInCollider.Distinct().ToArray();
+            return childrenInCollider.Distinct().ToList();
         }
 
         private static GameObject GetDirectChild(GameObject nestedChild, GameObject parent)
