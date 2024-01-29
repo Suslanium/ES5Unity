@@ -28,8 +28,6 @@ namespace Engine.Occlusion
         
         private readonly HashSet<uint> _previousFrameVisibleRooms = new(30);
 
-        private readonly HashSet<uint> _checkedRooms = new(30);
-
         private readonly Queue<(uint, Room, Portal)> _roomsToCheck = new(30);
 
         private int _portalLayer;
@@ -123,8 +121,6 @@ namespace Engine.Occlusion
                 CheckRoomPortals(formId, room);
             }
 
-            _checkedRooms.Clear();
-
             if (!_currentRoomSetHasChanged && _currentFrameVisibleRooms.SetEquals(_previousFrameVisibleRooms))
             {
                 _currentFrameVisibleRooms.Clear();
@@ -177,7 +173,7 @@ namespace Engine.Occlusion
                         ? (portal.Room2FormId, portal.Room2)
                         : (portal.Room1FormId, portal.Room1);
 
-                    if (!_checkedRooms.Add(checkedRoom.Item1)) continue;
+                    if (_currentFrameVisibleRooms.Contains(checkedRoom.Item1)) continue;
                     if (_currentRooms.ContainsKey(checkedRoom.Item1)) continue;
 
                     var portalCollider = portal.PortalCollider;
