@@ -114,7 +114,7 @@ namespace Engine.Occlusion
             _currentRoomSetHasChanged = true;
         }
 
-        //TODO the algorithm itself works. BUT the rooms can flicker when the player enters a room. Also, the algorithm itself is efficient enough, however the room activation/deactivation should be optimized if possible
+        //TODO the algorithm itself works. Also, the algorithm itself is efficient enough, however the room activation/deactivation should be optimized if possible
         public void FixedUpdate()
         {
             _frustumPlanes = GeometryUtility.CalculateFrustumPlanes(_mainCamera);
@@ -162,6 +162,8 @@ namespace Engine.Occlusion
         //TODO this thing works, but it doesn't account for rooms without portals
         private void CheckRoomPortals(uint originFormId, Room originRoom)
         {
+            var playerColliderBounds = _playerCollider.bounds;
+            playerColliderBounds.Expand(Vector3.one * 3);
             _roomsToCheck.Enqueue((originFormId, originRoom, null));
             while (_roomsToCheck.TryDequeue(out var roomToCheck))
             {
@@ -182,7 +184,7 @@ namespace Engine.Occlusion
 
                     if (!GeometryUtility.TestPlanesAABB(_frustumPlanes, portalCollider.bounds)) continue;
                     
-                    if (portalCollider.bounds.Intersects(_playerCollider.bounds))
+                    if (portalCollider.bounds.Intersects(playerColliderBounds))
                     {
                         _currentFrameVisibleRooms.Add(checkedRoom.Item1);
                         _roomsToCheck.Enqueue((checkedRoom.Item1, checkedRoom.Item2, portal)); 
@@ -242,6 +244,7 @@ namespace Engine.Occlusion
                             var hit = _results[i];
                             if (hit.transform.gameObject.layer == _portalLayer) continue;
                             if (_portalHits.Contains(RoundVector3(hit.point))) continue;
+                            if (playerColliderBounds.Contains(hit.point)) continue;
                             rayIntersectsRoom = true;
                             break;
                         }
