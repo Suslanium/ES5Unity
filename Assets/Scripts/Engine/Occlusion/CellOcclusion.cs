@@ -8,6 +8,8 @@ namespace Engine.Occlusion
     {
         private Camera _mainCamera;
 
+        private Collider _playerCollider;
+
         private Plane[] _frustumPlanes;
 
         private readonly Dictionary<uint, Room> _currentRooms = new();
@@ -44,8 +46,9 @@ namespace Engine.Occlusion
 
         private const float RayCastLengthDelta = 0.5f;
 
-        public void Init(Dictionary<uint, List<GameObject>> roomObjects, GameObject parent, List<Room> rooms)
+        public void Init(Dictionary<uint, List<GameObject>> roomObjects, GameObject parent, List<Room> rooms, Collider playerCollider)
         {
+            _playerCollider = playerCollider;
             _mainCamera = Camera.main;
             Dictionary<uint, List<GameObject>> newRoomObjects = new(roomObjects);
             foreach (Transform child in parent.transform)
@@ -112,7 +115,7 @@ namespace Engine.Occlusion
         }
 
         //TODO the algorithm itself works. BUT the rooms can flicker when the player enters a room. Also, the algorithm itself is efficient enough, however the room activation/deactivation should be optimized if possible
-        public void Update()
+        public void FixedUpdate()
         {
             _frustumPlanes = GeometryUtility.CalculateFrustumPlanes(_mainCamera);
             foreach (var (formId, room) in _currentRooms)
@@ -178,7 +181,14 @@ namespace Engine.Occlusion
                     var portalCollider = portal.PortalCollider;
 
                     if (!GeometryUtility.TestPlanesAABB(_frustumPlanes, portalCollider.bounds)) continue;
-
+                    
+                    if (portalCollider.bounds.Intersects(_playerCollider.bounds))
+                    {
+                        _currentFrameVisibleRooms.Add(checkedRoom.Item1);
+                        _roomsToCheck.Enqueue((checkedRoom.Item1, checkedRoom.Item2, portal)); 
+                        continue;
+                    }
+                    
                     var portalTransform = portalCollider.transform;
                     var portalPosition = portalTransform.position;
                     var cameraPosition = _mainCamera.transform.position;

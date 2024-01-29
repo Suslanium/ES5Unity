@@ -92,6 +92,7 @@ namespace Engine
         private IEnumerator PostProcessInteriorCell(GameObject cellGameObject)
         {
             StaticBatchingUtility.Combine(cellGameObject);
+            var player = GameObject.FindGameObjectWithTag("Player");
             if (_tempPortals.Count > 0 || _tempRooms.Count > 0)
             {
                 var rooms = new Dictionary<uint, Room>();
@@ -141,13 +142,12 @@ namespace Engine
                 }
 
                 var cellOcclusion = cellGameObject.AddComponent<CellOcclusion>();
-                cellOcclusion.Init(roomObjects, cellGameObject, rooms.Values.ToList());
+                cellOcclusion.Init(roomObjects, cellGameObject, rooms.Values.ToList(), player.GetComponentInChildren<Collider>());
             }
 
             _tempPortals.Clear();
             _tempRooms.Clear();
-
-            var player = GameObject.FindGameObjectWithTag("Player");
+            
             player.SetActive(false);
             player.transform.position = _tempPlayerPosition;
             player.transform.rotation = _tempPlayerRotation;
