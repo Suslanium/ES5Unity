@@ -6,25 +6,29 @@ namespace Engine.Occlusion
 {
     public class CellOcclusion : MonoBehaviour
     {
-        public Dictionary<uint, Room> Rooms { get; set; }
-
         private Camera _mainCamera;
 
         private Plane[] _frustumPlanes;
 
-        private Dictionary<uint, Room> CurrentRooms { get; set; } = new();
+        private readonly Dictionary<uint, Room> _currentRooms = new();
         
-        private readonly Dictionary<(uint, uint), GameObject> _intersectionGameObjects = new();
+        private bool _currentRoomSetHasChanged;
+
+        private readonly Dictionary<uint, List<GameObject>> _roomIntersectingObjects = new();
+        
+        private readonly Dictionary<GameObject, bool> _intersectionObjectShouldBeActive = new();
+        
+        private List<GameObject> _interSectionObjectKeys;
 
         private readonly Dictionary<uint, GameObject> _roomGameObjects = new();
 
-        private readonly Dictionary<uint, Room> _currentFrameVisibleRooms = new(30);
+        private readonly HashSet<uint> _currentFrameVisibleRooms = new(30);
+        
+        private readonly HashSet<uint> _previousFrameVisibleRooms = new(30);
 
         private readonly HashSet<uint> _checkedRooms = new(30);
 
         private readonly Queue<(uint, Room, Portal)> _roomsToCheck = new(30);
-
-        private int _roomLayer;
 
         private int _portalLayer;
 
@@ -40,38 +44,32 @@ namespace Engine.Occlusion
 
         private const float RayCastLengthDelta = 0.5f;
 
-        private Color[] _colors = { Color.red, Color.green, Color.blue, Color.yellow, Color.cyan };
-
-        public void Init(Dictionary<uint, List<GameObject>> roomObjects, GameObject parent)
+        public void Init(Dictionary<uint, List<GameObject>> roomObjects, GameObject parent, List<Room> rooms)
         {
             _mainCamera = Camera.main;
             Dictionary<uint, List<GameObject>> newRoomObjects = new(roomObjects);
-            foreach (var formId in roomObjects.Keys)
+            foreach (Transform child in parent.transform)
             {
-                foreach (var formId2 in roomObjects.Keys.Where(formId2 => formId != formId2))
+                List<uint> roomIds = new();
+                foreach (var (formId, currentRoom) in roomObjects)
                 {
-                    if (_intersectionGameObjects.ContainsKey((formId2, formId)))
-                    {
-                        _intersectionGameObjects.Add((formId, formId2), _intersectionGameObjects[(formId2, formId)]);
-                        continue;
-                    }
-
-                    var room = roomObjects[formId];
-                    var room2 = roomObjects[formId2];
-                    var intersectingRoomObjects = room.Intersect(room2).ToList();
-                    var intersectionObject = new GameObject($"Intersection {formId} {formId2}");
-                    intersectionObject.transform.SetParent(parent.transform, false);
-                    foreach (var intersectionGameObject in intersectingRoomObjects)
-                    {
-                        intersectionGameObject.transform.SetParent(intersectionObject.transform, true);
-                    }
-
-                    intersectionObject.SetActive(false);
-                    _intersectionGameObjects.Add((formId, formId2), intersectionObject);
-                    newRoomObjects[formId] = newRoomObjects[formId].Except(intersectingRoomObjects).ToList();
-                    newRoomObjects[formId2] = newRoomObjects[formId2].Except(intersectingRoomObjects).ToList();
+                    if (currentRoom.Contains(child.gameObject))
+                        roomIds.Add(formId);
                 }
+
+                if (roomIds.Count <= 1) continue;
+
+                foreach (var formId in roomIds)
+                {
+                    newRoomObjects[formId].Remove(child.gameObject);
+                    if (!_roomIntersectingObjects.ContainsKey(formId))
+                        _roomIntersectingObjects.Add(formId, new List<GameObject>{ child.gameObject });
+                    _roomIntersectingObjects[formId].Add(child.gameObject);
+                }
+                _intersectionObjectShouldBeActive.Add(child.gameObject, false);
+                child.gameObject.SetActive(false);
             }
+            _interSectionObjectKeys = _intersectionObjectShouldBeActive.Keys.ToList();
 
             foreach (var (formId, currentRoomObjects) in newRoomObjects)
             {
@@ -86,7 +84,7 @@ namespace Engine.Occlusion
                 _roomGameObjects.Add(formId, roomObject);
             }
 
-            foreach (var room in Rooms.Values)
+            foreach (var room in rooms)
             {
                 room.OcclusionObject = this;
             }
@@ -95,51 +93,70 @@ namespace Engine.Occlusion
         public void Start()
         {
             string[] layerNames = { "Room", "Portal" };
-            _roomLayer = LayerMask.NameToLayer(layerNames[0]);
+            LayerMask.NameToLayer(layerNames[0]);
             _portalLayer = LayerMask.NameToLayer(layerNames[1]);
             _rayCastLayerMask = LayerMask.GetMask(layerNames);
         }
 
         public void AddCurrentRoom(uint formId, Room room)
         {
-            CurrentRooms.TryAdd(formId, room);
+            _currentRooms.TryAdd(formId, room);
+            _currentRoomSetHasChanged = true;
         }
 
-        public void RemoveCurrentRoom(uint formId, Room room)
+        public void RemoveCurrentRoom(uint formId)
         {
-            if (!CurrentRooms.ContainsKey(formId)) return;
-            CurrentRooms.Remove(formId);
+            if (!_currentRooms.ContainsKey(formId)) return;
+            _currentRooms.Remove(formId);
+            _currentRoomSetHasChanged = true;
         }
 
-        //TODO the algorithm itself works. It determines the rooms that should be visible and invisible correctly. BUT the whole room activation/deactivation thing is glitchy. Part of the problem is that the Room's IsVisible attribute is inaccurate. But most of the problems here come from the fact that there are intersections between rooms (some objects belong to multiple rooms).
+        //TODO the algorithm itself works. BUT the rooms can flicker when the player enters a room. Also, the algorithm itself is efficient enough, however the room activation/deactivation should be optimized if possible
         public void Update()
         {
             _frustumPlanes = GeometryUtility.CalculateFrustumPlanes(_mainCamera);
-            foreach (var (formId, room) in CurrentRooms)
+            foreach (var (formId, room) in _currentRooms)
             {
                 CheckRoomPortals(formId, room);
             }
 
             _checkedRooms.Clear();
 
+            if (!_currentRoomSetHasChanged && _currentFrameVisibleRooms.SetEquals(_previousFrameVisibleRooms))
+            {
+                _currentFrameVisibleRooms.Clear();
+                return;
+            }
+            _previousFrameVisibleRooms.Clear();
+            
             foreach (var (formId, roomObject) in _roomGameObjects)
             {
-                if (CurrentRooms.ContainsKey(formId) || _currentFrameVisibleRooms.ContainsKey(formId))
+                if (_currentRooms.ContainsKey(formId) || _currentFrameVisibleRooms.Contains(formId))
+                {
+                    if (_currentFrameVisibleRooms.Contains(formId))
+                        _previousFrameVisibleRooms.Add(formId);
                     roomObject.SetActive(true);
+                    foreach (var intersectionObject in _roomIntersectingObjects[formId])
+                    {
+                        _intersectionObjectShouldBeActive[intersectionObject] = true;
+                    }
+                }
                 else roomObject.SetActive(false);
             }
-
-            foreach (var ((formId, formId2), intersection) in _intersectionGameObjects)
+            
+            foreach (var intersectionObject in _interSectionObjectKeys)
             {
-                if (CurrentRooms.ContainsKey(formId) || _currentFrameVisibleRooms.ContainsKey(formId) ||
-                    CurrentRooms.ContainsKey(formId2) ||
-                    _currentFrameVisibleRooms.ContainsKey(formId2)) intersection.SetActive(true);
-                else intersection.SetActive(false);
+                intersectionObject.SetActive(_intersectionObjectShouldBeActive[intersectionObject]);
+                _intersectionObjectShouldBeActive[intersectionObject] = false;
             }
+            
+            if (_currentRoomSetHasChanged)
+                _currentRoomSetHasChanged = false;
+
             _currentFrameVisibleRooms.Clear();
         }
 
-        //TODO this method works, but it doesn't account for rooms without portals
+        //TODO this thing works, but it doesn't account for rooms without portals
         private void CheckRoomPortals(uint originFormId, Room originRoom)
         {
             _roomsToCheck.Enqueue((originFormId, originRoom, null));
@@ -156,50 +173,35 @@ namespace Engine.Occlusion
                         : (portal.Room1FormId, portal.Room1);
 
                     if (!_checkedRooms.Add(checkedRoom.Item1)) continue;
-                    if (CurrentRooms.ContainsKey(checkedRoom.Item1)) continue;
+                    if (_currentRooms.ContainsKey(checkedRoom.Item1)) continue;
 
                     var portalCollider = portal.PortalCollider;
-                    var bounds = portalCollider.bounds;
 
-                    if (!GeometryUtility.TestPlanesAABB(_frustumPlanes, bounds)) continue;
+                    if (!GeometryUtility.TestPlanesAABB(_frustumPlanes, portalCollider.bounds)) continue;
 
                     var portalTransform = portalCollider.transform;
                     var portalPosition = portalTransform.position;
                     var cameraPosition = _mainCamera.transform.position;
                     var right = portalTransform.right;
                     var up = portalTransform.up;
+                    var portalSize = portalCollider.size;
 
 
                     _rayCastDirections[0] = portalPosition - cameraPosition;
                     _rayCastLengths[0] = Vector3.Distance(portalPosition, cameraPosition) + RayCastLengthDelta;
-                    if (bounds.extents.x > 0.5f)
-                    {
-                        _rayCastDirections[1] = portalPosition + right * bounds.extents.x - cameraPosition;
-                        _rayCastDirections[2] = portalPosition - right * bounds.extents.x - cameraPosition;
-                        _rayCastLengths[1] =
-                            Vector3.Distance(portalPosition + right * bounds.extents.x, cameraPosition) +
-                            RayCastLengthDelta;
-                        _rayCastLengths[2] =
-                            Vector3.Distance(portalPosition - right * bounds.extents.x, cameraPosition) +
-                            RayCastLengthDelta;
-                    }
-                    else
-                    {
-                        _rayCastDirections[1] = portalPosition + right * bounds.extents.z - cameraPosition;
-                        _rayCastDirections[2] = portalPosition - right * bounds.extents.z - cameraPosition;
-                        _rayCastLengths[1] =
-                            Vector3.Distance(portalPosition + right * bounds.extents.z, cameraPosition) +
-                            RayCastLengthDelta;
-                        _rayCastLengths[2] =
-                            Vector3.Distance(portalPosition - right * bounds.extents.z, cameraPosition) +
-                            RayCastLengthDelta;
-                    }
-
-                    _rayCastDirections[3] = portalPosition + up * bounds.extents.y - cameraPosition;
-                    _rayCastDirections[4] = portalPosition - up * bounds.extents.y - cameraPosition;
-                    _rayCastLengths[3] = Vector3.Distance(portalPosition + up * bounds.extents.y, cameraPosition) +
+                    _rayCastDirections[1] = portalPosition + right * portalSize.x / 2 - cameraPosition;
+                    _rayCastDirections[2] = portalPosition - right * portalSize.x / 2 - cameraPosition;
+                    _rayCastLengths[1] =
+                        Vector3.Distance(portalPosition + right * portalSize.x / 2, cameraPosition) +
+                        RayCastLengthDelta;
+                    _rayCastLengths[2] =
+                        Vector3.Distance(portalPosition - right * portalSize.x / 2, cameraPosition) +
+                        RayCastLengthDelta;
+                    _rayCastDirections[3] = portalPosition + up * portalSize.y / 2 - cameraPosition;
+                    _rayCastDirections[4] = portalPosition - up * portalSize.y / 2 - cameraPosition;
+                    _rayCastLengths[3] = Vector3.Distance(portalPosition + up * portalSize.y / 2, cameraPosition) +
                                          RayCastLengthDelta;
-                    _rayCastLengths[4] = Vector3.Distance(portalPosition - up * bounds.extents.y, cameraPosition) +
+                    _rayCastLengths[4] = Vector3.Distance(portalPosition - up * portalSize.y / 2, cameraPosition) +
                                          RayCastLengthDelta;
 
                     for (var j = 0; j < 5; j++)
@@ -237,12 +239,8 @@ namespace Engine.Occlusion
                         _portalHits.Clear();
 
                         if (rayIntersectsRoom) continue;
-                        _currentFrameVisibleRooms.Add(checkedRoom.Item1, checkedRoom.Item2);
+                        _currentFrameVisibleRooms.Add(checkedRoom.Item1);
                         _roomsToCheck.Enqueue((checkedRoom.Item1, checkedRoom.Item2, portal));
-                        for (var z = 0; z < 5; z++)
-                        {
-                            Debug.DrawRay(cameraPosition, _rayCastDirections[z], _colors[z]);
-                        }
 
                         break;
                     }

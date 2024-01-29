@@ -83,62 +83,66 @@ namespace Engine
                 }
             }
 
-            var postProcessTask = PostProcessRoomsAndPortals(cellGameObject);
+            var postProcessTask = PostProcessInteriorCell(cellGameObject);
             _temporalLoadBalancer.AddTask(postProcessTask);
             cellInfo.ObjectCreationCoroutines.Add(postProcessTask);
             _cells.Add(cellInfo);
         }
 
-        private IEnumerator PostProcessRoomsAndPortals(GameObject cellGameObject)
+        private IEnumerator PostProcessInteriorCell(GameObject cellGameObject)
         {
             StaticBatchingUtility.Combine(cellGameObject);
-            var rooms = new Dictionary<uint, Room>();
-            var roomObjects = new Dictionary<uint, List<GameObject>>();
-            foreach (var (portalObject, originFormID, destinationFormID) in _tempPortals)
+            if (_tempPortals.Count > 0 || _tempRooms.Count > 0)
             {
-                if (!_tempRooms.ContainsKey(originFormID) || !_tempRooms.ContainsKey(destinationFormID)) continue;
-                var originRoom = _tempRooms[originFormID];
-                var destinationRoom = _tempRooms[destinationFormID];
-                var originRoomInstance = rooms.GetValueOrDefault(originFormID);
-                if (originRoomInstance == null)
+                var rooms = new Dictionary<uint, Room>();
+                var roomObjects = new Dictionary<uint, List<GameObject>>();
+                foreach (var (portalObject, originFormID, destinationFormID) in _tempPortals)
                 {
-                    originRoomInstance = originRoom.AddComponent<Room>();
-                    roomObjects.Add(originFormID,
-                        GetRoomGameObjects(cellGameObject, originRoom.GetComponent<BoxCollider>()));
-                    rooms.Add(originFormID, originRoomInstance);
-                    originRoomInstance.FormId = originFormID;
+                    if (!_tempRooms.ContainsKey(originFormID) || !_tempRooms.ContainsKey(destinationFormID)) continue;
+                    var originRoom = _tempRooms[originFormID];
+                    var destinationRoom = _tempRooms[destinationFormID];
+                    var originRoomInstance = rooms.GetValueOrDefault(originFormID);
+                    if (originRoomInstance == null)
+                    {
+                        originRoomInstance = originRoom.AddComponent<Room>();
+                        roomObjects.Add(originFormID,
+                            GetRoomGameObjects(cellGameObject, originRoom.GetComponent<BoxCollider>()));
+                        rooms.Add(originFormID, originRoomInstance);
+                        originRoomInstance.FormId = originFormID;
+                    }
+
+                    var destinationRoomInstance = rooms.GetValueOrDefault(destinationFormID);
+                    if (destinationRoomInstance == null)
+                    {
+                        destinationRoomInstance = destinationRoom.AddComponent<Room>();
+                        roomObjects.Add(destinationFormID,
+                            GetRoomGameObjects(cellGameObject, destinationRoom.GetComponent<BoxCollider>()));
+                        rooms.Add(destinationFormID, destinationRoomInstance);
+                        destinationRoomInstance.FormId = destinationFormID;
+                    }
+
+                    var portal = new Portal(originRoomInstance, destinationRoomInstance, originFormID,
+                        destinationFormID,
+                        portalObject,
+                        portalObject.GetComponent<BoxCollider>());
+                    originRoomInstance.Portals.Add(portal);
+                    destinationRoomInstance.Portals.Add(portal);
+                    yield return null;
                 }
 
-                var destinationRoomInstance = rooms.GetValueOrDefault(destinationFormID);
-                if (destinationRoomInstance == null)
+                foreach (var roomWithoutPortalsFormId in _tempRooms.Keys.Except(rooms.Keys))
                 {
-                    destinationRoomInstance = destinationRoom.AddComponent<Room>();
-                    roomObjects.Add(destinationFormID,
-                        GetRoomGameObjects(cellGameObject, destinationRoom.GetComponent<BoxCollider>()));
-                    rooms.Add(destinationFormID, destinationRoomInstance);
-                    destinationRoomInstance.FormId = destinationFormID;
+                    var room = _tempRooms[roomWithoutPortalsFormId];
+                    var roomInstance = room.AddComponent<Room>();
+                    roomObjects.Add(roomWithoutPortalsFormId,
+                        GetRoomGameObjects(cellGameObject, room.GetComponent<BoxCollider>()));
+                    roomInstance.FormId = roomWithoutPortalsFormId;
+                    rooms.Add(roomWithoutPortalsFormId, roomInstance);
                 }
 
-                var portal = new Portal(originRoomInstance, destinationRoomInstance, originFormID, destinationFormID,
-                    portalObject,
-                    portalObject.GetComponent<BoxCollider>());
-                originRoomInstance.Portals.Add(portal);
-                destinationRoomInstance.Portals.Add(portal);
-                yield return null;
+                var cellOcclusion = cellGameObject.AddComponent<CellOcclusion>();
+                cellOcclusion.Init(roomObjects, cellGameObject, rooms.Values.ToList());
             }
-
-            foreach (var roomWithoutPortalsFormId in _tempRooms.Keys.Except(rooms.Keys))
-            {
-                var room = _tempRooms[roomWithoutPortalsFormId];
-                var roomInstance = room.AddComponent<Room>();
-                roomObjects.Add(roomWithoutPortalsFormId, GetRoomGameObjects(cellGameObject, room.GetComponent<BoxCollider>()));
-                roomInstance.FormId = roomWithoutPortalsFormId;
-                rooms.Add(roomWithoutPortalsFormId, roomInstance);
-            }
-
-            var cellOcclusion = cellGameObject.AddComponent<CellOcclusion>();
-            cellOcclusion.Rooms = rooms;
-            cellOcclusion.Init(roomObjects, cellGameObject);
 
             _tempPortals.Clear();
             _tempRooms.Clear();
@@ -155,18 +159,26 @@ namespace Engine
 
         private static List<GameObject> GetRoomGameObjects(GameObject cellGameObject, BoxCollider roomTrigger)
         {
-            var bounds = roomTrigger.bounds;
-            var colliders = Physics.OverlapBox(bounds.center, bounds.extents, roomTrigger.transform.rotation);
+            var roomSize = roomTrigger.size;
+            var localBounds = new Bounds(Vector3.zero, roomSize);
+            var roomTransform = roomTrigger.transform;
+            var colliders = Physics.OverlapBox(roomTransform.position, roomSize / 2, roomTransform.rotation);
             var childrenInCollider = colliders.Where(collider =>
                 {
                     GameObject gameObject;
-                    return (gameObject = collider.gameObject).layer != RoomLayer && gameObject.layer != PortalLayer &&
-                           gameObject.transform.IsChildOf(cellGameObject.transform);
+                    return (gameObject = collider.gameObject).layer != RoomLayer 
+                           && gameObject.layer != PortalLayer 
+                           && gameObject.transform.IsChildOf(cellGameObject.transform);
                 }).Select(collider => GetDirectChild(collider.gameObject, cellGameObject))
                 .Where(directChild => directChild != null).ToList();
-            childrenInCollider.AddRange(from Transform child in cellGameObject.transform
-                where roomTrigger.bounds.Contains(child.transform.position) && child.gameObject.layer != RoomLayer &&
-                      child.gameObject.layer != PortalLayer && child.GetComponent<Light>() == null
+            
+            childrenInCollider.AddRange(
+                from Transform child 
+                    in cellGameObject.transform
+                where localBounds.Contains(roomTrigger.transform.InverseTransformPoint(child.transform.position)) 
+                      && child.gameObject.layer != RoomLayer 
+                      && child.gameObject.layer != PortalLayer 
+                      && child.GetComponent<Light>() == null
                 select child.gameObject);
 
             return childrenInCollider.Distinct().ToList();

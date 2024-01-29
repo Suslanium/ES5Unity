@@ -23,7 +23,7 @@ namespace Engine.Occlusion
         {
             if (other.CompareTag("Player"))
             {
-                OcclusionObject.RemoveCurrentRoom(FormId, this);
+                OcclusionObject.RemoveCurrentRoom(FormId);
             }
         }
     }
