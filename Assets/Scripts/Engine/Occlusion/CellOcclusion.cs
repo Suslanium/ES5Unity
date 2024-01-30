@@ -230,7 +230,7 @@ namespace Engine.Occlusion
 
                             if (hit.transform.gameObject.layer == _portalLayer)
                             {
-                                _portalHits.Add(FloorVector3(hit.point));
+                                _portalHits.Add(FloorVector3ToEven(hit.point));
                             }
                         }
 
@@ -241,7 +241,7 @@ namespace Engine.Occlusion
                         {
                             var hit = _results[i];
                             if (hit.transform.gameObject.layer == _portalLayer) continue;
-                            if (_portalHits.Contains(FloorVector3(hit.point))) continue;
+                            if (_portalHits.Contains(FloorVector3ToEven(hit.point))) continue;
                             if (playerColliderBounds.Contains(hit.point)) continue;
                             rayIntersectsRoom = true;
                             break;
@@ -259,13 +259,12 @@ namespace Engine.Occlusion
             }
         }
 
-        //TODO this is a bit inaccurate: sometimes Floor/Ceil works better, sometimes Round works better
-        private static Vector3 FloorVector3(Vector3 vector3)
+        private static Vector3 FloorVector3ToEven(Vector3 vector3)
         {
             return new Vector3(
-                Mathf.Round(vector3.x),
-                Mathf.Round(vector3.y),
-                Mathf.Round(vector3.z));
+                Mathf.Floor(vector3.x / 2) * 2,
+                Mathf.Floor(vector3.y / 2) * 2,
+                Mathf.Floor(vector3.z / 2) * 2);
         }
     }
 }
