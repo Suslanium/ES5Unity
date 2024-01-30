@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Cinemachine;
 using Core;
 using Engine.Occlusion;
 using MasterFile;
@@ -95,6 +96,7 @@ namespace Engine
             var player = GameObject.FindGameObjectWithTag("Player");
             if (_tempPortals.Count > 0 || _tempRooms.Count > 0)
             {
+                //TODO move all this stuff to CellOcclusion Init
                 var rooms = new Dictionary<uint, Room>();
                 var roomObjects = new Dictionary<uint, List<GameObject>>();
                 foreach (var (portalObject, originFormID, destinationFormID) in _tempPortals)
@@ -142,12 +144,13 @@ namespace Engine
                 }
 
                 var cellOcclusion = cellGameObject.AddComponent<CellOcclusion>();
-                cellOcclusion.Init(roomObjects, cellGameObject, rooms.Values.ToList(), player.GetComponentInChildren<Collider>());
+                cellOcclusion.Init(roomObjects, cellGameObject, rooms.Values.ToList(),
+                    player.GetComponentInChildren<Collider>());
             }
 
             _tempPortals.Clear();
             _tempRooms.Clear();
-            
+
             player.SetActive(false);
             player.transform.position = _tempPlayerPosition;
             player.transform.rotation = _tempPlayerRotation;
@@ -166,18 +169,18 @@ namespace Engine
             var childrenInCollider = colliders.Where(collider =>
                 {
                     GameObject gameObject;
-                    return (gameObject = collider.gameObject).layer != RoomLayer 
-                           && gameObject.layer != PortalLayer 
+                    return (gameObject = collider.gameObject).layer != RoomLayer
+                           && gameObject.layer != PortalLayer
                            && gameObject.transform.IsChildOf(cellGameObject.transform);
                 }).Select(collider => GetDirectChild(collider.gameObject, cellGameObject))
                 .Where(directChild => directChild != null).ToList();
-            
+
             childrenInCollider.AddRange(
-                from Transform child 
+                from Transform child
                     in cellGameObject.transform
-                where localBounds.Contains(roomTrigger.transform.InverseTransformPoint(child.transform.position)) 
-                      && child.gameObject.layer != RoomLayer 
-                      && child.gameObject.layer != PortalLayer 
+                where localBounds.Contains(roomTrigger.transform.InverseTransformPoint(child.transform.position))
+                      && child.gameObject.layer != RoomLayer
+                      && child.gameObject.layer != PortalLayer
                       && child.GetComponent<Light>() == null
                 select child.gameObject);
 
@@ -310,6 +313,28 @@ namespace Engine
             {
                 RenderSettings.fogColor = new Color32(cellRecord.CellLightingInfo.FogNearColor[0],
                     cellRecord.CellLightingInfo.FogNearColor[1], cellRecord.CellLightingInfo.FogNearColor[2], 255);
+            }
+
+            if (Camera.main == null) return;
+            var mainCamera = Camera.main;
+            //This looks almost the same as forward rendering, but improves performance by a lot
+            mainCamera.renderingPath = RenderingPath.DeferredLighting;
+            if (!RenderSettings.fog) return;
+            //The camera shouldn't render anything beyond the fog
+            var farClipPlane = mainCamera.farClipPlane;
+            var convFogEndDist = Mathf.Lerp(mainCamera.nearClipPlane, (farClipPlane),
+                RenderSettings.fogEndDistance / farClipPlane);
+            mainCamera.clearFlags = CameraClearFlags.SolidColor;
+            mainCamera.backgroundColor = RenderSettings.fogColor;
+            var cinemachine = Camera.main.gameObject.GetComponent<CinemachineBrain>();
+            if (cinemachine != null)
+            {
+                cinemachine.ActiveVirtualCamera.VirtualCameraGameObject.GetComponent<CinemachineVirtualCamera>()
+                    .m_Lens.FarClipPlane = convFogEndDist;
+            }
+            else
+            {
+                mainCamera.farClipPlane = convFogEndDist;
             }
         }
 

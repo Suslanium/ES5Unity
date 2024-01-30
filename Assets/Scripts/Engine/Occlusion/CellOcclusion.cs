@@ -44,6 +44,8 @@ namespace Engine.Occlusion
 
         private const float RayCastLengthDelta = 0.5f;
 
+        private const int PlayerColliderSizeMultiplier = 3;
+
         public void Init(Dictionary<uint, List<GameObject>> roomObjects, GameObject parent, List<Room> rooms, Collider playerCollider)
         {
             _playerCollider = playerCollider;
@@ -159,7 +161,7 @@ namespace Engine.Occlusion
         private void CheckRoomPortals(uint originFormId, Room originRoom)
         {
             var playerColliderBounds = _playerCollider.bounds;
-            playerColliderBounds.Expand(Vector3.one * 3);
+            playerColliderBounds.Expand(Vector3.one * PlayerColliderSizeMultiplier);
             _roomsToCheck.Enqueue((originFormId, originRoom, null));
             while (_roomsToCheck.TryDequeue(out var roomToCheck))
             {
@@ -177,8 +179,6 @@ namespace Engine.Occlusion
                     if (_currentRooms.ContainsKey(checkedRoom.Item1)) continue;
 
                     var portalCollider = portal.PortalCollider;
-
-                    if (!GeometryUtility.TestPlanesAABB(_frustumPlanes, portalCollider.bounds)) continue;
                     
                     if (portalCollider.bounds.Intersects(playerColliderBounds))
                     {
@@ -186,6 +186,8 @@ namespace Engine.Occlusion
                         _roomsToCheck.Enqueue((checkedRoom.Item1, checkedRoom.Item2, portal)); 
                         continue;
                     }
+                    
+                    if (!GeometryUtility.TestPlanesAABB(_frustumPlanes, portalCollider.bounds)) continue;
                     
                     var portalTransform = portalCollider.transform;
                     var portalPosition = portalTransform.position;
@@ -228,7 +230,7 @@ namespace Engine.Occlusion
 
                             if (hit.transform.gameObject.layer == _portalLayer)
                             {
-                                _portalHits.Add(RoundVector3(hit.point));
+                                _portalHits.Add(FloorVector3(hit.point));
                             }
                         }
 
@@ -239,7 +241,7 @@ namespace Engine.Occlusion
                         {
                             var hit = _results[i];
                             if (hit.transform.gameObject.layer == _portalLayer) continue;
-                            if (_portalHits.Contains(RoundVector3(hit.point))) continue;
+                            if (_portalHits.Contains(FloorVector3(hit.point))) continue;
                             if (playerColliderBounds.Contains(hit.point)) continue;
                             rayIntersectsRoom = true;
                             break;
@@ -257,7 +259,8 @@ namespace Engine.Occlusion
             }
         }
 
-        private static Vector3 RoundVector3(Vector3 vector3)
+        //TODO this is a bit inaccurate: sometimes Floor/Ceil works better, sometimes Round works better
+        private static Vector3 FloorVector3(Vector3 vector3)
         {
             return new Vector3(
                 Mathf.Round(vector3.x),
