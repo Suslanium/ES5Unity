@@ -260,7 +260,7 @@ MonoBehaviour:
   dataPath: E:\SteamLibrary\steamapps\common\Skyrim\Data
   masterFilePath: E:\SteamLibrary\steamapps\common\Skyrim\Data\Skyrim.esm
   cellIds:
-  - Raldbthar01
+  - Avanchnzel03
   cellFormId: 0
 --- !u!4 &213492971
 Transform:

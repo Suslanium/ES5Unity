@@ -13,24 +13,26 @@ namespace Engine.Occlusion
         private Plane[] _frustumPlanes;
 
         private readonly Dictionary<uint, Room> _currentRooms = new();
-        
+
         private bool _currentRoomSetHasChanged;
 
         private readonly Dictionary<uint, List<GameObject>> _roomIntersectingObjects = new();
-        
+
         private readonly Dictionary<GameObject, bool> _intersectionObjectShouldBeActive = new();
-        
+
         private List<GameObject> _interSectionObjectKeys;
 
         private readonly Dictionary<uint, GameObject> _roomGameObjects = new();
 
         private readonly HashSet<uint> _currentFrameVisibleRooms = new(30);
-        
+
         private readonly HashSet<uint> _previousFrameVisibleRooms = new(30);
 
         private readonly Queue<(uint, Room, Portal)> _roomsToCheck = new(30);
 
-        private int _portalLayer;
+        private static int _portalLayer;
+
+        private static int _roomLayer;
 
         private LayerMask _rayCastLayerMask;
 
@@ -46,10 +48,110 @@ namespace Engine.Occlusion
 
         private const int PlayerColliderSizeMultiplier = 3;
 
-        public void Init(Dictionary<uint, List<GameObject>> roomObjects, GameObject parent, List<Room> rooms, Collider playerCollider)
+        #region initialization
+
+        public void Init(List<(GameObject, uint, uint)> portals, Dictionary<uint, GameObject> roomObject,
+            GameObject cellGameObject, Collider playerCollider)
         {
+            _portalLayer = LayerMask.NameToLayer("Portal");
+            _roomLayer = LayerMask.NameToLayer("Room");
             _playerCollider = playerCollider;
             _mainCamera = Camera.main;
+            var rooms = new Dictionary<uint, Room>();
+            var roomObjects = new Dictionary<uint, List<GameObject>>();
+            foreach (var (portalObject, originFormID, destinationFormID) in portals)
+            {
+                if (!roomObject.ContainsKey(originFormID) || !roomObject.ContainsKey(destinationFormID)) continue;
+                var originRoom = roomObject[originFormID];
+                var destinationRoom = roomObject[destinationFormID];
+                var originRoomInstance = rooms.GetValueOrDefault(originFormID);
+                if (originRoomInstance == null)
+                {
+                    originRoomInstance = originRoom.AddComponent<Room>();
+                    roomObjects.Add(originFormID,
+                        GetRoomGameObjects(cellGameObject, originRoom.GetComponent<BoxCollider>()));
+                    rooms.Add(originFormID, originRoomInstance);
+                    originRoomInstance.FormId = originFormID;
+                }
+
+                var destinationRoomInstance = rooms.GetValueOrDefault(destinationFormID);
+                if (destinationRoomInstance == null)
+                {
+                    destinationRoomInstance = destinationRoom.AddComponent<Room>();
+                    roomObjects.Add(destinationFormID,
+                        GetRoomGameObjects(cellGameObject, destinationRoom.GetComponent<BoxCollider>()));
+                    rooms.Add(destinationFormID, destinationRoomInstance);
+                    destinationRoomInstance.FormId = destinationFormID;
+                }
+
+                var portal = new Portal(originRoomInstance, destinationRoomInstance, originFormID,
+                    destinationFormID,
+                    portalObject,
+                    portalObject.GetComponent<BoxCollider>());
+                originRoomInstance.Portals.Add(portal);
+                destinationRoomInstance.Portals.Add(portal);
+            }
+
+            foreach (var roomWithoutPortalsFormId in roomObject.Keys.Except(rooms.Keys))
+            {
+                var room = roomObject[roomWithoutPortalsFormId];
+                var roomInstance = room.AddComponent<Room>();
+                roomObjects.Add(roomWithoutPortalsFormId,
+                    GetRoomGameObjects(cellGameObject, room.GetComponent<BoxCollider>()));
+                roomInstance.FormId = roomWithoutPortalsFormId;
+                rooms.Add(roomWithoutPortalsFormId, roomInstance);
+            }
+
+            PreProcessRoomIntersections(roomObjects, cellGameObject, rooms.Values.ToList());
+        }
+
+        private static List<GameObject> GetRoomGameObjects(GameObject cellGameObject, BoxCollider roomTrigger)
+        {
+            var roomSize = roomTrigger.size;
+            var localBounds = new Bounds(Vector3.zero, roomSize);
+            var roomTransform = roomTrigger.transform;
+            var colliders = Physics.OverlapBox(roomTransform.position, roomSize / 2, roomTransform.rotation);
+            var childrenInCollider = colliders.Where(collider =>
+                {
+                    GameObject gameObject;
+                    return (gameObject = collider.gameObject).layer != _roomLayer
+                           && gameObject.layer != _portalLayer
+                           && gameObject.transform.IsChildOf(cellGameObject.transform);
+                }).Select(collider => GetDirectChild(collider.gameObject, cellGameObject))
+                .Where(directChild => directChild != null).ToList();
+
+            childrenInCollider.AddRange(
+                from Transform child
+                    in cellGameObject.transform
+                where localBounds.Contains(roomTrigger.transform.InverseTransformPoint(child.transform.position))
+                      && child.gameObject.layer != _roomLayer
+                      && child.gameObject.layer != _portalLayer
+                      && child.GetComponent<Light>() == null
+                select child.gameObject);
+
+            return childrenInCollider.Distinct().ToList();
+        }
+
+        private static GameObject GetDirectChild(GameObject nestedChild, GameObject parent)
+        {
+            var currentParent = nestedChild.transform.parent;
+
+            while (currentParent != null)
+            {
+                if (currentParent.parent == parent.transform)
+                {
+                    return currentParent.gameObject;
+                }
+
+                currentParent = currentParent.parent;
+            }
+
+            return null;
+        }
+
+        private void PreProcessRoomIntersections(Dictionary<uint, List<GameObject>> roomObjects, GameObject parent,
+            List<Room> rooms)
+        {
             Dictionary<uint, List<GameObject>> newRoomObjects = new(roomObjects);
             foreach (Transform child in parent.transform)
             {
@@ -66,12 +168,14 @@ namespace Engine.Occlusion
                 {
                     newRoomObjects[formId].Remove(child.gameObject);
                     if (!_roomIntersectingObjects.ContainsKey(formId))
-                        _roomIntersectingObjects.Add(formId, new List<GameObject>{ child.gameObject });
+                        _roomIntersectingObjects.Add(formId, new List<GameObject> { child.gameObject });
                     _roomIntersectingObjects[formId].Add(child.gameObject);
                 }
+
                 _intersectionObjectShouldBeActive.Add(child.gameObject, false);
                 child.gameObject.SetActive(false);
             }
+
             _interSectionObjectKeys = _intersectionObjectShouldBeActive.Keys.ToList();
 
             foreach (var (formId, currentRoomObjects) in newRoomObjects)
@@ -96,10 +200,10 @@ namespace Engine.Occlusion
         public void Start()
         {
             string[] layerNames = { "Room", "Portal" };
-            LayerMask.NameToLayer(layerNames[0]);
-            _portalLayer = LayerMask.NameToLayer(layerNames[1]);
             _rayCastLayerMask = LayerMask.GetMask(layerNames);
         }
+
+        #endregion
 
         public void AddCurrentRoom(uint formId, Room room)
         {
@@ -114,7 +218,7 @@ namespace Engine.Occlusion
             _currentRoomSetHasChanged = true;
         }
 
-        //TODO the algorithm itself works. Also, the algorithm itself is efficient enough, however the room activation/deactivation should be optimized if possible
+        //TODO the algorithm itself is efficient enough, however the room activation/deactivation should be optimized if possible
         public void FixedUpdate()
         {
             _frustumPlanes = GeometryUtility.CalculateFrustumPlanes(_mainCamera);
@@ -128,8 +232,9 @@ namespace Engine.Occlusion
                 _currentFrameVisibleRooms.Clear();
                 return;
             }
+
             _previousFrameVisibleRooms.Clear();
-            
+
             foreach (var (formId, roomObject) in _roomGameObjects)
             {
                 if (_currentRooms.ContainsKey(formId) || _currentFrameVisibleRooms.Contains(formId))
@@ -144,13 +249,13 @@ namespace Engine.Occlusion
                 }
                 else roomObject.SetActive(false);
             }
-            
+
             foreach (var intersectionObject in _interSectionObjectKeys)
             {
                 intersectionObject.SetActive(_intersectionObjectShouldBeActive[intersectionObject]);
                 _intersectionObjectShouldBeActive[intersectionObject] = false;
             }
-            
+
             if (_currentRoomSetHasChanged)
                 _currentRoomSetHasChanged = false;
 
@@ -179,16 +284,16 @@ namespace Engine.Occlusion
                     if (_currentRooms.ContainsKey(checkedRoom.Item1)) continue;
 
                     var portalCollider = portal.PortalCollider;
-                    
+
                     if (portalCollider.bounds.Intersects(playerColliderBounds))
                     {
                         _currentFrameVisibleRooms.Add(checkedRoom.Item1);
-                        _roomsToCheck.Enqueue((checkedRoom.Item1, checkedRoom.Item2, portal)); 
+                        _roomsToCheck.Enqueue((checkedRoom.Item1, checkedRoom.Item2, portal));
                         continue;
                     }
-                    
+
                     if (!GeometryUtility.TestPlanesAABB(_frustumPlanes, portalCollider.bounds)) continue;
-                    
+
                     var portalTransform = portalCollider.transform;
                     var portalPosition = portalTransform.position;
                     var cameraPosition = _mainCamera.transform.position;

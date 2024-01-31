@@ -1,8 +1,6 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using Cinemachine;
 using Core;
 using Engine.Occlusion;
@@ -38,7 +36,7 @@ namespace Engine
         private readonly List<CellInfo> _cells = new();
         private static readonly int RoomLayer = LayerMask.NameToLayer("Room");
         private static readonly int PortalLayer = LayerMask.NameToLayer("Portal");
-        private readonly List<Tuple<GameObject, uint, uint>> _tempPortals = new();
+        private readonly List<(GameObject, uint, uint)> _tempPortals = new();
         private readonly Dictionary<uint, GameObject> _tempRooms = new();
         private Vector3 _tempPlayerPosition;
         private Quaternion _tempPlayerRotation;
@@ -96,56 +94,8 @@ namespace Engine
             var player = GameObject.FindGameObjectWithTag("Player");
             if (_tempPortals.Count > 0 || _tempRooms.Count > 0)
             {
-                //TODO move all this stuff to CellOcclusion Init
-                var rooms = new Dictionary<uint, Room>();
-                var roomObjects = new Dictionary<uint, List<GameObject>>();
-                foreach (var (portalObject, originFormID, destinationFormID) in _tempPortals)
-                {
-                    if (!_tempRooms.ContainsKey(originFormID) || !_tempRooms.ContainsKey(destinationFormID)) continue;
-                    var originRoom = _tempRooms[originFormID];
-                    var destinationRoom = _tempRooms[destinationFormID];
-                    var originRoomInstance = rooms.GetValueOrDefault(originFormID);
-                    if (originRoomInstance == null)
-                    {
-                        originRoomInstance = originRoom.AddComponent<Room>();
-                        roomObjects.Add(originFormID,
-                            GetRoomGameObjects(cellGameObject, originRoom.GetComponent<BoxCollider>()));
-                        rooms.Add(originFormID, originRoomInstance);
-                        originRoomInstance.FormId = originFormID;
-                    }
-
-                    var destinationRoomInstance = rooms.GetValueOrDefault(destinationFormID);
-                    if (destinationRoomInstance == null)
-                    {
-                        destinationRoomInstance = destinationRoom.AddComponent<Room>();
-                        roomObjects.Add(destinationFormID,
-                            GetRoomGameObjects(cellGameObject, destinationRoom.GetComponent<BoxCollider>()));
-                        rooms.Add(destinationFormID, destinationRoomInstance);
-                        destinationRoomInstance.FormId = destinationFormID;
-                    }
-
-                    var portal = new Portal(originRoomInstance, destinationRoomInstance, originFormID,
-                        destinationFormID,
-                        portalObject,
-                        portalObject.GetComponent<BoxCollider>());
-                    originRoomInstance.Portals.Add(portal);
-                    destinationRoomInstance.Portals.Add(portal);
-                    yield return null;
-                }
-
-                foreach (var roomWithoutPortalsFormId in _tempRooms.Keys.Except(rooms.Keys))
-                {
-                    var room = _tempRooms[roomWithoutPortalsFormId];
-                    var roomInstance = room.AddComponent<Room>();
-                    roomObjects.Add(roomWithoutPortalsFormId,
-                        GetRoomGameObjects(cellGameObject, room.GetComponent<BoxCollider>()));
-                    roomInstance.FormId = roomWithoutPortalsFormId;
-                    rooms.Add(roomWithoutPortalsFormId, roomInstance);
-                }
-
                 var cellOcclusion = cellGameObject.AddComponent<CellOcclusion>();
-                cellOcclusion.Init(roomObjects, cellGameObject, rooms.Values.ToList(),
-                    player.GetComponentInChildren<Collider>());
+                cellOcclusion.Init(_tempPortals, _tempRooms, cellGameObject, player.GetComponentInChildren<Collider>());
             }
 
             _tempPortals.Clear();
@@ -158,50 +108,6 @@ namespace Engine
             _tempPlayerPosition = Vector3.zero;
             _tempPlayerRotation = Quaternion.identity;
             yield return null;
-        }
-
-        private static List<GameObject> GetRoomGameObjects(GameObject cellGameObject, BoxCollider roomTrigger)
-        {
-            var roomSize = roomTrigger.size;
-            var localBounds = new Bounds(Vector3.zero, roomSize);
-            var roomTransform = roomTrigger.transform;
-            var colliders = Physics.OverlapBox(roomTransform.position, roomSize / 2, roomTransform.rotation);
-            var childrenInCollider = colliders.Where(collider =>
-                {
-                    GameObject gameObject;
-                    return (gameObject = collider.gameObject).layer != RoomLayer
-                           && gameObject.layer != PortalLayer
-                           && gameObject.transform.IsChildOf(cellGameObject.transform);
-                }).Select(collider => GetDirectChild(collider.gameObject, cellGameObject))
-                .Where(directChild => directChild != null).ToList();
-
-            childrenInCollider.AddRange(
-                from Transform child
-                    in cellGameObject.transform
-                where localBounds.Contains(roomTrigger.transform.InverseTransformPoint(child.transform.position))
-                      && child.gameObject.layer != RoomLayer
-                      && child.gameObject.layer != PortalLayer
-                      && child.GetComponent<Light>() == null
-                select child.gameObject);
-
-            return childrenInCollider.Distinct().ToList();
-        }
-
-        private static GameObject GetDirectChild(GameObject nestedChild, GameObject parent)
-        {
-            var currentParent = nestedChild.transform.parent;
-
-            while (currentParent != null)
-            {
-                if (currentParent.parent == parent.transform)
-                {
-                    return currentParent.gameObject;
-                }
-
-                currentParent = currentParent.parent;
-            }
-
-            return null;
         }
 
         private void ConfigureCellLighting(CELL cellRecord)
@@ -318,6 +224,11 @@ namespace Engine
             if (Camera.main == null) return;
             var mainCamera = Camera.main;
             //This looks almost the same as forward rendering, but improves performance by a lot
+            /*
+                WARNING: The line below won't work from Unity version 2022.2. 
+                To fix this, you can either choose forward rendering (which will decrease performance by a lot) or choose deferred shading path.
+                The main problem right now is that deferred shading looks really bad. The shaders probably need to be rewritten for deferred shading.
+            */
             mainCamera.renderingPath = RenderingPath.DeferredLighting;
             if (!RenderSettings.fog) return;
             //The camera shouldn't render anything beyond the fog
@@ -362,7 +273,7 @@ namespace Engine
                                 gameObject);
                             if (reference.PortalDestinations != null)
                             {
-                                _tempPortals.Add(Tuple.Create(gameObject, reference.PortalDestinations.OriginReference,
+                                _tempPortals.Add((gameObject, reference.PortalDestinations.OriginReference,
                                     reference.PortalDestinations.DestinationReference));
                             }
                             else
@@ -395,6 +306,7 @@ namespace Engine
                                 reference.Position[1], reference.Position[2]));
                             _tempPlayerRotation = NifUtils.NifEulerAnglesToUnityQuaternion(
                                 new Vector3(reference.Rotation[0], reference.Rotation[1], reference.Rotation[2]));
+                            break;
                         }
 
                         _nifManager.PreloadNifFile(staticRecord.NifModelFilename);
