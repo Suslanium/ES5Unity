@@ -28,7 +28,7 @@ namespace Engine.Occlusion
 
         private readonly HashSet<uint> _previousFrameVisibleRooms = new(30);
 
-        private readonly Queue<(uint, Room, Portal)> _roomsToCheck = new(30);
+        private readonly Queue<(uint, Room, Portal, HashSet<GameObject>)> _roomsToCheck = new(30);
 
         private static int _portalLayer;
 
@@ -48,6 +48,8 @@ namespace Engine.Occlusion
 
         private const int PlayerColliderSizeMultiplier = 3;
 
+        private const float AdjacentRoomDistanceThreshold = 1.5f;
+
         #region initialization
 
         public void Init(List<(GameObject, uint, uint)> portals, Dictionary<uint, GameObject> roomObject,
@@ -59,6 +61,7 @@ namespace Engine.Occlusion
             _mainCamera = Camera.main;
             var rooms = new Dictionary<uint, Room>();
             var roomObjects = new Dictionary<uint, List<GameObject>>();
+            var portalFormIds = new HashSet<(uint, uint)>(portals.Count);
             foreach (var (portalObject, originFormID, destinationFormID) in portals)
             {
                 if (!roomObject.ContainsKey(originFormID) || !roomObject.ContainsKey(destinationFormID)) continue;
@@ -88,6 +91,7 @@ namespace Engine.Occlusion
                     destinationFormID,
                     portalObject,
                     portalObject.GetComponent<BoxCollider>());
+                portalFormIds.Add((originFormID, destinationFormID));
                 originRoomInstance.Portals.Add(portal);
                 destinationRoomInstance.Portals.Add(portal);
             }
@@ -100,6 +104,26 @@ namespace Engine.Occlusion
                     GetRoomGameObjects(cellGameObject, room.GetComponent<BoxCollider>()));
                 roomInstance.FormId = roomWithoutPortalsFormId;
                 rooms.Add(roomWithoutPortalsFormId, roomInstance);
+            }
+
+            foreach (var (formId1, room1) in rooms)
+            {
+                foreach (var (formId, room) in rooms)
+                {
+                    if (formId1 == formId ||
+                        portalFormIds.Contains((formId, formId1)) ||
+                        portalFormIds.Contains((formId1, formId)) ||
+                        room.NonPortalConnections.ContainsKey(formId1)) continue;
+                    var room1Collider = room1.gameObject.GetComponent<Collider>();
+                    var roomCollider = room.gameObject.GetComponent<Collider>();
+                    //TODO rework distance method
+                    if (!room1Collider.bounds.Intersects(roomCollider.bounds) &&
+                        !(Vector3.Distance(room1Collider.bounds.ClosestPoint(roomCollider.bounds.center),
+                              roomCollider.bounds.ClosestPoint(room1Collider.bounds.center)) <
+                          AdjacentRoomDistanceThreshold)) continue;
+                    room.NonPortalConnections.TryAdd(formId1, room1);
+                    room1.NonPortalConnections.TryAdd(formId, room);
+                }
             }
 
             PreProcessRoomIntersections(roomObjects, cellGameObject, rooms.Values.ToList());
@@ -205,6 +229,8 @@ namespace Engine.Occlusion
 
         #endregion
 
+        #region processing
+
         public void AddCurrentRoom(uint formId, Room room)
         {
             _currentRooms.TryAdd(formId, room);
@@ -267,10 +293,10 @@ namespace Engine.Occlusion
         {
             var playerColliderBounds = _playerCollider.bounds;
             playerColliderBounds.Expand(Vector3.one * PlayerColliderSizeMultiplier);
-            _roomsToCheck.Enqueue((originFormId, originRoom, null));
+            _roomsToCheck.Enqueue((originFormId, originRoom, null, null));
             while (_roomsToCheck.TryDequeue(out var roomToCheck))
             {
-                var (formId, room, excludedPortal) = roomToCheck;
+                var (formId, room, excludedPortal, ignoredRoomColliders) = roomToCheck;
 
                 foreach (var portal in room.Portals)
                 {
@@ -288,7 +314,7 @@ namespace Engine.Occlusion
                     if (portalCollider.bounds.Intersects(playerColliderBounds))
                     {
                         _currentFrameVisibleRooms.Add(checkedRoom.Item1);
-                        _roomsToCheck.Enqueue((checkedRoom.Item1, checkedRoom.Item2, portal));
+                        _roomsToCheck.Enqueue((checkedRoom.Item1, checkedRoom.Item2, portal, ignoredRoomColliders));
                         continue;
                     }
 
@@ -347,6 +373,8 @@ namespace Engine.Occlusion
                             var hit = _results[i];
                             if (hit.transform.gameObject.layer == _portalLayer) continue;
                             if (_portalHits.Contains(FloorVector3ToEven(hit.point))) continue;
+                            if (ignoredRoomColliders != null && ignoredRoomColliders.Contains(hit.transform.gameObject))
+                                continue;
                             if (playerColliderBounds.Contains(hit.point)) continue;
                             rayIntersectsRoom = true;
                             break;
@@ -356,9 +384,30 @@ namespace Engine.Occlusion
 
                         if (rayIntersectsRoom) continue;
                         _currentFrameVisibleRooms.Add(checkedRoom.Item1);
-                        _roomsToCheck.Enqueue((checkedRoom.Item1, checkedRoom.Item2, portal));
+                        _roomsToCheck.Enqueue((checkedRoom.Item1, checkedRoom.Item2, portal, ignoredRoomColliders));
 
                         break;
+                    }
+                }
+
+                foreach (var (roomFormId, nonConnectedRoom) in room.NonPortalConnections)
+                {
+                    if (_currentFrameVisibleRooms.Contains(roomFormId)) continue;
+                    if (_currentRooms.ContainsKey(roomFormId)) continue;
+
+                    if (!GeometryUtility.TestPlanesAABB(_frustumPlanes, nonConnectedRoom.RoomTrigger.bounds)) continue;
+
+                    if (ignoredRoomColliders == null)
+                    {
+                        _currentFrameVisibleRooms.Add(roomFormId);
+                        _roomsToCheck.Enqueue((roomFormId, nonConnectedRoom, null,
+                            new HashSet<GameObject> { nonConnectedRoom.gameObject }));
+                    }
+                    else
+                    {
+                        _currentFrameVisibleRooms.Add(roomFormId);
+                        _roomsToCheck.Enqueue((roomFormId, nonConnectedRoom, null,
+                            new HashSet<GameObject>(ignoredRoomColliders) { nonConnectedRoom.gameObject }));
                     }
                 }
             }
@@ -371,5 +420,7 @@ namespace Engine.Occlusion
                 Mathf.Floor(vector3.y / 2) * 2,
                 Mathf.Floor(vector3.z / 2) * 2);
         }
+
+        #endregion
     }
 }
