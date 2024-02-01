@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 namespace Engine.Occlusion
@@ -12,14 +11,14 @@ namespace Engine.Occlusion
         
         public List<Portal> Portals { get; private set; } = new();
 
-        public Dictionary<uint, Room> NonPortalConnections { get; private set; } = new();
+        //public Dictionary<uint, Room> NonPortalConnections { get; private set; } = new();
         
-        public Collider RoomTrigger { get; set; }
+        //public BoxCollider RoomTrigger { get; set; }
 
-        private void Start()
-        {
-            RoomTrigger = GetComponent<Collider>();
-        }
+        //private void Start()
+        //{
+            //RoomTrigger = GetComponent<BoxCollider>();
+        //}
 
         private void OnTriggerEnter(Collider other)
         {

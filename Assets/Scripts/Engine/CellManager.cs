@@ -94,8 +94,9 @@ namespace Engine
             var player = GameObject.FindGameObjectWithTag("Player");
             if (_tempPortals.Count > 0 || _tempRooms.Count > 0)
             {
-                var cellOcclusion = cellGameObject.AddComponent<CellOcclusion>();
-                cellOcclusion.Init(_tempPortals, _tempRooms, cellGameObject, player.GetComponentInChildren<Collider>());
+                //Check the CellOcclusion.cs description to understand why this is commented
+                 //var cellOcclusion = cellGameObject.AddComponent<CellOcclusion>();
+                 //cellOcclusion.Init(_tempPortals, _tempRooms, cellGameObject, player.GetComponentInChildren<Collider>());
             }
 
             _tempPortals.Clear();
