@@ -11,9 +11,9 @@ namespace Tests
 
         private void Start()
         {
-            var textureInfo = DDSReader.LoadDDSTexture(texturePath);
-            var texture = textureInfo.ToTexture2D();
-            rawImage.texture = texture;
+            //var textureInfo = DDSReader.LoadDDSTexture(texturePath);
+            //var texture = textureInfo.ToTexture2D();
+            //rawImage.texture = texture;
         }
     }
 }

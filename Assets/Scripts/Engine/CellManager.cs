@@ -243,7 +243,10 @@ namespace Engine
                 if (entry is not Record record) continue;
                 if (record is not REFR reference) continue;
                 var referencedRecordTask = _masterFile.GetFromFormIDTask(reference.BaseObjectReference);
-                yield return new WaitUntil(() => referencedRecordTask.IsCompleted);
+                while (!referencedRecordTask.IsCompleted)
+                {
+                    yield return null;
+                }
                 var referencedRecord = referencedRecordTask.Result;
                 switch (referencedRecord)
                 {
@@ -281,7 +284,10 @@ namespace Engine
                 if (entry is not Record record) continue;
                 if (record is not REFR reference) continue;
                 var referencedRecordTask = _masterFile.GetFromFormIDTask(reference.BaseObjectReference);
-                yield return new WaitUntil(() => referencedRecordTask.IsCompleted);
+                while (!referencedRecordTask.IsCompleted)
+                {
+                    yield return null;
+                }
                 var referencedRecord = referencedRecordTask.Result;
                 var objectInstantiationCoroutine = InstantiateCellObject(parent, reference, referencedRecord);
                 if (objectInstantiationCoroutine == null) continue;

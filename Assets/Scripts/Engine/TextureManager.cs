@@ -25,6 +25,7 @@ namespace Engine
 
         public TextureManager(ResourceManager resourceManager)
         {
+            Texture.allowThreadedTextureCreation = true;
             _resourceManager = resourceManager;
         }
 
@@ -94,9 +95,30 @@ namespace Engine
                 _diffuseMapTasks.Add(texturePath, newTask);
             }
 
-            if (!newTask.IsCompleted) yield return new WaitUntil(() => newTask.IsCompleted);
+            while (!newTask.IsCompleted)
+            {
+                yield return null;
+            }
+
             var result = newTask.Result;
-            var texture = result != null ? result.ToTexture2D() : new Texture2D(1, 1);
+            
+            Texture2D texture = null;
+            if (result != null)
+            {
+                var textureCoroutine = result.ToTexture2D(texture2D =>
+                {
+                    texture = texture2D;
+                });
+                while (textureCoroutine.MoveNext())
+                {
+                    yield return null;
+                }
+            }
+            else
+            {
+                texture = new Texture2D(1, 1);
+            }
+
             _diffuseMapStore.Add(texturePath, texture);
             _diffuseMapTasks.Remove(texturePath);
             onReadyCallback(texture);
@@ -119,9 +141,30 @@ namespace Engine
                 _normalMapTasks.Add(texturePath, newTask);
             }
 
-            if (!newTask.IsCompleted) yield return new WaitUntil(() => newTask.IsCompleted);
+            while (!newTask.IsCompleted)
+            {
+                yield return null;
+            }
+            
             var result = newTask.Result;
-            var texture = result != null ? result.ToLinearTexture2D() : new Texture2D(1, 1);
+            
+            Texture2D texture = null;
+            if (result != null)
+            {
+                var textureCoroutine = result.ToLinearTexture2D(texture2D =>
+                {
+                    texture = texture2D;
+                });
+                while (textureCoroutine.MoveNext())
+                {
+                    yield return null;
+                }
+            }
+            else
+            {
+                texture = new Texture2D(1, 1);
+            }
+            
             _normalMapStore.Add(texturePath, texture);
             _normalMapTasks.Remove(texturePath);
             onReadyCallback(texture);
@@ -144,9 +187,30 @@ namespace Engine
                 _metallicMapTasks.Add(texturePath, newTask);
             }
 
-            if (!newTask.IsCompleted) yield return new WaitUntil(() => newTask.IsCompleted);
+            while (!newTask.IsCompleted)
+            {
+                yield return null;
+            }
+            
             var result = newTask.Result;
-            var texture = result != null ? result.ToTexture2D() : new Texture2D(1, 1);
+            
+            Texture2D texture = null;
+            if (result != null)
+            {
+                var textureCoroutine = result.ToTexture2D(texture2D =>
+                {
+                    texture = texture2D;
+                });
+                while (textureCoroutine.MoveNext())
+                {
+                    yield return null;
+                }
+            }
+            else
+            {
+                texture = new Texture2D(1, 1);
+            }
+            
             _metallicMapStore.Add(texturePath, texture);
             _metallicMapTasks.Remove(texturePath);
             onReadyCallback(texture);
@@ -169,9 +233,30 @@ namespace Engine
                 _glowMapTasks.Add(texturePath, newTask);
             }
 
-            if (!newTask.IsCompleted) yield return new WaitUntil(() => newTask.IsCompleted);
+            while (!newTask.IsCompleted)
+            {
+                yield return null;
+            }
+            
             var result = newTask.Result;
-            var texture = result != null ? result.ToTexture2D() : new Texture2D(1, 1);
+            
+            Texture2D texture = null;
+            if (result != null)
+            {
+                var textureCoroutine = result.ToTexture2D(texture2D =>
+                {
+                    texture = texture2D;
+                });
+                while (textureCoroutine.MoveNext())
+                {
+                    yield return null;
+                }
+            }
+            else
+            {
+                texture = new Texture2D(1, 1);
+            }
+            
             _glowMapStore.Add(texturePath, texture);
             _glowMapTasks.Remove(texturePath);
             onReadyCallback(texture);
@@ -194,9 +279,30 @@ namespace Engine
                 _environmentalMapTasks.Add(texturePath, newTask);
             }
 
-            if (!newTask.IsCompleted) yield return new WaitUntil(() => newTask.IsCompleted);
+            while (!newTask.IsCompleted)
+            {
+                yield return null;
+            }
+            
             var result = newTask.Result;
-            var texture = result != null ? result.ToCubemap() : new Cubemap(1, TextureFormat.RGBA32, false);
+            
+            Cubemap texture = null;
+            if (result != null)
+            {
+                var textureCoroutine = result.ToCubemap(texture2D =>
+                {
+                    texture = texture2D;
+                });
+                while (textureCoroutine.MoveNext())
+                {
+                    yield return null;
+                }
+            }
+            else
+            {
+                texture = new Cubemap(1, TextureFormat.RGBA32, false);
+            }
+            
             _environmentalMapStore.Add(texturePath, texture);
             _environmentalMapTasks.Remove(texturePath);
             onReadyCallback(texture);

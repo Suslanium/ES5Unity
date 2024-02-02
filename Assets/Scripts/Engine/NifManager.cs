@@ -86,7 +86,11 @@ namespace Engine
         {
             PreloadNifFile(filePath);
             var task = _niFileTasks[filePath];
-            if (!task.IsCompleted) yield return new WaitUntil(() => task.IsCompleted);
+            
+            while (!task.IsCompleted)
+            {
+                yield return null;
+            }
 
             var file = task.Result;
             _niFileTasks.Remove(filePath);
