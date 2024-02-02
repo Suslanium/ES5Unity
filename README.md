@@ -1,7 +1,5 @@
-# ❄️This project is currently frozen as I don't really have enough time to work on it (and spoiler alert, I probably won't be working on this anytime soon). Right now the code quality is pretty rough, but this is more like a draft. I just want to implement some basic stuff (loading locations and being able to walk) and then refactor the code, add other features, etc. Currently this works ONLY with Skyrim LE (aka Oldrim). SE/AE support will be added once basic features are implemented.
-
-# ES5Unity
-A WIP project whose goal is to run TES V: Skyrim on the Unity engine.
+# <img src="https://github.com/Suslanium/ES5Unity/assets/84632927/4e23b155-8d36-472d-90f8-40c148b9b1e4" width="24" height="24"/> ES5Unity
+A WIP project whose goal is to run TES V: Skyrim on the Unity engine. Currently this **works ONLY with Skyrim LE (aka Oldrim)**. SE/AE support will be added once basic features are implemented.
 
 ##### Credits:
 + [UESP documentation for ESP/ESM file format](https://en.uesp.net/wiki/Skyrim_Mod:Mod_File_Format)
@@ -10,8 +8,11 @@ A WIP project whose goal is to run TES V: Skyrim on the Unity engine.
 + [TESUnity (a lot of code was copied from this project)](https://github.com/ColeDeanShepherd/TESUnity)
 + [BSAManager (code for hash calculation was taken from here)](https://github.com/philjord/BSAManager)
 
+##### Setup:
+A guide for setting up and running this project in Unity will be made after the first stable 'release' (once some basic stuff will be properly done)
+
 # Current state
-This project is in a *very* early stage of development. Currently it can load interior cells from Skyrim at a very basic level (no doors, no collisions, not all objects are imported, etc).
+This project is in a *very* early stage of development. Currently it can load interior cells from Skyrim at a very basic level (no doors, not all objects are imported, etc).
 Some screenshots:
 ![Screenshot1](https://github.com/Suslanium/ES5Unity/assets/84632927/e421be83-2705-43c4-acaa-31e6edb41fd8)
 ![Screenshot2](https://github.com/Suslanium/ES5Unity/assets/84632927/df8542ea-e79d-4df0-9a9f-5ffda1cb2812)
@@ -21,19 +22,20 @@ Some screenshots:
 ![Screenshot6](https://github.com/Suslanium/ES5Unity/assets/84632927/ab9491ba-46ee-4c7b-aab3-0814fffecc1c)
 
 ##### TODO list:
-+ ~Add support for cell lighting import~ Done(at a basic level)
-+ ~Add support for transparent materials~ Done
-+ ~Figure out glossiness and specular map tint(currently some objects are too glossy, and some objects have an exagerrated specular highlight tint)~ Kind of done, though shaders are still not perfect at all
-+ **Add occlusion culling** (~this is the main problem right now, large locations cause extremely low fps because the GPU is trying to render stuff that the player can't see~ EDIT: a solution to this problem has been found, but it has not yet been implemented (Room Markers and Occlusion Planes))
-+ ~Add support for collisions~ Almost done(convex shapes and compressed meshes are supported as of now)
-+ Add support for Skyrim SE meshes and archives
-+ Add support for billboards
-+ Add support for doors inside cells
-+ Figure out exterior cell loading
-+ Add a player that can walk around and explore the world
-+ Add collectable items
-+ Add support for nif-embedded animations
-+ Add support for skinned meshes and skeletons
-+ Add support for .hkx animations (this may be not possible)
-+ Add support for effects (magic, fx, etc.) (this may be not possible)
-+ Etc.
++ ✅**Add support for cell lighting import** *(Done at a basic level)*
++ ✅**Add support for transparent materials** *(Done)*
++ ✅**Figure out glossiness and specular map tint** *(Kind of done, though shaders are still not perfect at all)*
++ ❌**Add occlusion culling** *(Failed to implement using Skyrim's room and portal markers due to some edge cases, probably going to implement some custom occlusion culling system later)*
++ ✅**Add support for collisions** *(Almost done; convex shapes and compressed meshes are supported as of now)*
++ ✅**Add a player that can walk around and explore the world** *(Done)*
++ 🔄*Optimize cell loading, refactor code and add comments/documentation* *(Right now the code quality is pretty rough)*
++ 🔲Add support for doors inside cells
++ 🔲Figure out exterior cell loading
++ 🔲Add support for Skyrim SE meshes and archives
++ 🔲Add support for billboards
++ 🔲Add collectable items
++ 🔲Add support for nif-embedded animations
++ 🔲Add support for skinned meshes and skeletons
++ 🔲Add support for .hkx animations (this may be not possible)
++ 🔲Add support for effects (magic, fx, etc.) (this may be not possible)
++ 🔲Etc.
