@@ -4,6 +4,17 @@ using UnityEngine;
 
 namespace Engine.Occlusion
 {
+    /// <summary>
+    /// This script was supposed to do runtime occlusion culling based on the cell's room and portal markers.
+    /// In an ideal world where every room was connected to the others with a portal, it would work.
+    /// But this is Skyrim. There's a lot of rooms that are connected to each other WITHOUT portals. There's a lot of intersecting rooms.
+    /// Creating a script that takes into account all of these 'exceptional' cases AND displays ONLY visible rooms seems near impossible to me.
+    /// Let's say you have two rooms with a hallway between them. But there is no portal in that hallway. How do you determine that these rooms are connected?
+    /// You can check if they intersect each other. But what if they don't intersect? What if these rooms just 'touch' each other on some edge?
+    /// You can't say for sure that a room is connected to another one only with this information.
+    /// Honestly I just gave up on doing this thing. I'd rather write my own custom occlusion culling than try to adapt stuff from Skyrim.
+    /// The commented part of the script is the unfinished part that should've made this thing work with all the 'exceptional' cases.
+    /// </summary>
     public class CellOcclusion : MonoBehaviour
     {
         private Camera _mainCamera;
@@ -28,13 +39,15 @@ namespace Engine.Occlusion
 
         private readonly HashSet<uint> _previousFrameVisibleRooms = new(30);
 
-        private readonly Queue<(uint, Room, Portal, HashSet<GameObject>)> _roomsToCheck = new(30);
+        private readonly Queue<(uint, Room, Portal/*, HashSet<GameObject>*/)> _roomsToCheck = new(30);
 
         private static int _portalLayer;
 
         private static int _roomLayer;
 
         private LayerMask _rayCastLayerMask;
+
+        //private LayerMask _roomLayerMask;
 
         private readonly RaycastHit[] _results = new RaycastHit[30];
 
@@ -48,7 +61,7 @@ namespace Engine.Occlusion
 
         private const int PlayerColliderSizeMultiplier = 3;
 
-        private const float AdjacentRoomDistanceThreshold = 1.5f;
+        //private readonly Vector3 _roomIntersectionThreshold = Vector3.one * 1f;
 
         #region initialization
 
@@ -57,11 +70,13 @@ namespace Engine.Occlusion
         {
             _portalLayer = LayerMask.NameToLayer("Portal");
             _roomLayer = LayerMask.NameToLayer("Room");
+            _rayCastLayerMask = LayerMask.GetMask("Room", "Portal");
+            //_roomLayerMask = LayerMask.GetMask("Room");
             _playerCollider = playerCollider;
             _mainCamera = Camera.main;
             var rooms = new Dictionary<uint, Room>();
             var roomObjects = new Dictionary<uint, List<GameObject>>();
-            var portalFormIds = new HashSet<(uint, uint)>(portals.Count);
+            //var portalFormIds = new HashSet<(uint, uint)>(portals.Count);
             foreach (var (portalObject, originFormID, destinationFormID) in portals)
             {
                 if (!roomObject.ContainsKey(originFormID) || !roomObject.ContainsKey(destinationFormID)) continue;
@@ -91,7 +106,7 @@ namespace Engine.Occlusion
                     destinationFormID,
                     portalObject,
                     portalObject.GetComponent<BoxCollider>());
-                portalFormIds.Add((originFormID, destinationFormID));
+                //portalFormIds.Add((originFormID, destinationFormID));
                 originRoomInstance.Portals.Add(portal);
                 destinationRoomInstance.Portals.Add(portal);
             }
@@ -106,25 +121,38 @@ namespace Engine.Occlusion
                 rooms.Add(roomWithoutPortalsFormId, roomInstance);
             }
 
-            foreach (var (formId1, room1) in rooms)
-            {
-                foreach (var (formId, room) in rooms)
-                {
-                    if (formId1 == formId ||
-                        portalFormIds.Contains((formId, formId1)) ||
-                        portalFormIds.Contains((formId1, formId)) ||
-                        room.NonPortalConnections.ContainsKey(formId1)) continue;
-                    var room1Collider = room1.gameObject.GetComponent<Collider>();
-                    var roomCollider = room.gameObject.GetComponent<Collider>();
-                    //TODO rework distance method
-                    if (!room1Collider.bounds.Intersects(roomCollider.bounds) &&
-                        !(Vector3.Distance(room1Collider.bounds.ClosestPoint(roomCollider.bounds.center),
-                              roomCollider.bounds.ClosestPoint(room1Collider.bounds.center)) <
-                          AdjacentRoomDistanceThreshold)) continue;
-                    room.NonPortalConnections.TryAdd(formId1, room1);
-                    room1.NonPortalConnections.TryAdd(formId, room);
-                }
-            }
+            // foreach (var (formId, room) in rooms)
+            // {
+            //     var roomTransform = room.transform;
+            //     var roomTrigger = room.GetComponent<BoxCollider>();
+            //     var overlappingRooms = Physics.OverlapBox(roomTransform.position,
+            //         roomTrigger.size / 2 - _roomIntersectionThreshold,
+            //         roomTransform.rotation, _roomLayerMask);
+            //     foreach (var overlappingRoom in overlappingRooms)
+            //     {
+            //         if (room.gameObject == overlappingRoom.gameObject) continue;
+            //         var roomInstance = overlappingRoom.GetComponent<Room>();
+            //         if (roomInstance == null) continue;
+            //         if (portalFormIds.Contains((formId, roomInstance.FormId)) ||
+            //             portalFormIds.Contains((roomInstance.FormId, formId))) continue;
+            //         room.NonPortalConnections.TryAdd(roomInstance.FormId, roomInstance);
+            //     }
+            //
+            //     if (room.Portals.Count > 1) continue;
+            //     var additionalOverlapCheck = Physics.OverlapBox(roomTransform.position,
+            //         roomTrigger.size / 2,
+            //         roomTransform.rotation, _roomLayerMask).Except(overlappingRooms);
+            //     foreach (var edgeRoom in additionalOverlapCheck)
+            //     {
+            //         if (room.gameObject == edgeRoom.gameObject) continue;
+            //         var roomInstance = edgeRoom.GetComponent<Room>();
+            //         if (roomInstance == null) continue;
+            //         if (roomInstance.Portals.Count > 1 && room.Portals.Count > 0) continue;
+            //         if (portalFormIds.Contains((formId, roomInstance.FormId)) ||
+            //             portalFormIds.Contains((roomInstance.FormId, formId))) continue;
+            //         room.NonPortalConnections.TryAdd(roomInstance.FormId, roomInstance);
+            //     }
+            // }
 
             PreProcessRoomIntersections(roomObjects, cellGameObject, rooms.Values.ToList());
         }
@@ -221,12 +249,6 @@ namespace Engine.Occlusion
             }
         }
 
-        public void Start()
-        {
-            string[] layerNames = { "Room", "Portal" };
-            _rayCastLayerMask = LayerMask.GetMask(layerNames);
-        }
-
         #endregion
 
         #region processing
@@ -293,10 +315,10 @@ namespace Engine.Occlusion
         {
             var playerColliderBounds = _playerCollider.bounds;
             playerColliderBounds.Expand(Vector3.one * PlayerColliderSizeMultiplier);
-            _roomsToCheck.Enqueue((originFormId, originRoom, null, null));
+            _roomsToCheck.Enqueue((originFormId, originRoom, null/*, null*/));
             while (_roomsToCheck.TryDequeue(out var roomToCheck))
             {
-                var (formId, room, excludedPortal, ignoredRoomColliders) = roomToCheck;
+                var (formId, room, excludedPortal/*, ignoredRoomColliders*/) = roomToCheck;
 
                 foreach (var portal in room.Portals)
                 {
@@ -314,7 +336,7 @@ namespace Engine.Occlusion
                     if (portalCollider.bounds.Intersects(playerColliderBounds))
                     {
                         _currentFrameVisibleRooms.Add(checkedRoom.Item1);
-                        _roomsToCheck.Enqueue((checkedRoom.Item1, checkedRoom.Item2, portal, ignoredRoomColliders));
+                        _roomsToCheck.Enqueue((checkedRoom.Item1, checkedRoom.Item2, portal/*, ignoredRoomColliders*/));
                         continue;
                     }
 
@@ -373,8 +395,8 @@ namespace Engine.Occlusion
                             var hit = _results[i];
                             if (hit.transform.gameObject.layer == _portalLayer) continue;
                             if (_portalHits.Contains(FloorVector3ToEven(hit.point))) continue;
-                            if (ignoredRoomColliders != null && ignoredRoomColliders.Contains(hit.transform.gameObject))
-                                continue;
+                            //if (ignoredRoomColliders != null && ignoredRoomColliders.Contains(hit.transform.gameObject))
+                                //continue;
                             if (playerColliderBounds.Contains(hit.point)) continue;
                             rayIntersectsRoom = true;
                             break;
@@ -383,33 +405,34 @@ namespace Engine.Occlusion
                         _portalHits.Clear();
 
                         if (rayIntersectsRoom) continue;
+                        Debug.DrawRay(cameraPosition, _rayCastDirections[j], Color.red);
                         _currentFrameVisibleRooms.Add(checkedRoom.Item1);
-                        _roomsToCheck.Enqueue((checkedRoom.Item1, checkedRoom.Item2, portal, ignoredRoomColliders));
+                        _roomsToCheck.Enqueue((checkedRoom.Item1, checkedRoom.Item2, portal/*, ignoredRoomColliders*/));
 
                         break;
                     }
                 }
 
-                foreach (var (roomFormId, nonConnectedRoom) in room.NonPortalConnections)
-                {
-                    if (_currentFrameVisibleRooms.Contains(roomFormId)) continue;
-                    if (_currentRooms.ContainsKey(roomFormId)) continue;
-
-                    if (!GeometryUtility.TestPlanesAABB(_frustumPlanes, nonConnectedRoom.RoomTrigger.bounds)) continue;
-
-                    if (ignoredRoomColliders == null)
-                    {
-                        _currentFrameVisibleRooms.Add(roomFormId);
-                        _roomsToCheck.Enqueue((roomFormId, nonConnectedRoom, null,
-                            new HashSet<GameObject> { nonConnectedRoom.gameObject }));
-                    }
-                    else
-                    {
-                        _currentFrameVisibleRooms.Add(roomFormId);
-                        _roomsToCheck.Enqueue((roomFormId, nonConnectedRoom, null,
-                            new HashSet<GameObject>(ignoredRoomColliders) { nonConnectedRoom.gameObject }));
-                    }
-                }
+                // foreach (var (roomFormId, nonConnectedRoom) in room.NonPortalConnections)
+                // {
+                //     if (_currentFrameVisibleRooms.Contains(roomFormId)) continue;
+                //     if (_currentRooms.ContainsKey(roomFormId)) continue;
+                //
+                //     if (!GeometryUtility.TestPlanesAABB(_frustumPlanes, nonConnectedRoom.RoomTrigger.bounds)) continue;
+                //
+                //     if (ignoredRoomColliders == null)
+                //     {
+                //         _currentFrameVisibleRooms.Add(roomFormId);
+                //         _roomsToCheck.Enqueue((roomFormId, nonConnectedRoom, null,
+                //             new HashSet<GameObject> { nonConnectedRoom.gameObject }));
+                //     }
+                //     else
+                //     {
+                //         _currentFrameVisibleRooms.Add(roomFormId);
+                //         _roomsToCheck.Enqueue((roomFormId, nonConnectedRoom, null,
+                //             new HashSet<GameObject>(ignoredRoomColliders) { nonConnectedRoom.gameObject }));
+                //     }
+                // }
             }
         }
 
