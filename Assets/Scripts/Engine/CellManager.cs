@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using Cinemachine;
 using Core;
-using Engine.Occlusion;
 using MasterFile;
 using MasterFile.MasterFileContents;
 using MasterFile.MasterFileContents.Records;
@@ -34,10 +33,6 @@ namespace Engine
         private readonly NifManager _nifManager;
         private readonly TemporalLoadBalancer _temporalLoadBalancer;
         private readonly List<CellInfo> _cells = new();
-        private static readonly int RoomLayer = LayerMask.NameToLayer("Room");
-        private static readonly int PortalLayer = LayerMask.NameToLayer("Portal");
-        private readonly List<(GameObject, uint, uint)> _tempPortals = new();
-        private readonly Dictionary<uint, GameObject> _tempRooms = new();
         private Vector3 _tempPlayerPosition;
         private Quaternion _tempPlayerRotation;
 
@@ -92,15 +87,6 @@ namespace Engine
         {
             StaticBatchingUtility.Combine(cellGameObject);
             var player = GameObject.FindGameObjectWithTag("Player");
-            if (_tempPortals.Count > 0 || _tempRooms.Count > 0)
-            {
-                //Check the CellOcclusion.cs description to understand why this is commented
-                 //var cellOcclusion = cellGameObject.AddComponent<CellOcclusion>();
-                 //cellOcclusion.Init(_tempPortals, _tempRooms, cellGameObject, player.GetComponentInChildren<Collider>());
-            }
-
-            _tempPortals.Clear();
-            _tempRooms.Clear();
 
             player.SetActive(false);
             player.transform.position = _tempPlayerPosition;
@@ -226,7 +212,7 @@ namespace Engine
             var mainCamera = Camera.main;
             //This looks almost the same as forward rendering, but improves performance by a lot
             /*
-                WARNING: The line below won't work from Unity version 2022.2. 
+                WARNING: The line below won't work from Unity version 2022.2.
                 To fix this, you can either choose forward rendering (which will decrease performance by a lot) or choose deferred shading path.
                 The main problem right now is that deferred shading looks really bad. The shaders probably need to be rewritten for deferred shading.
             */
@@ -260,47 +246,6 @@ namespace Engine
                 switch (referencedRecord)
                 {
                     case STAT staticRecord:
-                        if (staticRecord.FormID == 0x20)
-                        {
-                            //Portal marker
-                            var gameObject = new GameObject("Portal marker")
-                            {
-                                layer = PortalLayer
-                            };
-                            var collider = gameObject.AddComponent<BoxCollider>();
-                            collider.isTrigger = true;
-                            collider.size = NifUtils.NifPointToUnityPoint(reference.Primitive.Bounds) * 2;
-                            ApplyPositionAndRotation(reference.Position, reference.Rotation, reference.Scale, parent,
-                                gameObject);
-                            if (reference.PortalDestinations != null)
-                            {
-                                _tempPortals.Add((gameObject, reference.PortalDestinations.OriginReference,
-                                    reference.PortalDestinations.DestinationReference));
-                            }
-                            else
-                            {
-                                gameObject.SetActive(false);
-                            }
-
-                            break;
-                        }
-
-                        if (staticRecord.FormID == 0x1F)
-                        {
-                            //Room marker
-                            var gameObject = new GameObject("Room marker")
-                            {
-                                layer = RoomLayer
-                            };
-                            var collider = gameObject.AddComponent<BoxCollider>();
-                            collider.isTrigger = true;
-                            collider.size = NifUtils.NifPointToUnityPoint(reference.Primitive.Bounds) * 2;
-                            ApplyPositionAndRotation(reference.Position, reference.Rotation, reference.Scale, parent,
-                                gameObject);
-                            _tempRooms.Add(reference.FormID, gameObject);
-                            break;
-                        }
-
                         if (staticRecord.FormID == 0x32)
                         {
                             _tempPlayerPosition = NifUtils.NifPointToUnityPoint(new Vector3(reference.Position[0],
@@ -323,6 +268,8 @@ namespace Engine
                             _nifManager.PreloadNifFile(light.NifModelFilename);
                         break;
                 }
+
+                yield return null;
             }
 
             yield return null;
