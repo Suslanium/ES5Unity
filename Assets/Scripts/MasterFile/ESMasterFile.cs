@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using MasterFile.MasterFileContents;
 using MasterFile.MasterFileContents.Records;
 
@@ -75,6 +76,11 @@ namespace MasterFile
             }
 
             return null;
+        }
+
+        public Task<Record> GetFromFormIDTask(uint formId)
+        {
+            return Task.Run(() => GetFromFormID(formId));
         }
 
         public CELL FindCellByEditorID(string editorID)

@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Collections;
 using System.Threading.Tasks;
 using DDS;
 using UnityEngine;
@@ -78,11 +80,12 @@ namespace Engine
         /// <summary>
         /// WARNING: This method should only be called from the main thread
         /// </summary>
-        public Texture2D GetDiffuseMap(string texturePath)
+        public IEnumerator GetDiffuseMap(string texturePath, Action<Texture2D> onReadyCallback)
         {
             if (_diffuseMapStore.TryGetValue(texturePath, out var diffuseMap))
             {
-                return diffuseMap;
+                onReadyCallback(diffuseMap);
+                yield break;
             }
 
             if (!_diffuseMapTasks.TryGetValue(texturePath, out var newTask))
@@ -91,21 +94,23 @@ namespace Engine
                 _diffuseMapTasks.Add(texturePath, newTask);
             }
 
+            if (!newTask.IsCompleted) yield return new WaitUntil(() => newTask.IsCompleted);
             var result = newTask.Result;
             var texture = result != null ? result.ToTexture2D() : new Texture2D(1, 1);
             _diffuseMapStore.Add(texturePath, texture);
             _diffuseMapTasks.Remove(texturePath);
-            return texture;
+            onReadyCallback(texture);
         }
         
         /// <summary>
         /// WARNING: This method should only be called from the main thread
         /// </summary>
-        public Texture2D GetNormalMap(string texturePath)
+        public IEnumerator GetNormalMap(string texturePath, Action<Texture2D> onReadyCallback)
         {
             if (_normalMapStore.TryGetValue(texturePath, out var normalMap))
             {
-                return normalMap;
+                onReadyCallback(normalMap);
+                yield break;
             }
 
             if (!_normalMapTasks.TryGetValue(texturePath, out var newTask))
@@ -114,21 +119,23 @@ namespace Engine
                 _normalMapTasks.Add(texturePath, newTask);
             }
 
+            if (!newTask.IsCompleted) yield return new WaitUntil(() => newTask.IsCompleted);
             var result = newTask.Result;
             var texture = result != null ? result.ToLinearTexture2D() : new Texture2D(1, 1);
             _normalMapStore.Add(texturePath, texture);
             _normalMapTasks.Remove(texturePath);
-            return texture;
+            onReadyCallback(texture);
         }
         
         /// <summary>
         /// WARNING: This method should only be called from the main thread
         /// </summary>
-        public Texture2D GetMetallicMap(string texturePath)
+        public IEnumerator GetMetallicMap(string texturePath, Action<Texture2D> onReadyCallback)
         {
             if (_metallicMapStore.TryGetValue(texturePath, out var metallicMap))
             {
-                return metallicMap;
+                onReadyCallback(metallicMap);
+                yield break;
             }
 
             if (!_metallicMapTasks.TryGetValue(texturePath, out var newTask))
@@ -137,21 +144,23 @@ namespace Engine
                 _metallicMapTasks.Add(texturePath, newTask);
             }
 
+            if (!newTask.IsCompleted) yield return new WaitUntil(() => newTask.IsCompleted);
             var result = newTask.Result;
             var texture = result != null ? result.ToTexture2D() : new Texture2D(1, 1);
             _metallicMapStore.Add(texturePath, texture);
             _metallicMapTasks.Remove(texturePath);
-            return texture;
+            onReadyCallback(texture);
         }
 
         /// <summary>
         /// WARNING: This method should only be called from the main thread
         /// </summary>
-        public Texture2D GetGlowMap(string texturePath)
+        public IEnumerator GetGlowMap(string texturePath, Action<Texture2D> onReadyCallback)
         {
             if (_glowMapStore.TryGetValue(texturePath, out var glowMap))
             {
-                return glowMap;
+                onReadyCallback(glowMap);
+                yield break;
             }
 
             if (!_glowMapTasks.TryGetValue(texturePath, out var newTask))
@@ -160,21 +169,23 @@ namespace Engine
                 _glowMapTasks.Add(texturePath, newTask);
             }
 
+            if (!newTask.IsCompleted) yield return new WaitUntil(() => newTask.IsCompleted);
             var result = newTask.Result;
             var texture = result != null ? result.ToTexture2D() : new Texture2D(1, 1);
             _glowMapStore.Add(texturePath, texture);
             _glowMapTasks.Remove(texturePath);
-            return texture;
+            onReadyCallback(texture);
         }
 
         /// <summary>
         /// WARNING: This method should only be called from the main thread
         /// </summary>
-        public Cubemap GetEnvMap(string texturePath)
+        public IEnumerator GetEnvMap(string texturePath, Action<Cubemap> onReadyCallback)
         {
             if (_environmentalMapStore.TryGetValue(texturePath, out var envMap))
             {
-                return envMap;
+                onReadyCallback(envMap);
+                yield break;
             }
 
             if (!_environmentalMapTasks.TryGetValue(texturePath, out var newTask))
@@ -183,53 +194,69 @@ namespace Engine
                 _environmentalMapTasks.Add(texturePath, newTask);
             }
 
+            if (!newTask.IsCompleted) yield return new WaitUntil(() => newTask.IsCompleted);
             var result = newTask.Result;
             var texture = result != null ? result.ToCubemap() : new Cubemap(1, TextureFormat.RGBA32, false);
             _environmentalMapStore.Add(texturePath, texture);
             _environmentalMapTasks.Remove(texturePath);
-            return texture;
+            onReadyCallback(texture);
         }
 
         /// <summary>
         /// WARNING: Call this ONLY when textures are not needed anymore
         /// </summary>
-        public void ClearCachedTextures()
+        public IEnumerator ClearCachedTextures()
         {
             foreach (var texture in _diffuseMapStore.Values)
             {
                 Object.Destroy(texture);
             }
+            yield return null;
 
             foreach (var texture in _normalMapStore.Values)
             {
                 Object.Destroy(texture);
             }
+            yield return null;
 
             foreach (var texture in _metallicMapStore.Values)
             {
-                Object.Destroy(texture);
+                Object.Destroy(texture); 
             }
+            yield return null;
 
             foreach (var texture in _glowMapStore.Values)
             {
                 Object.Destroy(texture);
             }
+            yield return null;
 
             foreach (var texture in _environmentalMapStore.Values)
             {
                 Object.Destroy(texture);
             }
+            yield return null;
 
             _diffuseMapStore.Clear();
+            yield return null;
             _normalMapStore.Clear();
+            yield return null;
             _metallicMapStore.Clear();
+            yield return null;
             _glowMapStore.Clear();
+            yield return null;
             _environmentalMapStore.Clear();
+            yield return null;
             _diffuseMapTasks.Clear();
+            yield return null;
             _normalMapTasks.Clear();
+            yield return null;
             _metallicMapTasks.Clear();
+            yield return null;
             _glowMapTasks.Clear();
+            yield return null;
             _environmentalMapTasks.Clear();
+            yield return null;
         }
     }
 }

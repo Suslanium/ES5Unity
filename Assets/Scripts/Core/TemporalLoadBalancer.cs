@@ -15,61 +15,62 @@
         /// </summary>
         public IEnumerator AddTask(IEnumerator taskCoroutine)
         {
-            tasks.Add(taskCoroutine);
+            _tasks.Add(taskCoroutine);
 
             return taskCoroutine;
         }
         public void CancelTask(IEnumerator taskCoroutine)
         {
-            tasks.Remove(taskCoroutine);
+            _tasks.Remove(taskCoroutine);
         }
 
         public void RunTasks(float desiredWorkTime)
         {
             Debug.Assert(desiredWorkTime >= 0);
 
-            if(tasks.Count == 0)
+            if(_tasks.Count == 0)
             {
                 return;
             }
 
-            stopwatch.Reset();
-            stopwatch.Start();
+            _stopwatch.Reset();
+            _stopwatch.Start();
 
             // Run the tasks.
             do
             {
                 // Try to execute an iteration of a task. Remove the task if it's execution has completed.
-                if(!tasks[0].MoveNext())
+                if(!_tasks[0].MoveNext())
                 {
-                    tasks.RemoveAt(0);
+                    _tasks.RemoveAt(0);
                 }
-            } while((tasks.Count > 0) && (stopwatch.Elapsed.TotalSeconds < desiredWorkTime));
 
-            stopwatch.Stop();
+            } while((_tasks.Count > 0) && (_stopwatch.Elapsed.TotalSeconds < desiredWorkTime));
+
+            _stopwatch.Stop();
         }
 
         public void WaitForTask(IEnumerator taskCoroutine)
         {
-            Debug.Assert(tasks.Contains(taskCoroutine));
+            Debug.Assert(_tasks.Contains(taskCoroutine));
 
             while(taskCoroutine.MoveNext())
             { }
 
-            tasks.Remove(taskCoroutine);
+            _tasks.Remove(taskCoroutine);
         }
         public void WaitForAllTasks()
         {
-            foreach(var task in tasks)
+            foreach(var task in _tasks)
             {
                 while(task.MoveNext())
                 { }
             }
 
-            tasks.Clear();
+            _tasks.Clear();
         }
 
-        private List<IEnumerator> tasks = new List<IEnumerator>();
-        private Stopwatch stopwatch = new Stopwatch();
+        private readonly List<IEnumerator> _tasks = new();
+        private readonly Stopwatch _stopwatch = new();
     }
 }

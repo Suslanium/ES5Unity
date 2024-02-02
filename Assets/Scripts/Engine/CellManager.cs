@@ -242,7 +242,9 @@ namespace Engine
             {
                 if (entry is not Record record) continue;
                 if (record is not REFR reference) continue;
-                var referencedRecord = _masterFile.GetFromFormID(reference.BaseObjectReference);
+                var referencedRecordTask = _masterFile.GetFromFormIDTask(reference.BaseObjectReference);
+                yield return new WaitUntil(() => referencedRecordTask.IsCompleted);
+                var referencedRecord = referencedRecordTask.Result;
                 switch (referencedRecord)
                 {
                     case STAT staticRecord:
@@ -278,63 +280,69 @@ namespace Engine
             {
                 if (entry is not Record record) continue;
                 if (record is not REFR reference) continue;
-                var referencedRecord = _masterFile.GetFromFormID(reference.BaseObjectReference);
-                InstantiateCellObject(parent, reference, referencedRecord);
-                yield return null;
-            }
-        }
-
-        private void InstantiateCellObject(GameObject parent, REFR referenceRecord, Record referencedRecord)
-        {
-            if (referencedRecord != null)
-            {
-                switch (referencedRecord)
+                var referencedRecordTask = _masterFile.GetFromFormIDTask(reference.BaseObjectReference);
+                yield return new WaitUntil(() => referencedRecordTask.IsCompleted);
+                var referencedRecord = referencedRecordTask.Result;
+                var objectInstantiationCoroutine = InstantiateCellObject(parent, reference, referencedRecord);
+                if (objectInstantiationCoroutine == null) continue;
+                while (objectInstantiationCoroutine.MoveNext())
                 {
-                    case STAT staticRecord:
-                        InstantiateModelAtPositionAndRotation(staticRecord.NifModelFilename, referenceRecord.Position,
-                            referenceRecord.Rotation, referenceRecord.Scale, parent);
-                        break;
-                    case MSTT movableStatic:
-                        InstantiateModelAtPositionAndRotation(movableStatic.NifModelFilename, referenceRecord.Position,
-                            referenceRecord.Rotation, referenceRecord.Scale, parent);
-                        break;
-                    case FURN furniture:
-                        InstantiateModelAtPositionAndRotation(furniture.NifModelFilename, referenceRecord.Position,
-                            referenceRecord.Rotation, referenceRecord.Scale, parent);
-                        break;
-                    case LIGH light:
-                        InstantiateLightAtPositionAndRotation(referenceRecord, light, referenceRecord.Position,
-                            referenceRecord.Rotation,
-                            referenceRecord.Scale, parent);
-                        break;
+                    yield return null;
                 }
             }
         }
 
-        private GameObject InstantiateModelAtPositionAndRotation(string modelPath, float[] position, float[] rotation,
-            float scale, GameObject parent)
+        private IEnumerator InstantiateCellObject(GameObject parent, REFR referenceRecord, Record referencedRecord)
         {
-            var modelObject = _nifManager.InstantiateNif(modelPath);
-            ApplyPositionAndRotation(position, rotation, scale, parent, modelObject);
-
-            return modelObject;
+            if (referencedRecord == null) return null;
+            return referencedRecord switch
+            {
+                STAT staticRecord => InstantiateModelAtPositionAndRotation(staticRecord.NifModelFilename,
+                    referenceRecord.Position, referenceRecord.Rotation, referenceRecord.Scale, parent),
+                MSTT movableStatic => InstantiateModelAtPositionAndRotation(movableStatic.NifModelFilename,
+                    referenceRecord.Position, referenceRecord.Rotation, referenceRecord.Scale, parent),
+                FURN furniture => InstantiateModelAtPositionAndRotation(furniture.NifModelFilename,
+                    referenceRecord.Position, referenceRecord.Rotation, referenceRecord.Scale, parent),
+                LIGH light => InstantiateLightAtPositionAndRotation(referenceRecord, light, referenceRecord.Position,
+                    referenceRecord.Rotation, referenceRecord.Scale, parent),
+                _ => null
+            };
         }
 
-        private GameObject InstantiateLightAtPositionAndRotation(REFR lightReference, LIGH lightRecord,
+        private IEnumerator InstantiateModelAtPositionAndRotation(string modelPath, float[] position, float[] rotation,
+            float scale, GameObject parent)
+        {
+            var modelObjectCoroutine = _nifManager.InstantiateNif(modelPath, modelObject =>
+            {
+                ApplyPositionAndRotation(position, rotation, scale, parent, modelObject);
+            });
+            while (modelObjectCoroutine.MoveNext())
+            {
+                yield return null;
+            }
+        }
+
+        private IEnumerator InstantiateLightAtPositionAndRotation(REFR lightReference, LIGH lightRecord,
             float[] position,
             float[] rotation,
             float scale, GameObject parent)
         {
             GameObject modelObject = null;
             if (!string.IsNullOrEmpty(lightRecord.NifModelFilename))
-                modelObject = _nifManager.InstantiateNif(lightRecord.NifModelFilename);
+            {
+                var modelObjectCoroutine =
+                    _nifManager.InstantiateNif(lightRecord.NifModelFilename, o => { modelObject = o; });
+                while (modelObjectCoroutine.MoveNext())
+                {
+                    yield return null;
+                }
+            }
+
             if (modelObject == null)
                 modelObject = new GameObject(lightRecord.EditorID);
 
             ApplyPositionAndRotation(position, rotation, scale, parent, modelObject);
             InstantiateLightOnGameObject(lightReference, lightRecord, modelObject);
-
-            return modelObject;
         }
 
         private void InstantiateLightOnGameObject(REFR reference, LIGH lightRecord, GameObject gameObject)

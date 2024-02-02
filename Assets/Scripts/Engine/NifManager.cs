@@ -1,10 +1,13 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
 using NIF;
 using NIF.Converter;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Engine
 {
@@ -42,50 +45,67 @@ namespace Engine
             FormatMeshString(ref filePath);
             if (_nifPrefabs.ContainsKey(filePath)) return;
 
-            if (!_niFileTasks.TryGetValue(filePath, out var newTask))
-            {
-                newTask = StartNiFileLoadingTask(filePath);
-                _niFileTasks.Add(filePath, newTask);
-            }
-        }
-        
-        private void EnsurePrefabContainerObjectExists()
-        {
-            if(_prefabContainerObject == null)
-            {
-                _prefabContainerObject = new GameObject("NIF Prefabs");
-                _prefabContainerObject.SetActive(false);
-            }
+            if (_niFileTasks.TryGetValue(filePath, out var newTask)) return;
+            newTask = StartNiFileLoadingTask(filePath);
+            _niFileTasks.Add(filePath, newTask);
         }
 
-        public GameObject InstantiateNif(string filePath)
+        private void EnsurePrefabContainerObjectExists()
         {
-            if (string.IsNullOrEmpty(filePath)) return null;
+            if (_prefabContainerObject != null) return;
+            _prefabContainerObject = new GameObject("NIF Prefabs");
+            _prefabContainerObject.SetActive(false);
+        }
+
+        public IEnumerator InstantiateNif(string filePath, Action<GameObject> onReadyCallback)
+        {
+            if (string.IsNullOrEmpty(filePath))
+            {
+                onReadyCallback(null);
+                yield break;
+            }
+
             FormatMeshString(ref filePath);
             EnsurePrefabContainerObjectExists();
 
             if (!_nifPrefabs.TryGetValue(filePath, out var prefab))
             {
-                prefab = LoadNifPrefab(filePath);
+                var prefabCoroutine = LoadNifPrefab(filePath, loadedPrefab => { prefab = loadedPrefab; });
+                while (prefabCoroutine.MoveNext())
+                {
+                    yield return null;
+                }
+
                 _nifPrefabs[filePath] = prefab;
             }
 
-            return prefab != null ? Object.Instantiate(prefab) : null;
+            onReadyCallback(prefab != null ? Object.Instantiate(prefab) : null);
         }
 
-        private GameObject LoadNifPrefab(string filePath)
+        private IEnumerator LoadNifPrefab(string filePath, Action<GameObject> onReadyCallback)
         {
             PreloadNifFile(filePath);
-            var file = _niFileTasks[filePath].Result;
+            var task = _niFileTasks[filePath];
+            if (!task.IsCompleted) yield return new WaitUntil(() => task.IsCompleted);
+
+            var file = task.Result;
             _niFileTasks.Remove(filePath);
             var objectBuilder = new NifObjectBuilder(file, _materialManager);
-            var prefab = objectBuilder.BuildObject();
-            if (prefab != null)
-            {
-                prefab.transform.parent = _prefabContainerObject.transform;
-            }
+            yield return null;
 
-            return prefab;
+            var prefabCoroutine = objectBuilder.BuildObject(prefab =>
+            {
+                if (prefab != null)
+                {
+                    prefab.transform.parent = _prefabContainerObject.transform;
+                }
+
+                onReadyCallback(prefab);
+            });
+            while (prefabCoroutine.MoveNext())
+            {
+                yield return null;
+            }
         }
 
         /// <summary>
@@ -97,7 +117,7 @@ namespace Engine
             {
                 Object.Destroy(prefab);
             }
-            
+
             _nifPrefabs.Clear();
             _niFileTasks.Clear();
         }

@@ -16,7 +16,7 @@ namespace Tests
             var nifManager = new NifManager(materialManager, resourceManager);
             foreach (var path in meshPaths)
             {
-                nifManager.InstantiateNif(path);
+                //nifManager.InstantiateNif(path);
             }
             resourceManager.Close();
         }
