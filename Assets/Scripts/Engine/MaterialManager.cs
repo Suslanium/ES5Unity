@@ -152,22 +152,23 @@ namespace Engine
             onReadyCallback(material);
         }
 
-        //TODO change to IEnumerator (coroutine)
         /// <summary>
         /// WARNING: Call this ONLY when textures and materials are not needed anymore
         /// </summary>
-        public void ClearCachedMaterialsAndTextures()
+        public IEnumerator ClearCachedMaterialsAndTextures()
         {
             foreach (var material in _materialCache.Values)
             {
                 Object.Destroy(material);
+                yield return null;
             }
 
             _materialCache.Clear();
+            yield return null;
             var clearTexturesCoroutine = _textureManager.ClearCachedTextures();
             while (clearTexturesCoroutine.MoveNext())
             {
-                //yield return null;
+                yield return null;
             }
         }
     }

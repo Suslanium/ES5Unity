@@ -1,4 +1,5 @@
-﻿using Core;
+﻿using System.Collections;
+using Core;
 using MasterFile;
 
 namespace Engine
@@ -29,9 +30,8 @@ namespace Engine
         {
             if (clearPrevious)
             {
-                _cellManager.DestroyAllCells();
-                _nifManager.ClearModelCache();
-                _materialManager.ClearCachedMaterialsAndTextures();
+                var clearCoroutine = DestroyAndClearEverything();
+                _loadBalancer.AddTask(clearCoroutine);
             }
 
             _cellManager.LoadInteriorCell(editorId);
@@ -41,9 +41,8 @@ namespace Engine
         {
             if (clearPrevious)
             {
-                _cellManager.DestroyAllCells();
-                _nifManager.ClearModelCache();
-                _materialManager.ClearCachedMaterialsAndTextures();
+                var clearCoroutine = DestroyAndClearEverything();
+                _loadBalancer.AddTask(clearCoroutine);
             }
             
             _cellManager.LoadInteriorCell(formID);
@@ -54,11 +53,35 @@ namespace Engine
             _loadBalancer.RunTasks(DesiredWorkTimePerFrame);
         }
 
+        private IEnumerator DestroyAndClearEverything()
+        {
+            var cellCoroutine = _cellManager.DestroyAllCells();
+            while (cellCoroutine.MoveNext())
+            {
+                yield return null;
+            }
+
+            var nifCoroutine = _nifManager.ClearModelCache();
+            while (nifCoroutine.MoveNext())
+            {
+                yield return null;
+            }
+
+            var materialCoroutine = _materialManager.ClearCachedMaterialsAndTextures();
+            while (materialCoroutine.MoveNext())
+            {
+                yield return null;
+            }
+        }
+
+        /// <summary>
+        /// Call this only when exiting the game
+        /// </summary>
         public void OnStop()
         {
-            _cellManager.DestroyAllCells();
-            _nifManager.ClearModelCache();
-            _materialManager.ClearCachedMaterialsAndTextures();
+            var clearCoroutine = DestroyAndClearEverything();
+            //Iterating through the IEnumerator without using load balancer so that everything is going to happen instantly
+            while (clearCoroutine.MoveNext()) {}
         }
     }
 }

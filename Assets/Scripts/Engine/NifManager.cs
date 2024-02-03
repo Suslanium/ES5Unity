@@ -115,15 +115,18 @@ namespace Engine
         /// <summary>
         /// WARNING: Call this only when models are not needed anymore(this will destroy every prefab)
         /// </summary>
-        public void ClearModelCache()
+        public IEnumerator ClearModelCache()
         {
             foreach (var prefab in _nifPrefabs.Values)
             {
                 Object.Destroy(prefab);
+                yield return null;
             }
 
             _nifPrefabs.Clear();
+            yield return null;
             _niFileTasks.Clear();
+            yield return null;
         }
 
         private static void FormatMeshString(ref string path)

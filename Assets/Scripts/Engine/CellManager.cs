@@ -16,15 +16,9 @@ namespace Engine
 {
     public class CellInfo
     {
-        public GameObject CellGameObject { get; private set; }
-        public List<IEnumerator> ObjectCreationCoroutines { get; private set; } = new();
-        public CELL CellRecord { get; private set; }
-
-        public CellInfo(GameObject cellGameObject, CELL cellRecord)
-        {
-            CellGameObject = cellGameObject;
-            CellRecord = cellRecord;
-        }
+        public GameObject CellGameObject { get; set; }
+        
+        public List<IEnumerator> ObjectCreationCoroutines { get; } = new();
     }
 
     public class CellManager
@@ -45,48 +39,113 @@ namespace Engine
 
         public void LoadInteriorCell(string editorID, bool persistentOnly = false)
         {
-            var cell = _masterFile.FindCellByEditorID(editorID);
-            LoadInteriorCellRecord(cell, persistentOnly);
+            var cellInfo = new CellInfo();
+            var creationCoroutine = StartCellLoading(editorID, cellInfo, persistentOnly);
+            cellInfo.ObjectCreationCoroutines.Add(creationCoroutine);
+            _temporalLoadBalancer.AddTask(creationCoroutine);
+            _cells.Add(cellInfo);
         }
 
         public void LoadInteriorCell(uint formID, bool persistentOnly = false)
         {
-            var cell = (CELL)_masterFile.GetFromFormID(formID);
-            LoadInteriorCellRecord(cell, persistentOnly);
+            var cellInfo = new CellInfo();
+            var creationCoroutine = StartCellLoading(formID, cellInfo, persistentOnly);
+            cellInfo.ObjectCreationCoroutines.Add(creationCoroutine);
+            _temporalLoadBalancer.AddTask(creationCoroutine);
+            _cells.Add(cellInfo);
         }
 
-        private void LoadInteriorCellRecord(CELL cell, bool persistentOnly = false)
+        private IEnumerator StartCellLoading(string editorId, CellInfo cellInfo, bool persistentOnly = false)
         {
-            //if ((cell.CellFlag & 0x0001) == 0)
-            //    throw new InvalidDataException("Trying to load exterior cell as interior");
-            var children = _masterFile.ReadNext();
+            var cellTask = _masterFile.FindCellByEditorIDTask(editorId);
+            while (!cellTask.IsCompleted)
+            {
+                yield return null;
+            }
+
+            var cell = cellTask.Result;
+
+            var cellLoadingCoroutine = LoadInteriorCellRecord(cell, cellInfo, persistentOnly);
+            while (cellLoadingCoroutine.MoveNext())
+            {
+                yield return null;
+            }
+        }
+
+        private IEnumerator StartCellLoading(uint formId, CellInfo cellInfo, bool persistentOnly = false)
+        {
+            var cellTask = _masterFile.GetFromFormIDTask(formId);
+            while (!cellTask.IsCompleted)
+            {
+                yield return null;
+            }
+
+            var cell = (CELL)cellTask.Result;
+
+            var cellLoadingCoroutine = LoadInteriorCellRecord(cell, cellInfo, persistentOnly);
+            while (cellLoadingCoroutine.MoveNext())
+            {
+                yield return null;
+            }
+        }
+
+
+        private IEnumerator LoadInteriorCellRecord(CELL cell, CellInfo cellInfo, bool persistentOnly = false)
+        {
+            if ((cell.CellFlag & 0x0001) == 0)
+                throw new InvalidDataException("Trying to load exterior cell as interior");
+            
+            var childrenTask = _masterFile.ReadNextTask();
+            while (!childrenTask.IsCompleted)
+            {
+                yield return null;
+            }
+
+            var children = childrenTask.Result;
             if (children is not Group { GroupType: 6 } childrenGroup)
                 throw new InvalidDataException("Cell children group not found");
+
+            yield return null;
+            
             var cellGameObject =
                 new GameObject(string.IsNullOrEmpty(cell.EditorID) ? cell.FormID.ToString() : cell.EditorID);
-            var cellInfo = new CellInfo(cellGameObject, cell);
-            if (cell.CellLightingInfo != null) ConfigureCellLighting(cell);
+            cellInfo.CellGameObject = cellGameObject;
+            
+            if (cell.CellLightingInfo != null)
+            {
+                var lightingCoroutine = ConfigureCellLighting(cell);
+                while (lightingCoroutine.MoveNext())
+                {
+                    yield return null;
+                }
+            }
+            
             foreach (var subGroup in childrenGroup.GroupData)
             {
                 if (subGroup is not Group group) continue;
-                if (group.GroupType == 8 || (group.GroupType == 9 && !persistentOnly))
+                if (group.GroupType != 8 && (group.GroupType != 9 || persistentOnly)) continue;
+                
+                var objectInstantiationTask = InstantiateCellReferences(group, cellGameObject);
+                while (objectInstantiationTask.MoveNext())
                 {
-                    var objectInstantiationTask = InstantiateCellReferences(group, cellGameObject);
-                    _temporalLoadBalancer.AddTask(objectInstantiationTask);
-                    cellInfo.ObjectCreationCoroutines.Add(objectInstantiationTask);
+                    yield return null;
                 }
             }
 
             var postProcessTask = PostProcessInteriorCell(cellGameObject);
-            _temporalLoadBalancer.AddTask(postProcessTask);
-            cellInfo.ObjectCreationCoroutines.Add(postProcessTask);
-            _cells.Add(cellInfo);
+            while (postProcessTask.MoveNext())
+            {
+                yield return null;
+            }
         }
 
         private IEnumerator PostProcessInteriorCell(GameObject cellGameObject)
         {
             StaticBatchingUtility.Combine(cellGameObject);
+            yield return null;
+            
             var player = GameObject.FindGameObjectWithTag("Player");
+            yield return null;
 
             player.SetActive(false);
             player.transform.position = _tempPlayerPosition;
@@ -97,12 +156,21 @@ namespace Engine
             yield return null;
         }
 
-        private void ConfigureCellLighting(CELL cellRecord)
+        private IEnumerator ConfigureCellLighting(CELL cellRecord)
         {
             LGTM template = null;
             if (cellRecord.LightingTemplateReference > 0)
-                template = (LGTM)_masterFile.GetFromFormID(cellRecord.LightingTemplateReference);
+            {
+                var templateTask = _masterFile.GetFromFormIDTask(cellRecord.LightingTemplateReference);
+                while (!templateTask.IsCompleted)
+                {
+                    yield return null;
+                }
+
+                template = (LGTM)templateTask.Result;
+            }
             var directionalLight = RenderSettings.sun;
+            
             //Inherit ambient color
             RenderSettings.ambientMode = AmbientMode.Flat;
             if ((cellRecord.CellLightingInfo.InheritFlags & 0x0001) != 0 && template != null)
@@ -115,6 +183,8 @@ namespace Engine
                 RenderSettings.ambientLight = new Color32(cellRecord.CellLightingInfo.AmbientRGBA[0],
                     cellRecord.CellLightingInfo.AmbientRGBA[1], cellRecord.CellLightingInfo.AmbientRGBA[2], 255);
             }
+
+            yield return null;
 
             //Inherit directional color
             if ((cellRecord.CellLightingInfo.InheritFlags & 0x0002) != 0 && template != null)
@@ -158,6 +228,8 @@ namespace Engine
                 }
             }
 
+            yield return null;
+
             //Inherit fog far distance
             if ((cellRecord.CellLightingInfo.InheritFlags & 0x0010) != 0 && template != null)
             {
@@ -186,6 +258,8 @@ namespace Engine
                 }
             }
 
+            yield return null;
+
             //Inherit fog near distance
             if (RenderSettings.fog && (cellRecord.CellLightingInfo.InheritFlags & 0x0008) != 0 && template != null)
             {
@@ -195,6 +269,8 @@ namespace Engine
             {
                 RenderSettings.fogStartDistance = cellRecord.CellLightingInfo.FogNear / Convert.meterInMWUnits;
             }
+
+            yield return null;
 
             //Inherit fog color
             if (RenderSettings.fog && (cellRecord.CellLightingInfo.InheritFlags & 0x0004) != 0 && template != null)
@@ -208,7 +284,9 @@ namespace Engine
                     cellRecord.CellLightingInfo.FogNearColor[1], cellRecord.CellLightingInfo.FogNearColor[2], 255);
             }
 
-            if (Camera.main == null) return;
+            yield return null;
+
+            if (Camera.main == null) yield break;
             var mainCamera = Camera.main;
             //This looks almost the same as forward rendering, but improves performance by a lot
             /*
@@ -217,17 +295,19 @@ namespace Engine
                 The main problem right now is that deferred shading looks really bad. The shaders probably need to be rewritten for deferred shading.
             */
             mainCamera.renderingPath = RenderingPath.DeferredLighting;
-            if (!RenderSettings.fog) return;
+            if (!RenderSettings.fog) yield break;
+            
             //The camera shouldn't render anything beyond the fog
             var farClipPlane = mainCamera.farClipPlane;
             var convFogEndDist = Mathf.Lerp(mainCamera.nearClipPlane, (farClipPlane),
                 RenderSettings.fogEndDistance / farClipPlane);
             mainCamera.clearFlags = CameraClearFlags.SolidColor;
             mainCamera.backgroundColor = RenderSettings.fogColor;
-            var cinemachine = Camera.main.gameObject.GetComponent<CinemachineBrain>();
-            if (cinemachine != null)
+            yield return null;
+            var cineMachine = Camera.main.gameObject.GetComponent<CinemachineBrain>();
+            if (cineMachine != null)
             {
-                cinemachine.ActiveVirtualCamera.VirtualCameraGameObject.GetComponent<CinemachineVirtualCamera>()
+                cineMachine.ActiveVirtualCamera.VirtualCameraGameObject.GetComponent<CinemachineVirtualCamera>()
                     .m_Lens.FarClipPlane = convFogEndDist;
             }
             else
@@ -354,18 +434,23 @@ namespace Engine
         private void InstantiateLightOnGameObject(REFR reference, LIGH lightRecord, GameObject gameObject)
         {
             if (gameObject == null) return;
-            //Create separate gameobject and rotate it in case of a spot light
+            //Create separate gameObject and rotate it in case of a spot light
             if ((lightRecord.Flags & 0x0400) != 0)
             {
-                var spotGameObject = new GameObject(gameObject.name);
-                spotGameObject.transform.parent = gameObject.transform;
-                spotGameObject.transform.position = gameObject.transform.position;
-                spotGameObject.transform.rotation = Quaternion.LookRotation(Vector3.down);
+                var spotGameObject = new GameObject(gameObject.name)
+                {
+                    transform =
+                    {
+                        parent = gameObject.transform,
+                        position = gameObject.transform.position,
+                        rotation = Quaternion.LookRotation(Vector3.down)
+                    }
+                };
                 gameObject = spotGameObject;
             }
 
             var light = gameObject.AddComponent<Light>();
-            //For some interesting reason the actual radius shown in CK is Base light radius + XRDS value of refr
+            //For some interesting reason the actual radius shown in CK is Base light radius + XRDS value of REFR
             light.range = 2 * ((lightRecord.Radius + reference.Radius) / Convert.meterInMWUnits);
             light.color = new Color32(lightRecord.ColorRGBA[0], lightRecord.ColorRGBA[1], lightRecord.ColorRGBA[2],
                 255);
@@ -397,15 +482,18 @@ namespace Engine
             modelObject.transform.parent = parent.transform;
         }
 
-        public void DestroyAllCells()
+        public IEnumerator DestroyAllCells()
         {
             foreach (var cell in _cells)
             {
-                Object.Destroy(cell.CellGameObject);
+                if (cell.CellGameObject != null) Object.Destroy(cell.CellGameObject);
+                yield return null;
                 foreach (var task in cell.ObjectCreationCoroutines)
                 {
                     _temporalLoadBalancer.CancelTask(task);
                 }
+
+                yield return null;
             }
 
             _cells.Clear();

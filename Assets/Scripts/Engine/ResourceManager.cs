@@ -27,6 +27,9 @@ namespace Engine
                 select archive.GetFile(resourcePath)).FirstOrDefault();
         }
 
+        /// <summary>
+        /// Call this only when exiting the game
+        /// </summary>
         public void Close()
         {
             foreach (var archive in _archives)

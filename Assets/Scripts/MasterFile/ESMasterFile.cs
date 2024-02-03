@@ -15,16 +15,21 @@ namespace MasterFile
     /// </summary>
     public class ESMasterFile
     {
-
         public TES4 PluginInfo { get; private set; }
         private Dictionary<uint, long> FormIdToPosition { get; set; } = new();
         private Dictionary<string, long> TypeToTopGroupPosition { get; set; } = new();
         private Dictionary<string, Dictionary<uint, long>> RecordTypeDictionary { get; set; } = new();
         private readonly BinaryReader _fileReader;
+        private readonly Task _initializationTask;
 
         public ESMasterFile(BinaryReader fileReader)
         {
             _fileReader = fileReader;
+            _initializationTask = Task.Run(() => Initialize(fileReader));
+        }
+
+        private void Initialize(BinaryReader fileReader)
+        {
             PluginInfo = MasterFileEntry.Parse(fileReader, 0) as TES4;
             while (fileReader.BaseStream.Position < fileReader.BaseStream.Length)
             {
@@ -62,12 +67,22 @@ namespace MasterFile
         /// <summary>
         /// WARNING: If the next object is a group - this will read the entire group including all its records.
         /// </summary>
-        public MasterFileEntry ReadNext()
+        private MasterFileEntry ReadNext()
         {
             return MasterFileEntry.Parse(_fileReader, _fileReader.BaseStream.Position);
         }
 
-        public Record GetFromFormID(uint formId)
+        public Task<MasterFileEntry> ReadNextTask()
+        {
+            return Task.Run(() =>
+            {
+                if (!_initializationTask.IsCompleted)
+                    _initializationTask.Wait();
+                return ReadNext();
+            });
+        }
+
+        private Record GetFromFormID(uint formId)
         {
             if (FormIdToPosition.TryGetValue(formId, out var position))
             {
@@ -80,15 +95,40 @@ namespace MasterFile
 
         public Task<Record> GetFromFormIDTask(uint formId)
         {
-            return Task.Run(() => GetFromFormID(formId));
+            return Task.Run(() =>
+            {
+                if (!_initializationTask.IsCompleted)
+                    _initializationTask.Wait();
+                return GetFromFormID(formId);
+            });
         }
 
-        public CELL FindCellByEditorID(string editorID)
+        private CELL FindCellByEditorID(string editorID)
         {
             editorID += "\0";
             var cellRecordDictionary = RecordTypeDictionary["CELL"];
             return cellRecordDictionary.Keys.Select(formId => (CELL)GetFromFormID(formId))
                 .FirstOrDefault(record => record.EditorID == editorID);
+        }
+
+        public Task<CELL> FindCellByEditorIDTask(string editorID)
+        {
+            return Task.Run(() =>
+            {
+                if (!_initializationTask.IsCompleted)
+                    _initializationTask.Wait();
+                return FindCellByEditorID(editorID);
+            });
+        }
+
+        /// <summary>
+        /// Call this only when exiting the game
+        /// </summary>
+        public void Close()
+        {
+            if (!_initializationTask.IsCompleted)
+                _initializationTask.Wait();
+            _fileReader.Close();
         }
     }
 }

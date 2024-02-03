@@ -39,7 +39,7 @@ namespace Tests
         {
             _gameEngine.OnStop();
             _resourceManager.Close();
-            _masterFileReader.Close();
+            _esMasterFile.Close();
         }
     }
 }
