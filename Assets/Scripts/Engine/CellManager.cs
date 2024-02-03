@@ -17,7 +17,7 @@ namespace Engine
     public class CellInfo
     {
         public GameObject CellGameObject { get; set; }
-        
+
         public List<IEnumerator> ObjectCreationCoroutines { get; } = new();
     }
 
@@ -94,7 +94,7 @@ namespace Engine
         {
             if ((cell.CellFlag & 0x0001) == 0)
                 throw new InvalidDataException("Trying to load exterior cell as interior");
-            
+
             var childrenTask = _masterFile.ReadNextTask();
             while (!childrenTask.IsCompleted)
             {
@@ -106,12 +106,12 @@ namespace Engine
                 throw new InvalidDataException("Cell children group not found");
 
             yield return null;
-            
+
             var cellGameObject =
                 new GameObject(string.IsNullOrEmpty(cell.EditorID) ? cell.FormID.ToString() : cell.EditorID);
             cellInfo.CellGameObject = cellGameObject;
             cellGameObject.SetActive(false);
-            
+
             if (cell.CellLightingInfo != null)
             {
                 var lightingCoroutine = ConfigureCellLighting(cell);
@@ -120,12 +120,12 @@ namespace Engine
                     yield return null;
                 }
             }
-            
+
             foreach (var subGroup in childrenGroup.GroupData)
             {
                 if (subGroup is not Group group) continue;
                 if (group.GroupType != 8 && (group.GroupType != 9 || persistentOnly)) continue;
-                
+
                 var objectInstantiationTask = InstantiateCellReferences(group, cellGameObject);
                 while (objectInstantiationTask.MoveNext())
                 {
@@ -146,7 +146,7 @@ namespace Engine
             //TODO static batching causes a huge freeze
             StaticBatchingUtility.Combine(cellGameObject);
             yield return null;
-            
+
             var player = GameObject.FindGameObjectWithTag("Player");
             yield return null;
 
@@ -172,8 +172,9 @@ namespace Engine
 
                 template = (LGTM)templateTask.Result;
             }
+
             var directionalLight = RenderSettings.sun;
-            
+
             //Inherit ambient color
             RenderSettings.ambientMode = AmbientMode.Flat;
             if ((cellRecord.CellLightingInfo.InheritFlags & 0x0001) != 0 && template != null)
@@ -299,7 +300,7 @@ namespace Engine
             */
             mainCamera.renderingPath = RenderingPath.DeferredLighting;
             if (!RenderSettings.fog) yield break;
-            
+
             //The camera shouldn't render anything beyond the fog
             var farClipPlane = mainCamera.farClipPlane;
             var convFogEndDist = Mathf.Lerp(mainCamera.nearClipPlane, (farClipPlane),
@@ -330,7 +331,21 @@ namespace Engine
                 {
                     yield return null;
                 }
+
                 var referencedRecord = referencedRecordTask.Result;
+                //Temporary door teleport debug code
+                //---------------
+                // if (reference.DoorTeleport != null)
+                // {
+                //     var cellFormID = _masterFile.GetParentFormID(reference.DoorTeleport.DestinationDoorReference);
+                //     var destinationTask = _masterFile.GetFromFormIDTask(cellFormID);
+                //     while (!destinationTask.IsCompleted)
+                //     {
+                //         yield return null;
+                //     }
+                //     Debug.Log(((CELL)destinationTask.Result).EditorID);
+                // }
+                //---------------
                 switch (referencedRecord)
                 {
                     case STAT staticRecord:
@@ -355,6 +370,11 @@ namespace Engine
                         if (!string.IsNullOrEmpty(light.NifModelFilename))
                             _nifManager.PreloadNifFile(light.NifModelFilename);
                         break;
+                    case DOOR door:
+                        //Currently only teleport doors are loaded because regular doors will block the location without the ability to open them
+                        if (reference.DoorTeleport != null)
+                            _nifManager.PreloadNifFile(door.NifModelFilename);
+                        break;
                 }
 
                 yield return null;
@@ -371,6 +391,7 @@ namespace Engine
                 {
                     yield return null;
                 }
+
                 var referencedRecord = referencedRecordTask.Result;
                 var objectInstantiationCoroutine = InstantiateCellObject(parent, reference, referencedRecord);
                 if (objectInstantiationCoroutine == null) continue;
@@ -394,6 +415,10 @@ namespace Engine
                     referenceRecord.Position, referenceRecord.Rotation, referenceRecord.Scale, parent),
                 LIGH light => InstantiateLightAtPositionAndRotation(referenceRecord, light, referenceRecord.Position,
                     referenceRecord.Rotation, referenceRecord.Scale, parent),
+                DOOR door => referenceRecord.DoorTeleport != null
+                    ? InstantiateModelAtPositionAndRotation(door.NifModelFilename, referenceRecord.Position,
+                        referenceRecord.Rotation, referenceRecord.Scale, parent)
+                    : null,
                 _ => null
             };
         }
@@ -401,10 +426,8 @@ namespace Engine
         private IEnumerator InstantiateModelAtPositionAndRotation(string modelPath, float[] position, float[] rotation,
             float scale, GameObject parent)
         {
-            var modelObjectCoroutine = _nifManager.InstantiateNif(modelPath, modelObject =>
-            {
-                ApplyPositionAndRotation(position, rotation, scale, parent, modelObject);
-            });
+            var modelObjectCoroutine = _nifManager.InstantiateNif(modelPath,
+                modelObject => { ApplyPositionAndRotation(position, rotation, scale, parent, modelObject); });
             while (modelObjectCoroutine.MoveNext())
             {
                 yield return null;

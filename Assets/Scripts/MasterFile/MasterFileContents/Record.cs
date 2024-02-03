@@ -180,6 +180,9 @@ namespace MasterFile.MasterFileContents
                 case "LIGH":
                     specificRecord = LIGH.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position);
                     break;
+                case "DOOR":
+                    specificRecord = DOOR.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position);
+                    break;
             }
 
             return specificRecord;

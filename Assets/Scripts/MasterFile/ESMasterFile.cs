@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -17,6 +18,7 @@ namespace MasterFile
     {
         public TES4 PluginInfo { get; private set; }
         private Dictionary<uint, long> FormIdToPosition { get; set; } = new();
+        private Dictionary<uint, Group> FormIdToParentGroup { get; set; } = new();
         private Dictionary<string, long> TypeToTopGroupPosition { get; set; } = new();
         private Dictionary<string, Dictionary<uint, long>> RecordTypeDictionary { get; set; } = new();
         private readonly BinaryReader _fileReader;
@@ -31,6 +33,7 @@ namespace MasterFile
         private void Initialize(BinaryReader fileReader)
         {
             PluginInfo = MasterFileEntry.Parse(fileReader, 0) as TES4;
+            Group currentGroup = null;
             while (fileReader.BaseStream.Position < fileReader.BaseStream.Length)
             {
                 var entryStartPos = fileReader.BaseStream.Position;
@@ -39,6 +42,7 @@ namespace MasterFile
                 {
                     case Record record:
                         FormIdToPosition.Add(record.FormID, entryStartPos);
+                        FormIdToParentGroup.Add(record.FormID, currentGroup);
                         if (!RecordTypeDictionary.ContainsKey(record.Type))
                         {
                             RecordTypeDictionary.Add(record.Type,
@@ -57,6 +61,8 @@ namespace MasterFile
                             var recordType = System.Text.Encoding.UTF8.GetString(group.Label);
                             TypeToTopGroupPosition.TryAdd(recordType, entryStartPos);
                         }
+
+                        currentGroup = group;
 
                         break;
                     }
@@ -119,6 +125,24 @@ namespace MasterFile
                     _initializationTask.Wait();
                 return FindCellByEditorID(editorID);
             });
+        }
+
+        /// <summary>
+        /// For the record stored in the World Children/Cell (Persistent/Temporary) Children/Topic Children Group, find the FormID of their parent WRLD/CELL/DIAL
+        /// </summary>
+        /// <param name="recordFormID">The formID of the record stored in the group</param>
+        /// <returns>The formID of the parent record, or 0 if the record does not exist or is not stored in one of the groups specified above</returns>
+        public uint GetParentFormID(uint recordFormID)
+        {
+            FormIdToParentGroup.TryGetValue(recordFormID, out var parentGroup);
+            if (parentGroup == null)
+            {
+                return 0;
+            }
+
+            return parentGroup.GroupType is not 1 and not 6 and not 7 and not 8 and not 9
+                ? 0
+                : BitConverter.ToUInt32(parentGroup.Label);
         }
 
         /// <summary>
