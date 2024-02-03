@@ -110,6 +110,7 @@ namespace Engine
             var cellGameObject =
                 new GameObject(string.IsNullOrEmpty(cell.EditorID) ? cell.FormID.ToString() : cell.EditorID);
             cellInfo.CellGameObject = cellGameObject;
+            cellGameObject.SetActive(false);
             
             if (cell.CellLightingInfo != null)
             {
@@ -141,6 +142,8 @@ namespace Engine
 
         private IEnumerator PostProcessInteriorCell(GameObject cellGameObject)
         {
+            cellGameObject.SetActive(true);
+            //TODO static batching causes a huge freeze
             StaticBatchingUtility.Combine(cellGameObject);
             yield return null;
             
