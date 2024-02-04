@@ -1,4 +1,6 @@
-﻿using System.IO;
+﻿using System.Collections.Generic;
+using System.IO;
+using UnityEngine;
 
 namespace MasterFile.MasterFileContents.Records
 {
@@ -38,6 +40,12 @@ namespace MasterFile.MasterFileContents.Records
         /// </summary>
         public byte Flags { get; private set; }
         
+        public Vector3 BoundsA { get; private set; }
+        
+        public Vector3 BoundsB { get; private set; }
+
+        public List<uint> RandomTeleports { get; private set; } = new();
+        
         private DOOR(string type, uint dataSize, uint flag, uint formID, ushort timestamp, ushort versionControlInfo,
             ushort internalRecordVersion, ushort unknownData) : base(type, dataSize, flag, formID, timestamp,
             versionControlInfo, internalRecordVersion, unknownData)
@@ -57,6 +65,12 @@ namespace MasterFile.MasterFileContents.Records
                     case "EDID":
                         door.EditorID = new string(fileReader.ReadChars(fieldSize));
                         break;
+                    case "OBND":
+                        door.BoundsA = new Vector3(fileReader.ReadInt16(), fileReader.ReadInt16(),
+                            fileReader.ReadInt16());
+                        door.BoundsB = new Vector3(fileReader.ReadInt16(), fileReader.ReadInt16(),
+                            fileReader.ReadInt16());
+                        break;
                     case "MODL":
                         door.NifModelFilename = new string(fileReader.ReadChars(fieldSize));
                         break;
@@ -71,6 +85,9 @@ namespace MasterFile.MasterFileContents.Records
                         break;
                     case "FNAM":
                         door.Flags = fileReader.ReadByte();
+                        break;
+                    case "TNAM":
+                        door.RandomTeleports.Add(fileReader.ReadUInt32());
                         break;
                     default:
                         fileReader.BaseStream.Seek(fieldSize, SeekOrigin.Current);

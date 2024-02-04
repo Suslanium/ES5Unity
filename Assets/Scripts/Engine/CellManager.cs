@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.IO;
 using Cinemachine;
 using Core;
+using Engine.Door;
 using MasterFile;
 using MasterFile.MasterFileContents;
 using MasterFile.MasterFileContents.Records;
 using NIF.Converter;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Rendering;
 using Convert = Core.Convert;
@@ -14,6 +16,13 @@ using Object = UnityEngine.Object;
 
 namespace Engine
 {
+    public enum LoadCause
+    {
+        DoorTeleport,
+        Coc,
+        OpenWorldLoad
+    }
+    
     public class CellInfo
     {
         public GameObject CellGameObject { get; set; }
@@ -23,21 +32,27 @@ namespace Engine
 
     public class CellManager
     {
+        private readonly GameEngine _gameEngine;
         private readonly ESMasterFile _masterFile;
         private readonly NifManager _nifManager;
         private readonly TemporalLoadBalancer _temporalLoadBalancer;
         private readonly List<CellInfo> _cells = new();
+        private readonly GameObject _player;
         private Vector3 _tempPlayerPosition;
         private Quaternion _tempPlayerRotation;
+        private const int DefaultCameraFarPlane = 500;
 
-        public CellManager(ESMasterFile masterFile, NifManager nifManager, TemporalLoadBalancer temporalLoadBalancer)
+        public CellManager(ESMasterFile masterFile, NifManager nifManager, TemporalLoadBalancer temporalLoadBalancer,
+            GameEngine gameEngine, GameObject player)
         {
             _masterFile = masterFile;
             _nifManager = nifManager;
             _temporalLoadBalancer = temporalLoadBalancer;
+            _gameEngine = gameEngine;
+            _player = player;
         }
 
-        public void LoadInteriorCell(string editorID, bool persistentOnly = false)
+        public void LoadCell(string editorID, bool persistentOnly = false)
         {
             var cellInfo = new CellInfo();
             var creationCoroutine = StartCellLoading(editorID, cellInfo, persistentOnly);
@@ -46,10 +61,15 @@ namespace Engine
             _cells.Add(cellInfo);
         }
 
-        public void LoadInteriorCell(uint formID, bool persistentOnly = false)
+        public void LoadCell(uint formID, LoadCause loadCause, Vector3 startPosition, Quaternion startRotation, bool persistentOnly = false)
         {
+            if (startPosition != Vector3.zero || startRotation != Quaternion.identity)
+            {
+                _tempPlayerPosition = startPosition;
+                _tempPlayerRotation = startRotation;
+            }
             var cellInfo = new CellInfo();
-            var creationCoroutine = StartCellLoading(formID, cellInfo, persistentOnly);
+            var creationCoroutine = StartCellLoading(formID, cellInfo, loadCause, persistentOnly);
             cellInfo.ObjectCreationCoroutines.Add(creationCoroutine);
             _temporalLoadBalancer.AddTask(creationCoroutine);
             _cells.Add(cellInfo);
@@ -65,14 +85,14 @@ namespace Engine
 
             var cell = cellTask.Result;
 
-            var cellLoadingCoroutine = LoadInteriorCellRecord(cell, cellInfo, persistentOnly);
+            var cellLoadingCoroutine = LoadCellRecord(cell, cellInfo, LoadCause.Coc, persistentOnly);
             while (cellLoadingCoroutine.MoveNext())
             {
                 yield return null;
             }
         }
 
-        private IEnumerator StartCellLoading(uint formId, CellInfo cellInfo, bool persistentOnly = false)
+        private IEnumerator StartCellLoading(uint formId, CellInfo cellInfo, LoadCause loadCause, bool persistentOnly = false)
         {
             var cellTask = _masterFile.GetFromFormIDTask(formId);
             while (!cellTask.IsCompleted)
@@ -82,19 +102,20 @@ namespace Engine
 
             var cell = (CELL)cellTask.Result;
 
-            var cellLoadingCoroutine = LoadInteriorCellRecord(cell, cellInfo, persistentOnly);
+            var cellLoadingCoroutine = LoadCellRecord(cell, cellInfo, loadCause, persistentOnly);
             while (cellLoadingCoroutine.MoveNext())
             {
                 yield return null;
             }
         }
 
-
-        private IEnumerator LoadInteriorCellRecord(CELL cell, CellInfo cellInfo, bool persistentOnly = false)
+        private IEnumerator LoadCellRecord(CELL cell, CellInfo cellInfo, LoadCause loadCause, bool persistentOnly = false)
         {
-            if ((cell.CellFlag & 0x0001) == 0)
-                throw new InvalidDataException("Trying to load exterior cell as interior");
-
+            //if ((cell.CellFlag & 0x0001) == 0)
+            //    throw new InvalidDataException("Trying to load exterior cell as interior");
+            if (loadCause != LoadCause.OpenWorldLoad)
+                _player.SetActive(false);
+            
             var childrenTask = _masterFile.ReadNextTask();
             while (!childrenTask.IsCompleted)
             {
@@ -120,45 +141,82 @@ namespace Engine
                     yield return null;
                 }
             }
+            else
+            {
+                //TODO temporary thing
+                var resetLightingCoroutine = ResetLighting();
+                while (resetLightingCoroutine.MoveNext())
+                {
+                    yield return null;
+                }
+            }
 
             foreach (var subGroup in childrenGroup.GroupData)
             {
                 if (subGroup is not Group group) continue;
                 if (group.GroupType != 8 && (group.GroupType != 9 || persistentOnly)) continue;
 
-                var objectInstantiationTask = InstantiateCellReferences(group, cellGameObject);
+                var objectInstantiationTask = InstantiateCellReferences(group, cellGameObject, loadCause);
                 while (objectInstantiationTask.MoveNext())
                 {
                     yield return null;
                 }
             }
 
-            var postProcessTask = PostProcessInteriorCell(cellGameObject);
+            var postProcessTask = PostProcessCell(cellGameObject, loadCause != LoadCause.OpenWorldLoad);
             while (postProcessTask.MoveNext())
             {
                 yield return null;
             }
         }
 
-        private IEnumerator PostProcessInteriorCell(GameObject cellGameObject)
+        private IEnumerator PostProcessCell(GameObject cellGameObject, bool setPlayerPos)
         {
             cellGameObject.SetActive(true);
             //TODO static batching causes a huge freeze
             StaticBatchingUtility.Combine(cellGameObject);
             yield return null;
 
-            var player = GameObject.FindGameObjectWithTag("Player");
-            yield return null;
+            if (setPlayerPos)
+            {
+                _player.transform.position = _tempPlayerPosition;
+                _player.transform.rotation = _tempPlayerRotation;
+                _player.SetActive(true);
+                _gameEngine.GameState = GameState.InGame;
+            }
 
-            player.SetActive(false);
-            player.transform.position = _tempPlayerPosition;
-            player.transform.rotation = _tempPlayerRotation;
-            player.SetActive(true);
             _tempPlayerPosition = Vector3.zero;
             _tempPlayerRotation = Quaternion.identity;
             yield return null;
         }
+        
+        private static IEnumerator ResetLighting()
+        {
+            RenderSettings.ambientMode = AmbientMode.Skybox;
+            var directionalLight = RenderSettings.sun;
+            directionalLight.enabled = true;
+            directionalLight.color = new Color(1f, 0.9568627f, 0.8392157f);
+            directionalLight.transform.rotation = Quaternion.Euler(50, -270, 0);
+            RenderSettings.fog = false;
+            yield return null;
+            if (Camera.main == null) yield break;
+            var mainCamera = Camera.main;
+            mainCamera.renderingPath = RenderingPath.DeferredLighting;
+            mainCamera.clearFlags = CameraClearFlags.Skybox;
+            yield return null;
+            var cineMachine = Camera.main.gameObject.GetComponent<CinemachineBrain>();
+            if (cineMachine != null)
+            {
+                cineMachine.ActiveVirtualCamera.VirtualCameraGameObject.GetComponent<CinemachineVirtualCamera>()
+                    .m_Lens.FarClipPlane = DefaultCameraFarPlane;
+            }
+            else
+            {
+                mainCamera.farClipPlane = DefaultCameraFarPlane;
+            }
+        }
 
+        //TODO this thing should be completely rewritten
         private IEnumerator ConfigureCellLighting(CELL cellRecord)
         {
             LGTM template = null;
@@ -302,9 +360,8 @@ namespace Engine
             if (!RenderSettings.fog) yield break;
 
             //The camera shouldn't render anything beyond the fog
-            var farClipPlane = mainCamera.farClipPlane;
-            var convFogEndDist = Mathf.Lerp(mainCamera.nearClipPlane, (farClipPlane),
-                RenderSettings.fogEndDistance / farClipPlane);
+            var convFogEndDist = Mathf.Lerp(mainCamera.nearClipPlane, (DefaultCameraFarPlane),
+                RenderSettings.fogEndDistance / DefaultCameraFarPlane);
             mainCamera.clearFlags = CameraClearFlags.SolidColor;
             mainCamera.backgroundColor = RenderSettings.fogColor;
             yield return null;
@@ -320,7 +377,7 @@ namespace Engine
             }
         }
 
-        private IEnumerator InstantiateCellReferences(Group referencesGroup, GameObject parent)
+        private IEnumerator InstantiateCellReferences(Group referencesGroup, GameObject parent, LoadCause loadCause)
         {
             foreach (var entry in referencesGroup.GroupData)
             {
@@ -333,23 +390,10 @@ namespace Engine
                 }
 
                 var referencedRecord = referencedRecordTask.Result;
-                //Temporary door teleport debug code
-                //---------------
-                // if (reference.DoorTeleport != null)
-                // {
-                //     var cellFormID = _masterFile.GetParentFormID(reference.DoorTeleport.DestinationDoorReference);
-                //     var destinationTask = _masterFile.GetFromFormIDTask(cellFormID);
-                //     while (!destinationTask.IsCompleted)
-                //     {
-                //         yield return null;
-                //     }
-                //     Debug.Log(((CELL)destinationTask.Result).EditorID);
-                // }
-                //---------------
                 switch (referencedRecord)
                 {
                     case STAT staticRecord:
-                        if (staticRecord.FormID == 0x32)
+                        if (loadCause == LoadCause.Coc && staticRecord.FormID == 0x32)
                         {
                             _tempPlayerPosition = NifUtils.NifPointToUnityPoint(new Vector3(reference.Position[0],
                                 reference.Position[1], reference.Position[2]));
@@ -372,7 +416,7 @@ namespace Engine
                         break;
                     case DOOR door:
                         //Currently only teleport doors are loaded because regular doors will block the location without the ability to open them
-                        if (reference.DoorTeleport != null)
+                        if (!string.IsNullOrEmpty(door.NifModelFilename) && reference.DoorTeleport != null)
                             _nifManager.PreloadNifFile(door.NifModelFilename);
                         break;
                 }
@@ -416,7 +460,7 @@ namespace Engine
                 LIGH light => InstantiateLightAtPositionAndRotation(referenceRecord, light, referenceRecord.Position,
                     referenceRecord.Rotation, referenceRecord.Scale, parent),
                 DOOR door => referenceRecord.DoorTeleport != null
-                    ? InstantiateModelAtPositionAndRotation(door.NifModelFilename, referenceRecord.Position,
+                    ? InstantiateDoorTeleportAtPositionAndRotation(referenceRecord, door, referenceRecord.Position,
                         referenceRecord.Rotation, referenceRecord.Scale, parent)
                     : null,
                 _ => null
@@ -432,6 +476,80 @@ namespace Engine
             {
                 yield return null;
             }
+        }
+
+        private IEnumerator InstantiateDoorTeleportAtPositionAndRotation(REFR doorRef, DOOR doorBase, float[] position,
+            float[] rotation,
+            float scale, GameObject parent)
+        {
+            GameObject modelObject = null;
+            if (!string.IsNullOrEmpty(doorBase.NifModelFilename))
+            {
+                var modelObjectCoroutine =
+                    _nifManager.InstantiateNif(doorBase.NifModelFilename, o => { modelObject = o; });
+                while (modelObjectCoroutine.MoveNext())
+                {
+                    yield return null;
+                }
+            }
+
+            if (modelObject == null)
+                modelObject = new GameObject(doorBase.EditorID);
+
+            var doorBounds = new Bounds();
+            doorBounds.SetMinMax(
+                NifUtils.NifPointToUnityPoint(doorBase.BoundsA),
+                NifUtils.NifPointToUnityPoint(doorBase.BoundsB)
+            );
+
+            yield return null;
+
+            var collider = modelObject.AddComponent<BoxCollider>();
+            collider.isTrigger = true;
+            collider.center = doorBounds.center;
+            collider.size = doorBounds.size;
+
+            yield return null;
+
+            var destinationDoorFormID = doorBase.RandomTeleports.Count == 0
+                ? doorRef.DoorTeleport.DestinationDoorReference
+                :
+                /*This should be baked into the savefile, but for now it is random every time*/
+                doorBase.RandomTeleports[Random.Range(0, doorBase.RandomTeleports.Count)];
+
+            var cellFormID = _masterFile.GetParentFormID(destinationDoorFormID);
+            var destinationTask = _masterFile.GetFromFormIDTask(cellFormID);
+            while (!destinationTask.IsCompleted)
+            {
+                yield return null;
+            }
+
+            var children = modelObject.GetComponentsInChildren<Transform>();
+            yield return null;
+            var childrenSet = children.ToHashSet();
+            yield return null;
+
+            var teleportPos = NifUtils.NifPointToUnityPoint(new Vector3(doorRef.DoorTeleport.Position[0],
+                doorRef.DoorTeleport.Position[1], doorRef.DoorTeleport.Position[2]));
+            var teleportRot = NifUtils.NifEulerAnglesToUnityQuaternion(
+                new Vector3(doorRef.DoorTeleport.Rotation[0], doorRef.DoorTeleport.Rotation[1],
+                    doorRef.DoorTeleport.Rotation[2]));
+            var isAutomaticDoor = (doorBase.Flags & 0x02) != 0;
+
+            yield return null;
+
+            var doorTeleport = modelObject.AddComponent<DoorTeleport>();
+            doorTeleport.automaticDoor = isAutomaticDoor;
+            doorTeleport.teleportPosition = teleportPos;
+            doorTeleport.teleportRotation = teleportRot;
+            doorTeleport.cellFormID = cellFormID;
+            doorTeleport.destinationCellName = ((CELL)destinationTask.Result).EditorID;
+            doorTeleport.GameEngine = _gameEngine;
+            doorTeleport.ChildrenTransforms = childrenSet;
+
+            yield return null;
+
+            ApplyPositionAndRotation(position, rotation, scale, parent, modelObject);
         }
 
         private IEnumerator InstantiateLightAtPositionAndRotation(REFR lightReference, LIGH lightRecord,
