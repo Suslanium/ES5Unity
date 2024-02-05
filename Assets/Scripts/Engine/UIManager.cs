@@ -15,7 +15,7 @@ namespace Engine
 
         private void Update()
         {
-            if (_gameEngine is { ActiveDoorTeleport: not null })
+            if (_gameEngine is { ActiveDoorTeleport: not null, GameState: not GameState.Loading })
             {
                 loadLocationNameText.text = _gameEngine.ActiveDoorTeleport.destinationCellName;
                 loadLocationButton.SetActive(true);
@@ -30,7 +30,6 @@ namespace Engine
         {
             _gameEngine?.LoadCell(_gameEngine.ActiveDoorTeleport.cellFormID, LoadCause.DoorTeleport,
                 _gameEngine.ActiveDoorTeleport.teleportPosition, _gameEngine.ActiveDoorTeleport.teleportRotation, true);
-            if (_gameEngine != null) _gameEngine.ActiveDoorTeleport = null;
         }
 
         public void SetLoadingState()

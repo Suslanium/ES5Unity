@@ -99,6 +99,7 @@ namespace Engine
                 }
             }
 
+            ActiveDoorTeleport = null;
             _cellManager.LoadCell(editorId);
         }
 
@@ -113,6 +114,7 @@ namespace Engine
                 }
             }
 
+            ActiveDoorTeleport = null;
             _cellManager.LoadCell(formID, loadCause, startPosition, startRotation);
         }
 

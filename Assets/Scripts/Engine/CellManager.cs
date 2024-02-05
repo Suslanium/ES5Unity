@@ -4,6 +4,7 @@ using System.IO;
 using Cinemachine;
 using Core;
 using Engine.Door;
+using Engine.Occlusion;
 using MasterFile;
 using MasterFile.MasterFileContents;
 using MasterFile.MasterFileContents.Records;
@@ -22,7 +23,7 @@ namespace Engine
         Coc,
         OpenWorldLoad
     }
-    
+
     public class CellInfo
     {
         public GameObject CellGameObject { get; set; }
@@ -40,6 +41,11 @@ namespace Engine
         private readonly GameObject _player;
         private Vector3 _tempPlayerPosition;
         private Quaternion _tempPlayerRotation;
+        private static readonly int RoomLayer = LayerMask.NameToLayer("Room");
+        private static readonly int PortalLayer = LayerMask.NameToLayer("Portal");
+        private readonly List<(GameObject, uint, uint)> _tempPortals = new();
+        private readonly Dictionary<uint, GameObject> _tempRooms = new();
+        private readonly List<(uint, uint)> _tempLinkedRooms = new();
         private const int DefaultCameraFarPlane = 500;
 
         public CellManager(ESMasterFile masterFile, NifManager nifManager, TemporalLoadBalancer temporalLoadBalancer,
@@ -61,13 +67,15 @@ namespace Engine
             _cells.Add(cellInfo);
         }
 
-        public void LoadCell(uint formID, LoadCause loadCause, Vector3 startPosition, Quaternion startRotation, bool persistentOnly = false)
+        public void LoadCell(uint formID, LoadCause loadCause, Vector3 startPosition, Quaternion startRotation,
+            bool persistentOnly = false)
         {
             if (startPosition != Vector3.zero || startRotation != Quaternion.identity)
             {
                 _tempPlayerPosition = startPosition;
                 _tempPlayerRotation = startRotation;
             }
+
             var cellInfo = new CellInfo();
             var creationCoroutine = StartCellLoading(formID, cellInfo, loadCause, persistentOnly);
             cellInfo.ObjectCreationCoroutines.Add(creationCoroutine);
@@ -92,7 +100,8 @@ namespace Engine
             }
         }
 
-        private IEnumerator StartCellLoading(uint formId, CellInfo cellInfo, LoadCause loadCause, bool persistentOnly = false)
+        private IEnumerator StartCellLoading(uint formId, CellInfo cellInfo, LoadCause loadCause,
+            bool persistentOnly = false)
         {
             var cellTask = _masterFile.GetFromFormIDTask(formId);
             while (!cellTask.IsCompleted)
@@ -109,13 +118,14 @@ namespace Engine
             }
         }
 
-        private IEnumerator LoadCellRecord(CELL cell, CellInfo cellInfo, LoadCause loadCause, bool persistentOnly = false)
+        private IEnumerator LoadCellRecord(CELL cell, CellInfo cellInfo, LoadCause loadCause,
+            bool persistentOnly = false)
         {
             //if ((cell.CellFlag & 0x0001) == 0)
             //    throw new InvalidDataException("Trying to load exterior cell as interior");
             if (loadCause != LoadCause.OpenWorldLoad)
                 _player.SetActive(false);
-            
+
             var childrenTask = _masterFile.ReadNextTask();
             while (!childrenTask.IsCompleted)
             {
@@ -177,6 +187,19 @@ namespace Engine
             StaticBatchingUtility.Combine(cellGameObject);
             yield return null;
 
+            if (_tempPortals.Count > 0 || _tempRooms.Count > 0)
+            {
+                var cellOcclusion = cellGameObject.AddComponent<CellOcclusion>();
+                cellOcclusion.Init(_tempPortals, _tempRooms, _tempLinkedRooms, cellGameObject,
+                    _player.GetComponentInChildren<Collider>());
+            }
+
+            _tempLinkedRooms.Clear();
+            _tempPortals.Clear();
+            _tempRooms.Clear();
+
+            yield return null;
+
             if (setPlayerPos)
             {
                 _player.transform.position = _tempPlayerPosition;
@@ -189,7 +212,7 @@ namespace Engine
             _tempPlayerRotation = Quaternion.identity;
             yield return null;
         }
-        
+
         private static IEnumerator ResetLighting()
         {
             RenderSettings.ambientMode = AmbientMode.Skybox;
@@ -399,6 +422,59 @@ namespace Engine
                                 reference.Position[1], reference.Position[2]));
                             _tempPlayerRotation = NifUtils.NifEulerAnglesToUnityQuaternion(
                                 new Vector3(reference.Rotation[0], reference.Rotation[1], reference.Rotation[2]));
+                            break;
+                        }
+
+                        if (staticRecord.FormID == 0x20)
+                        {
+                            //Portal marker
+                            var gameObject = new GameObject("Portal marker")
+                            {
+                                layer = PortalLayer
+                            };
+                            var collider = gameObject.AddComponent<BoxCollider>();
+                            collider.isTrigger = true;
+                            collider.size = NifUtils.NifPointToUnityPoint(reference.Primitive.Bounds) * 2;
+                            ApplyPositionAndRotation(reference.Position, reference.Rotation, reference.Scale, parent,
+                                gameObject);
+                            if (reference.PortalDestinations != null)
+                            {
+                                _tempPortals.Add((gameObject, reference.PortalDestinations.OriginReference,
+                                    reference.PortalDestinations.DestinationReference));
+                            }
+                            else
+                            {
+                                gameObject.SetActive(false);
+                            }
+
+                            break;
+                        }
+
+                        if (staticRecord.FormID == 0x1F)
+                        {
+                            //Room marker
+                            var gameObject = new GameObject("Room marker")
+                            {
+                                layer = RoomLayer
+                            };
+                            var collider = gameObject.AddComponent<BoxCollider>();
+                            collider.isTrigger = true;
+                            collider.size = NifUtils.NifPointToUnityPoint(reference.Primitive.Bounds) * 2;
+                            ApplyPositionAndRotation(reference.Position, reference.Rotation, reference.Scale, parent,
+                                gameObject);
+                            _tempRooms.Add(reference.FormID, gameObject);
+                            yield return null;
+
+                            if (reference.LinkedRoomFormIDs.Count > 0)
+                            {
+                                foreach (var linkedRoomFormID in reference.LinkedRoomFormIDs)
+                                {
+                                    _tempLinkedRooms.Add((reference.FormID, linkedRoomFormID));
+                                }
+                            }
+
+                            yield return null;
+
                             break;
                         }
 
