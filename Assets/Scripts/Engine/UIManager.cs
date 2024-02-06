@@ -36,7 +36,10 @@ namespace Engine
             {
                 loadLocationButton.SetActive(false);
             }
+        }
 
+        private void FixedUpdate()
+        {
             if (_currentAlpha == _desiredAlpha)
             {
                 if (_fadeCompleteCallback == null) return;
@@ -45,7 +48,7 @@ namespace Engine
                 return;
             }
 
-            _currentAlpha = Mathf.MoveTowards(_currentAlpha, _desiredAlpha, Time.deltaTime);
+            _currentAlpha = Mathf.MoveTowards(_currentAlpha, _desiredAlpha, Time.fixedDeltaTime);
             _fadeObjColor.a = _currentAlpha;
             fadeObject.color = _fadeObjColor;
         }

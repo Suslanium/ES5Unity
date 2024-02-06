@@ -23,7 +23,7 @@ namespace MasterFile
         private Dictionary<string, Dictionary<uint, long>> RecordTypeDictionary { get; set; } = new();
         private readonly BinaryReader _fileReader;
         private readonly Task _initializationTask;
-        private readonly Random _random = new();
+        private readonly Random _random = new(DateTime.Now.Millisecond);
 
         public ESMasterFile(BinaryReader fileReader)
         {
