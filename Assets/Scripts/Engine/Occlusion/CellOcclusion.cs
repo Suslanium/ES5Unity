@@ -208,6 +208,12 @@ namespace Engine.Occlusion
             List<Room> rooms)
         {
             Dictionary<uint, List<GameObject>> newRoomObjects = new(roomObjects);
+            
+            foreach (var room in rooms)
+            {
+                _roomIntersectingObjects.Add(room.FormId, new List<GameObject>());
+            }
+            
             foreach (Transform child in parent.transform)
             {
                 List<uint> roomIds = new();
@@ -222,8 +228,6 @@ namespace Engine.Occlusion
                 foreach (var formId in roomIds)
                 {
                     newRoomObjects[formId].Remove(child.gameObject);
-                    if (!_roomIntersectingObjects.ContainsKey(formId))
-                        _roomIntersectingObjects.Add(formId, new List<GameObject> { child.gameObject });
                     _roomIntersectingObjects[formId].Add(child.gameObject);
                 }
 

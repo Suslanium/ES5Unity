@@ -43,9 +43,9 @@ namespace MasterFile.MasterFileContents.Records.Structures
         /// </summary>
         public static Lighting Parse(ushort fieldSize, BinaryReader fileReader)
         {
-            if (fieldSize == 92)
+            if (fieldSize is 92 or 64)
             {
-                Lighting lighting = new Lighting
+                var lighting = new Lighting
                 {
                     AmbientRGBA = fileReader.ReadBytes(4),
                     DirectionalRGBA = fileReader.ReadBytes(4),
@@ -57,6 +57,11 @@ namespace MasterFile.MasterFileContents.Records.Structures
                     DirectionalFade = fileReader.ReadSingle()
                 };
                 //Skip some unknown/unused info
+                if (fieldSize == 64)
+                {
+                    fileReader.BaseStream.Seek(32, SeekOrigin.Current);
+                    return lighting;
+                }
                 fileReader.BaseStream.Seek(40, SeekOrigin.Current);
                 lighting.FogFarColor = fileReader.ReadBytes(4);
                 lighting.FogMax = fileReader.ReadSingle();
