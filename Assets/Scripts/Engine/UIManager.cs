@@ -1,5 +1,7 @@
-﻿using TMPro;
+﻿using System;
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Engine
 {
@@ -11,9 +13,17 @@ namespace Engine
 
         [SerializeField] private TMP_Text loadLocationNameText;
 
+        [SerializeField] private Image fadeObject;
+
+        private float _desiredAlpha;
+        private float _currentAlpha;
+
         private GameEngine _gameEngine;
 
         private bool _hideLoadButton;
+        private Action _fadeCompleteCallback;
+
+        private Color _fadeObjColor = Color.black;
 
         private void Update()
         {
@@ -26,29 +36,56 @@ namespace Engine
             {
                 loadLocationButton.SetActive(false);
             }
+
+            if (_currentAlpha == _desiredAlpha)
+            {
+                if (_fadeCompleteCallback == null) return;
+                _fadeCompleteCallback();
+                _fadeCompleteCallback = null;
+                return;
+            }
+
+            _currentAlpha = Mathf.MoveTowards(_currentAlpha, _desiredAlpha, Time.deltaTime);
+            _fadeObjColor.a = _currentAlpha;
+            fadeObject.color = _fadeObjColor;
         }
 
-        public void LoadLocation()
+        public void StartLoadingLocation()
+        {
+            FadeIn(() =>
+            {
+                _gameEngine?.LoadCell(_gameEngine.ActiveDoorTeleport.cellFormID, LoadCause.DoorTeleport,
+                    _gameEngine.ActiveDoorTeleport.teleportPosition, _gameEngine.ActiveDoorTeleport.teleportRotation,
+                    true);
+            });
+        }
+
+        public void FadeIn(Action fadeCompleteCallback)
         {
             _hideLoadButton = true;
-            _gameEngine?.LoadCell(_gameEngine.ActiveDoorTeleport.cellFormID, LoadCause.DoorTeleport,
-                _gameEngine.ActiveDoorTeleport.teleportPosition, _gameEngine.ActiveDoorTeleport.teleportRotation, true);
+            characterControls.SetActive(false);
+            _desiredAlpha = 1f;
+            _fadeCompleteCallback = fadeCompleteCallback;
         }
 
         public void SetLoadingState()
         {
             characterControls.SetActive(false);
+            fadeObject.gameObject.SetActive(false);
         }
 
         public void SetInGameState()
         {
             _hideLoadButton = false;
             characterControls.SetActive(true);
+            fadeObject.gameObject.SetActive(true);
+            _desiredAlpha = 0f;
         }
 
         public void SetPausedState()
         {
             characterControls.SetActive(false);
+            fadeObject.gameObject.SetActive(false);
         }
 
         public void SetGameEngine(GameEngine gameEngine)

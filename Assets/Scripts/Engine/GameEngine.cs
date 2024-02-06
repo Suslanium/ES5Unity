@@ -76,8 +76,10 @@ namespace Engine
             _uiManager = uiManager;
             uiManager.SetGameEngine(this);
             MainCamera = mainCamera;
+            _loadingScreenManager.Initialize(masterFile, _nifManager, _loadBalancer);
         }
 
+        // ReSharper disable Unity.PerformanceAnalysis
         public void LoadCell(string editorId, bool clearPrevious = false)
         {
             _player.SetActive(false);
@@ -85,6 +87,7 @@ namespace Engine
             _loadBalancer.AddTask(startCellLoadingCoroutine);
         }
 
+        // ReSharper disable Unity.PerformanceAnalysis
         public void LoadCell(uint formID, LoadCause loadCause, Vector3 startPosition, Quaternion startRotation,
             bool clearPrevious = false)
         {

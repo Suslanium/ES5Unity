@@ -141,24 +141,6 @@ namespace Engine
             cellInfo.CellGameObject = cellGameObject;
             cellGameObject.SetActive(false);
 
-            if (cell.CellLightingInfo != null)
-            {
-                var lightingCoroutine = ConfigureCellLighting(cell);
-                while (lightingCoroutine.MoveNext())
-                {
-                    yield return null;
-                }
-            }
-            else
-            {
-                //TODO temporary thing
-                var resetLightingCoroutine = ResetLighting();
-                while (resetLightingCoroutine.MoveNext())
-                {
-                    yield return null;
-                }
-            }
-
             foreach (var subGroup in childrenGroup.GroupData)
             {
                 if (subGroup is not Group group) continue;
@@ -171,14 +153,14 @@ namespace Engine
                 }
             }
 
-            var postProcessTask = PostProcessCell(cellGameObject, loadCause != LoadCause.OpenWorldLoad);
+            var postProcessTask = PostProcessCell(cell, cellGameObject, loadCause != LoadCause.OpenWorldLoad);
             while (postProcessTask.MoveNext())
             {
                 yield return null;
             }
         }
 
-        private IEnumerator PostProcessCell(GameObject cellGameObject, bool setPlayerPos)
+        private IEnumerator PostProcessCell(CELL cell, GameObject cellGameObject, bool setPlayerPos)
         {
             cellGameObject.SetActive(true);
             //TODO static batching causes a huge freeze
@@ -198,6 +180,15 @@ namespace Engine
 
             yield return null;
 
+            if (cell.CellLightingInfo != null)
+            {
+                var lightingCoroutine = ConfigureCellLighting(cell);
+                while (lightingCoroutine.MoveNext())
+                {
+                    yield return null;
+                }
+            }
+            
             if (setPlayerPos)
             {
                 _player.transform.position = _tempPlayerPosition;
@@ -692,15 +683,20 @@ namespace Engine
                 modelObject.transform.localScale = Vector3.one * scale;
             }
 
-            modelObject.transform.position +=
+            modelObject.transform.position =
                 NifUtils.NifPointToUnityPoint(new Vector3(position[0], position[1], position[2]));
-            modelObject.transform.rotation *=
+            modelObject.transform.rotation =
                 NifUtils.NifEulerAnglesToUnityQuaternion(new Vector3(rotation[0], rotation[1], rotation[2]));
             modelObject.transform.parent = parent.transform;
         }
 
         public IEnumerator DestroyAllCells()
         {
+            var resetLightingCoroutine = ResetLighting();
+            while (resetLightingCoroutine.MoveNext())
+            {
+                yield return null;
+            }
             foreach (var cell in _cells)
             {
                 if (cell.CellGameObject != null) Object.Destroy(cell.CellGameObject);

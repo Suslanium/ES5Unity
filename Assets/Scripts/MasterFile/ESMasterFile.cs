@@ -23,6 +23,7 @@ namespace MasterFile
         private Dictionary<string, Dictionary<uint, long>> RecordTypeDictionary { get; set; } = new();
         private readonly BinaryReader _fileReader;
         private readonly Task _initializationTask;
+        private readonly Random _random = new();
 
         public ESMasterFile(BinaryReader fileReader)
         {
@@ -124,6 +125,24 @@ namespace MasterFile
                 if (!_initializationTask.IsCompleted)
                     _initializationTask.Wait();
                 return FindCellByEditorID(editorID);
+            });
+        }
+
+        private Record GetRandomRecordOfType(string type)
+        {
+            var records = RecordTypeDictionary[type];
+            var recordPos = records.ElementAt(_random.Next(0, records.Count)).Value;
+            var record = (Record)MasterFileEntry.Parse(_fileReader, recordPos);
+            return record;
+        }
+
+        public Task<Record> GetRandomRecordOfTypeTask(string type)
+        {
+            return Task.Run(() =>
+            {
+                if (!_initializationTask.IsCompleted)
+                    _initializationTask.Wait();
+                return GetRandomRecordOfType(type);
             });
         }
 

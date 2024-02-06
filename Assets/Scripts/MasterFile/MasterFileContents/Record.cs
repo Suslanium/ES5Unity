@@ -132,8 +132,10 @@ namespace MasterFile.MasterFileContents
                 var decompressedData = DecompressRecordData(fileReader, basicRecordInfo.DataSize);
                 var decompressedDataStream = new MemoryStream(decompressedData, false);
                 var decompressedDataReader = new BinaryReader(decompressedDataStream);
-                var decompressedRecordInfo = new Record(basicRecordInfo.Type, (uint)decompressedData.Length, basicRecordInfo.Flag,
-                    basicRecordInfo.FormID, basicRecordInfo.Timestamp, basicRecordInfo.VersionControlInfo, basicRecordInfo.InternalRecordVersion,
+                var decompressedRecordInfo = new Record(basicRecordInfo.Type, (uint)decompressedData.Length,
+                    basicRecordInfo.Flag,
+                    basicRecordInfo.FormID, basicRecordInfo.Timestamp, basicRecordInfo.VersionControlInfo,
+                    basicRecordInfo.InternalRecordVersion,
                     basicRecordInfo.UnknownData);
                 toReturn = GetSpecificRecord(decompressedDataReader, decompressedRecordInfo);
                 decompressedDataReader.Close();
@@ -144,7 +146,7 @@ namespace MasterFile.MasterFileContents
                 toReturn = GetSpecificRecord(fileReader, basicRecordInfo);
             }
 
-            fileReader.BaseStream.Seek(startPos+basicRecordInfo.DataSize, SeekOrigin.Begin);
+            fileReader.BaseStream.Seek(startPos + basicRecordInfo.DataSize, SeekOrigin.Begin);
             return toReturn;
         }
 
@@ -183,6 +185,9 @@ namespace MasterFile.MasterFileContents
                 case "DOOR":
                     specificRecord = DOOR.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position);
                     break;
+                case "LSCR":
+                    specificRecord = LSCR.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position);
+                    break;
             }
 
             return specificRecord;
@@ -192,7 +197,7 @@ namespace MasterFile.MasterFileContents
         {
             var basicRecordInfo = ParseBasicInfo(recordType, fileReader, position);
             var startPos = fileReader.BaseStream.Position;
-            fileReader.BaseStream.Seek(startPos+basicRecordInfo.DataSize, SeekOrigin.Begin);
+            fileReader.BaseStream.Seek(startPos + basicRecordInfo.DataSize, SeekOrigin.Begin);
             return basicRecordInfo;
         }
 
@@ -208,6 +213,7 @@ namespace MasterFile.MasterFileContents
             {
                 Debug.LogError("Decompressed record data size doesn't match with the original decompressed size");
             }
+
             return decompressedData;
         }
     }
