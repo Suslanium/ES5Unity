@@ -25,6 +25,8 @@ namespace Engine
         private readonly CellManager _cellManager;
         private readonly TemporalLoadBalancer _loadBalancer;
         private readonly UIManager _uiManager;
+        private readonly GameObject _player;
+        private readonly LoadingScreenManager _loadingScreenManager;
         public readonly Camera MainCamera;
         public Plane[] CameraPlanes { get; private set; }
 
@@ -37,8 +39,12 @@ namespace Engine
                 {
                     case GameState.Loading:
                         _uiManager.SetLoadingState();
+                        _loadingScreenManager.ShowLoadingScreen();
                         break;
                     case GameState.InGame:
+                        _loadingScreenManager.HideLoadingScreen();
+                        if (!_player.activeSelf)
+                            _player.SetActive(true);
                         _uiManager.SetInGameState();
                         break;
                     case GameState.Paused:
@@ -51,10 +57,12 @@ namespace Engine
                 _backingState = value;
             }
         }
+
         private GameState _backingState;
         public DoorTeleport ActiveDoorTeleport;
 
-        public GameEngine(ResourceManager resourceManager, ESMasterFile masterFile, GameObject player, UIManager uiManager)
+        public GameEngine(ResourceManager resourceManager, ESMasterFile masterFile, GameObject player,
+            UIManager uiManager, LoadingScreenManager loadingScreenManager, Camera mainCamera)
         {
             _resourceManager = resourceManager;
             _esMasterFile = masterFile;
@@ -63,22 +71,27 @@ namespace Engine
             _nifManager = new NifManager(_materialManager, _resourceManager);
             _loadBalancer = new TemporalLoadBalancer();
             _cellManager = new CellManager(_esMasterFile, _nifManager, _loadBalancer, this, player);
+            _loadingScreenManager = loadingScreenManager;
+            _player = player;
             _uiManager = uiManager;
             uiManager.SetGameEngine(this);
-            MainCamera = Camera.main;
+            MainCamera = mainCamera;
         }
 
         public void LoadCell(string editorId, bool clearPrevious = false)
         {
-            GameState = GameState.Loading;
+            _player.SetActive(false);
             var startCellLoadingCoroutine = LoadCellCoroutine(editorId, clearPrevious);
             _loadBalancer.AddTask(startCellLoadingCoroutine);
         }
 
-        public void LoadCell(uint formID, LoadCause loadCause, Vector3 startPosition, Quaternion startRotation, bool clearPrevious = false)
+        public void LoadCell(uint formID, LoadCause loadCause, Vector3 startPosition, Quaternion startRotation,
+            bool clearPrevious = false)
         {
-            GameState = GameState.Loading;
-            var startCellLoadingCoroutine = LoadCellCoroutine(formID, loadCause, startPosition, startRotation, clearPrevious);
+            if (loadCause != LoadCause.OpenWorldLoad)
+                _player.SetActive(false);
+            var startCellLoadingCoroutine =
+                LoadCellCoroutine(formID, loadCause, startPosition, startRotation, clearPrevious);
             _loadBalancer.AddTask(startCellLoadingCoroutine);
         }
 
@@ -100,10 +113,12 @@ namespace Engine
             }
 
             ActiveDoorTeleport = null;
+            GameState = GameState.Loading;
             _cellManager.LoadCell(editorId);
         }
 
-        private IEnumerator LoadCellCoroutine(uint formID, LoadCause loadCause, Vector3 startPosition, Quaternion startRotation, bool clearPrevious = false)
+        private IEnumerator LoadCellCoroutine(uint formID, LoadCause loadCause, Vector3 startPosition,
+            Quaternion startRotation, bool clearPrevious = false)
         {
             if (clearPrevious)
             {
@@ -115,6 +130,7 @@ namespace Engine
             }
 
             ActiveDoorTeleport = null;
+            GameState = GameState.Loading;
             _cellManager.LoadCell(formID, loadCause, startPosition, startRotation);
         }
 

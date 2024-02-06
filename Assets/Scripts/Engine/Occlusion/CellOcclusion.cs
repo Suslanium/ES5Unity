@@ -57,13 +57,13 @@ namespace Engine.Occlusion
 
         public void Init(List<(GameObject, uint, uint)> portals, Dictionary<uint, GameObject> roomObject,
             List<(uint, uint)> linkedRooms,
-            GameObject cellGameObject, Collider playerCollider)
+            GameObject cellGameObject, Collider playerCollider, Camera mainCamera)
         {
             _portalLayer = LayerMask.NameToLayer("Portal");
             _roomLayer = LayerMask.NameToLayer("Room");
             _rayCastLayerMask = LayerMask.GetMask("Room", "Portal");
             _playerCollider = playerCollider;
-            _mainCamera = Camera.main;
+            _mainCamera = mainCamera;
             var rooms = new Dictionary<uint, Room>();
             var roomObjects = new Dictionary<uint, List<GameObject>>();
             var portalFormIds = new HashSet<(uint, uint)>(portals.Count);

@@ -123,8 +123,6 @@ namespace Engine
         {
             //if ((cell.CellFlag & 0x0001) == 0)
             //    throw new InvalidDataException("Trying to load exterior cell as interior");
-            if (loadCause != LoadCause.OpenWorldLoad)
-                _player.SetActive(false);
 
             var childrenTask = _masterFile.ReadNextTask();
             while (!childrenTask.IsCompleted)
@@ -191,7 +189,7 @@ namespace Engine
             {
                 var cellOcclusion = cellGameObject.AddComponent<CellOcclusion>();
                 cellOcclusion.Init(_tempPortals, _tempRooms, _tempLinkedRooms, cellGameObject,
-                    _player.GetComponentInChildren<Collider>());
+                    _player.GetComponentInChildren<Collider>(), _gameEngine.MainCamera);
             }
 
             _tempLinkedRooms.Clear();
@@ -204,7 +202,6 @@ namespace Engine
             {
                 _player.transform.position = _tempPlayerPosition;
                 _player.transform.rotation = _tempPlayerRotation;
-                _player.SetActive(true);
                 _gameEngine.GameState = GameState.InGame;
             }
 
@@ -213,7 +210,7 @@ namespace Engine
             yield return null;
         }
 
-        private static IEnumerator ResetLighting()
+        private IEnumerator ResetLighting()
         {
             RenderSettings.ambientMode = AmbientMode.Skybox;
             var directionalLight = RenderSettings.sun;
@@ -222,12 +219,12 @@ namespace Engine
             directionalLight.transform.rotation = Quaternion.Euler(50, -270, 0);
             RenderSettings.fog = false;
             yield return null;
-            if (Camera.main == null) yield break;
-            var mainCamera = Camera.main;
+            if (_gameEngine.MainCamera == null) yield break;
+            var mainCamera = _gameEngine.MainCamera;
             mainCamera.renderingPath = RenderingPath.DeferredLighting;
             mainCamera.clearFlags = CameraClearFlags.Skybox;
             yield return null;
-            var cineMachine = Camera.main.gameObject.GetComponent<CinemachineBrain>();
+            var cineMachine = mainCamera.gameObject.GetComponent<CinemachineBrain>();
             if (cineMachine != null)
             {
                 cineMachine.ActiveVirtualCamera.VirtualCameraGameObject.GetComponent<CinemachineVirtualCamera>()
@@ -371,8 +368,8 @@ namespace Engine
 
             yield return null;
 
-            if (Camera.main == null) yield break;
-            var mainCamera = Camera.main;
+            if (_gameEngine.MainCamera == null) yield break;
+            var mainCamera = _gameEngine.MainCamera;
             //This looks almost the same as forward rendering, but improves performance by a lot
             /*
                 WARNING: The line below won't work from Unity version 2022.2.
@@ -388,7 +385,7 @@ namespace Engine
             mainCamera.clearFlags = CameraClearFlags.SolidColor;
             mainCamera.backgroundColor = RenderSettings.fogColor;
             yield return null;
-            var cineMachine = Camera.main.gameObject.GetComponent<CinemachineBrain>();
+            var cineMachine = mainCamera.gameObject.GetComponent<CinemachineBrain>();
             if (cineMachine != null)
             {
                 cineMachine.ActiveVirtualCamera.VirtualCameraGameObject.GetComponent<CinemachineVirtualCamera>()

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Engine.Door
@@ -26,6 +27,11 @@ namespace Engine.Door
         private void Start()
         {
             _doorTrigger = GetComponent<BoxCollider>();
+        }
+
+        private void OnDestroy()
+        {
+            if (GameEngine.ActiveDoorTeleport == this) GameEngine.ActiveDoorTeleport = null;
         }
 
         private void Update()

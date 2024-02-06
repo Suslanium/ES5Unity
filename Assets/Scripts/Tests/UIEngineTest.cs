@@ -10,9 +10,11 @@ namespace Tests
     {
         [SerializeField] private GameObject loadUIPanel;
 
-        [SerializeField] private GameObject characterControls;
-
         [SerializeField] private GameObject player;
+
+        [SerializeField] private Camera mainCamera;
+
+        [SerializeField] private LoadingScreenManager loadingScreenManager;
 
         [SerializeField] private TMP_InputField pathText;
 
@@ -39,7 +41,7 @@ namespace Tests
             _masterFileReader =
                 new BinaryReader(File.Open($"{path}{Path.DirectorySeparatorChar}Skyrim.esm", FileMode.Open));
             _esMasterFile = new ESMasterFile(_masterFileReader);
-            _gameEngine = new GameEngine(_resourceManager, _esMasterFile, player, UIManager);
+            _gameEngine = new GameEngine(_resourceManager, _esMasterFile, player, UIManager, loadingScreenManager, mainCamera);
             _gameEngine.LoadCell(cell);
         }
         
