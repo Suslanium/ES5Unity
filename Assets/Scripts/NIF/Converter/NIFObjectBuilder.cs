@@ -183,7 +183,7 @@ namespace NIF.Converter
                 material =>
                 {
                     var meshRenderer = gameObject.AddComponent<MeshRenderer>();
-                    meshRenderer.material = material;
+                    meshRenderer.sharedMaterial = material;
                 });
             while (materialCoroutine.MoveNext())
             {

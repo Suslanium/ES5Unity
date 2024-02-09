@@ -19,6 +19,7 @@ Shader "SkyrimAlphaTestShader"
     }
     SubShader
     {
+        Offset -1, -1
         Tags {"Queue"="AlphaTest" "IgnoreProjector"="True" "RenderType"="TransparentCutout"}
         LOD 200
 
