@@ -10,13 +10,17 @@ namespace Tests
     {
         [SerializeField] private GameObject loadUIPanel;
 
-        [SerializeField] private GameObject characterControls;
-
         [SerializeField] private GameObject player;
+
+        [SerializeField] private Camera mainCamera;
+
+        [SerializeField] private LoadingScreenManager loadingScreenManager;
 
         [SerializeField] private TMP_InputField pathText;
 
         [SerializeField] private TMP_InputField cellText;
+
+        [SerializeField] private UIManager UIManager;
 
         private GameEngine _gameEngine;
         private ResourceManager _resourceManager;
@@ -33,21 +37,22 @@ namespace Tests
             var path = pathText.text;
             var cell = cellText.text;
             loadUIPanel.SetActive(false);
-            characterControls.SetActive(true);
-            player.SetActive(true);
             _resourceManager = new ResourceManager(path);
             _masterFileReader =
                 new BinaryReader(File.Open($"{path}{Path.DirectorySeparatorChar}Skyrim.esm", FileMode.Open));
             _esMasterFile = new ESMasterFile(_masterFileReader);
-            _gameEngine = new GameEngine(_resourceManager, _esMasterFile);
-            _gameEngine.LoadInteriorCell(cell);
+            _gameEngine = new GameEngine(_resourceManager, _esMasterFile, player, UIManager, loadingScreenManager, mainCamera);
+            UIManager.FadeIn(() =>
+            {
+                _gameEngine.LoadCell(cell);
+            });
         }
         
         private void OnApplicationQuit()
         {
             _gameEngine?.OnStop();
             _resourceManager?.Close();
-            _masterFileReader?.Close();
+            _esMasterFile?.Close();
         }
     }
 }

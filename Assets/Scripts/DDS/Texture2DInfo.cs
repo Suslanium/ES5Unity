@@ -1,5 +1,8 @@
-﻿using System.IO;
+﻿using System;
+using System.Collections;
+using System.IO;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace DDS
 {
@@ -27,57 +30,67 @@ namespace DDS
         /// <summary>
         /// Creates a Unity Texture2D from this Texture2DInfo.
         /// </summary>
-        public Texture2D ToTexture2D()
+        public IEnumerator ToTexture2D(Action<Texture2D> onReadyCallback, bool linear = false)
         {
-            var texture = new Texture2D(Width, Height, Format, HasMipmaps);
+            var texture = new Texture2D(Width, Height, Format, HasMipmaps, linear);
+            yield return null;
 
-            if (RawData == null) return texture;
-            texture.LoadRawTextureData(RawData);
-            texture.Apply();
-
-            return texture;
-        }
-
-        public Texture2D ToLinearTexture2D()
-        {
-            var texture = ToTexture2D();
-
-            var linearTexture = new Texture2D(Width, Height, Format, HasMipmaps, true);
-            for (var i = 0; i < texture.mipmapCount; i++)
+            if (RawData == null)
             {
-                linearTexture.SetPixels(texture.GetPixels(i), i);
+                onReadyCallback(texture);
+                yield break;
             }
-            linearTexture.Apply();
+            
+            texture.LoadRawTextureData(RawData);
+            yield return null;
+            texture.Apply();
+            yield return null;
 
-            Object.Destroy(texture);
-            return linearTexture;
+            onReadyCallback(texture);
         }
 
-        public Cubemap ToCubemap()
+        public IEnumerator ToLinearTexture2D(Action<Texture2D> onReadyCallback)
+        {
+            return ToTexture2D(onReadyCallback, true);
+        }
+
+        public IEnumerator ToCubemap(Action<Cubemap> onReadyCallback)
         {
             if (Width != Height)
                 throw new InvalidDataException(
                     "Cubemap cannot be created from texture with non-equal width and height");
-
+            
             var cubemap = new Cubemap(Width, Format, HasMipmaps);
-            var texture = ToTexture2D();
+            yield return null;
+
+            Texture2D texture = null;
+            var textureCoroutine = ToTexture2D(texture2D => { texture = texture2D; });
+            while (textureCoroutine.MoveNext())
+            {
+                yield return null;
+            }
+
             for (var i = 0; i < texture.mipmapCount; i++)
             {
                 cubemap.SetPixels(texture.GetPixels(i), CubemapFace.NegativeX, i);
-
+                yield return null;
                 cubemap.SetPixels(texture.GetPixels(i), CubemapFace.NegativeY, i);
-
+                yield return null;
                 cubemap.SetPixels(texture.GetPixels(i), CubemapFace.NegativeZ, i);
-
+                yield return null;
                 cubemap.SetPixels(texture.GetPixels(i), CubemapFace.PositiveX, i);
-
+                yield return null;
                 cubemap.SetPixels(texture.GetPixels(i), CubemapFace.PositiveY, i);
-
+                yield return null;
                 cubemap.SetPixels(texture.GetPixels(i), CubemapFace.PositiveZ, i);
+                yield return null;
             }
+
             cubemap.Apply();
+            yield return null;
             Object.Destroy(texture);
-            return cubemap;
+            yield return null;
+            onReadyCallback(cubemap);
         }
     }
 }

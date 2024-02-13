@@ -20,6 +20,7 @@ Shader "SkyrimDefaultShader"
     {
         Tags
         {
+            "Queue"="Geometry"
             "RenderType"="Opaque"
         }
         LOD 200

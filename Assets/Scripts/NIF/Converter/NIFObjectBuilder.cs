@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using Engine;
 using NIF.NiObjects;
@@ -24,103 +26,140 @@ namespace NIF.Converter
             _materialManager = materialManager;
         }
 
-        public GameObject BuildObject()
+        public IEnumerator BuildObject(Action<GameObject> onReadyCallback)
         {
-            if (_file == null) return null;
+            if (_file == null)
+            {
+                onReadyCallback(null);
+                yield break;
+            }
+
             Debug.Assert((_file.Name != null) && (_file.Footer.RootReferences.Length > 0));
 
             if (_file.Footer.RootReferences.Length == 1)
             {
                 var rootNiObject = _file.NiObjects[_file.Footer.RootReferences[0]];
 
-                var gameObject = InstantiateRootNiObject(rootNiObject);
+                var gameObjectCoroutine = InstantiateRootNiObject(rootNiObject,
+                    gameObject =>
+                    {
+                        if (gameObject == null)
+                        {
+                            Debug.Log(_file.Name + " resulted in a null GameObject when instantiated.");
 
-                if (gameObject == null)
+                            gameObject = new GameObject(_file.Name);
+                        }
+                        else if (rootNiObject is NiNode)
+                        {
+                            gameObject.transform.position = Vector3.zero;
+                            gameObject.transform.rotation = Quaternion.identity;
+                            gameObject.transform.localScale = Vector3.one;
+                        }
+
+                        onReadyCallback(gameObject);
+                    });
+                if (gameObjectCoroutine == null)
                 {
-                    Debug.Log(_file.Name + " resulted in a null GameObject when instantiated.");
-
-                    gameObject = new GameObject(_file.Name);
+                    onReadyCallback(null);
+                    yield break;
                 }
-                else if (rootNiObject is NiNode)
+
+                while (gameObjectCoroutine.MoveNext())
                 {
-                    gameObject.transform.position = Vector3.zero;
-                    gameObject.transform.rotation = Quaternion.identity;
-                    gameObject.transform.localScale = Vector3.one;
+                    yield return null;
                 }
-
-                return gameObject;
             }
             else
             {
-                GameObject gameObject = new GameObject(_file.Name);
+                var gameObject = new GameObject(_file.Name);
 
                 foreach (var rootRef in _file.Footer.RootReferences)
                 {
                     var rootBlock = _file.NiObjects[rootRef];
-                    var child = InstantiateRootNiObject(rootBlock);
-
-                    if (child != null)
+                    var childCoroutine = InstantiateRootNiObject(rootBlock, child =>
                     {
-                        child.transform.SetParent(gameObject.transform, false);
+                        if (child != null)
+                        {
+                            child.transform.SetParent(gameObject.transform, false);
+                        }
+                    });
+
+                    if (childCoroutine == null) continue;
+                    while (childCoroutine.MoveNext())
+                    {
+                        yield return null;
                     }
                 }
 
-                return gameObject;
+                onReadyCallback(gameObject);
             }
         }
 
-        private GameObject InstantiateRootNiObject(NiObject niObject)
+        private IEnumerator InstantiateRootNiObject(NiObject niObject, Action<GameObject> onReadyCallback)
         {
-            var gameObject = InstantiateNiObject(niObject);
-
-            //Additional processing
-
-            return gameObject;
+            return InstantiateNiObject(niObject, onReadyCallback);
         }
 
-        private GameObject InstantiateNiObject(NiObject niObject)
+        private IEnumerator InstantiateNiObject(NiObject niObject, Action<GameObject> onReadyCallback)
         {
             return niObject switch
             {
-                NiNode node => InstantiateNiNode(node),
-                NiTriShape shape => InstantiateNiTriShape(shape),
-                BsLodTriShape shape => InstantiateNiTriShape(shape),
+                NiNode node => InstantiateNiNode(node, onReadyCallback),
+                NiTriShape shape => InstantiateNiTriShape(shape, onReadyCallback),
+                BsLodTriShape shape => InstantiateNiTriShape(shape, onReadyCallback),
                 _ => null
             };
         }
 
-        private GameObject InstantiateNiNode(NiNode node)
+        private IEnumerator InstantiateNiNode(NiNode node, Action<GameObject> onReadyCallback)
         {
             var gameObject = new GameObject(node.Name);
 
             foreach (var childRef in node.ChildrenReferences)
             {
                 if (childRef < 0) continue;
-                var child = InstantiateNiObject(_file.NiObjects[childRef]);
-
-                if (child != null)
+                var childCoroutine = InstantiateNiObject(_file.NiObjects[childRef], child =>
                 {
-                    child.transform.SetParent(gameObject.transform, false);
+                    if (child != null)
+                    {
+                        child.transform.SetParent(gameObject.transform, false);
+                    }
+                });
+
+                if (childCoroutine == null) continue;
+                while (childCoroutine.MoveNext())
+                {
+                    yield return null;
                 }
             }
 
-            ApplyNiAvObject(node, gameObject);
+            var transformCoroutine = ApplyNiAvObject(node, gameObject);
+            while (transformCoroutine.MoveNext())
+            {
+                yield return null;
+            }
 
-            return gameObject;
+            onReadyCallback(gameObject);
         }
 
-        private GameObject InstantiateNiTriShape(NiTriBasedGeom triShape)
+        private IEnumerator InstantiateNiTriShape(NiTriBasedGeom triShape, Action<GameObject> onReadyCallback)
         {
             if (triShape.ShaderPropertyReference == -1)
             {
-                return null;
+                onReadyCallback(null);
+                yield break;
             }
 
             var shaderInfo = _file.NiObjects[triShape.ShaderPropertyReference];
             MaterialProperties materialProperties;
             if (shaderInfo is BsLightingShaderProperty info)
             {
-                if (info.TextureSetReference == -1) return null;
+                if (info.TextureSetReference == -1)
+                {
+                    onReadyCallback(null);
+                    yield break;
+                }
+
                 materialProperties = CreateMaterialProps(info,
                     triShape.AlphaPropertyReference >= 0
                         ? (NiAlphaProperty)_file.NiObjects[triShape.AlphaPropertyReference]
@@ -128,19 +167,36 @@ namespace NIF.Converter
             }
             else
             {
-                return null;
+                onReadyCallback(null);
+                yield break;
             }
 
-            var mesh = NiTriShapeDataToMesh((NiTriShapeData)_file.NiObjects[triShape.DataReference]);
             var gameObject = new GameObject(triShape.Name);
+            var meshCoroutine = NiTriShapeDataToMesh((NiTriShapeData)_file.NiObjects[triShape.DataReference],
+                mesh => { gameObject.AddComponent<MeshFilter>().mesh = mesh; });
+            while (meshCoroutine.MoveNext())
+            {
+                yield return null;
+            }
 
-            gameObject.AddComponent<MeshFilter>().mesh = mesh;
-            var material = _materialManager.GetMaterialFromProperties(materialProperties);
-            var meshRenderer = gameObject.AddComponent<MeshRenderer>();
-            meshRenderer.material = material;
+            var materialCoroutine = _materialManager.GetMaterialFromProperties(materialProperties,
+                material =>
+                {
+                    var meshRenderer = gameObject.AddComponent<MeshRenderer>();
+                    meshRenderer.sharedMaterial = material;
+                });
+            while (materialCoroutine.MoveNext())
+            {
+                yield return null;
+            }
 
-            ApplyNiAvObject(triShape, gameObject);
-            return gameObject;
+            var transformCoroutine = ApplyNiAvObject(triShape, gameObject);
+            while (transformCoroutine.MoveNext())
+            {
+                yield return null;
+            }
+
+            onReadyCallback(gameObject);
         }
 
         private MaterialProperties CreateMaterialProps(BsLightingShaderProperty shaderInfo,
@@ -177,7 +233,7 @@ namespace NIF.Converter
                     alphaBlend, srcFunction, destFunction, alphaTest, alphaTestThreshold));
         }
 
-        private static Mesh NiTriShapeDataToMesh(NiTriShapeData data)
+        private static IEnumerator NiTriShapeDataToMesh(NiTriShapeData data, Action<Mesh> onReadyCallback)
         {
             Vector3[] vertices = null;
             if (data.HasVertices)
@@ -189,6 +245,8 @@ namespace NIF.Converter
                 }
             }
 
+            yield return null;
+
             Vector3[] normals = null;
             if (data.HasNormals)
             {
@@ -198,6 +256,8 @@ namespace NIF.Converter
                     normals[i] = NifUtils.NifPointToUnityPoint(data.Normals[i].ToUnityVector());
                 }
             }
+
+            yield return null;
 
             Vector4[] tangents = null;
             if (data.Tangents != null)
@@ -209,6 +269,8 @@ namespace NIF.Converter
                     tangents[i] = new Vector4(convertedTangent.x, convertedTangent.y, convertedTangent.z, 1);
                 }
             }
+
+            yield return null;
 
             Vector2[] UVs = null;
             if (data.UVSets != null && vertices != null)
@@ -222,6 +284,8 @@ namespace NIF.Converter
                     UVs[i] = new Vector2(texCoord.U, texCoord.V);
                 }
             }
+
+            yield return null;
 
             int[] triangles = null;
             if (data.HasTriangles)
@@ -237,6 +301,8 @@ namespace NIF.Converter
                 }
             }
 
+            yield return null;
+
             Color[] vertexColors = null;
             if (data.HasVertexColors)
             {
@@ -248,6 +314,8 @@ namespace NIF.Converter
                 }
             }
 
+            yield return null;
+
             var mesh = new Mesh
             {
                 vertices = vertices,
@@ -258,6 +326,8 @@ namespace NIF.Converter
                 colors = vertexColors
             };
 
+            yield return null;
+
             if (!data.HasNormals)
             {
                 mesh.RecalculateNormals();
@@ -265,28 +335,36 @@ namespace NIF.Converter
 
             mesh.RecalculateBounds();
 
-            return mesh;
+            onReadyCallback(mesh);
         }
 
-        private void ApplyNiAvObject(NiAvObject anNiAvObject, GameObject obj)
+        private IEnumerator ApplyNiAvObject(NiAvObject anNiAvObject, GameObject obj)
         {
             obj.transform.position = NifUtils.NifPointToUnityPoint(anNiAvObject.Translation.ToUnityVector());
             obj.transform.rotation = NifUtils.NifRotationMatrixToUnityQuaternion(anNiAvObject.Rotation.ToMatrix4X4());
             obj.transform.localScale = anNiAvObject.Scale * Vector3.one;
-            if (anNiAvObject.CollisionObjectReference <= 0) return;
-            var collisionObject = InstantiateCollisionObject(anNiAvObject.CollisionObjectReference);
-            if (collisionObject != null)
+            if (anNiAvObject.CollisionObjectReference <= 0) yield break;
+            var collisionObjectEnumerator = InstantiateCollisionObject(anNiAvObject.CollisionObjectReference,
+                collisionObject =>
+                {
+                    if (collisionObject != null)
+                    {
+                        collisionObject.transform.SetParent(obj.transform, false);
+                    }
+                });
+            if (collisionObjectEnumerator == null) yield break;
+            while (collisionObjectEnumerator.MoveNext())
             {
-                collisionObject.transform.SetParent(obj.transform, false);
+                yield return null;
             }
         }
 
-        private GameObject InstantiateCollisionObject(int reference)
+        private IEnumerator InstantiateCollisionObject(int reference, Action<GameObject> onReadyCallback)
         {
             var collisionObj = _file.NiObjects[reference];
             if (collisionObj is BhkCollisionObject collisionObject)
             {
-                return InstantiateBhkCollisionObject(collisionObject);
+                return InstantiateBhkCollisionObject(collisionObject, onReadyCallback);
             }
             else
             {
@@ -294,123 +372,178 @@ namespace NIF.Converter
             }
         }
 
-        private GameObject InstantiateBhkCollisionObject(BhkCollisionObject collisionObject)
+        private IEnumerator InstantiateBhkCollisionObject(BhkCollisionObject collisionObject,
+            Action<GameObject> onReadyCallback)
         {
             var body = _file.NiObjects[collisionObject.BodyReference];
             switch (body)
             {
                 case BhkRigidBodyT bhkRigidBodyT:
-                {
-                    var gameObject = InstantiateRigidBody(bhkRigidBodyT);
-                    if (gameObject == null) return null;
+                    GameObject gameObject = null;
+                    var gameObjectCoroutine = InstantiateRigidBody(bhkRigidBodyT,
+                        o => { gameObject = o; });
+                    if (gameObjectCoroutine == null)
+                    {
+                        onReadyCallback(null);
+                        yield break;
+                    }
+
+                    while (gameObjectCoroutine.MoveNext())
+                    {
+                        yield return null;
+                    }
+
+                    if (gameObject == null)
+                    {
+                        onReadyCallback(null);
+                        yield break;
+                    }
+
                     gameObject.transform.position =
                         NifUtils.NifVectorToUnityVector(bhkRigidBodyT.Translation.ToUnityVector());
                     gameObject.transform.rotation =
                         NifUtils.HavokQuaternionToUnityQuaternion(bhkRigidBodyT.Rotation.ToUnityQuaternion());
-                    return gameObject;
-                }
+                    onReadyCallback(gameObject);
+                    break;
                 case BhkRigidBody bhkRigidBody:
-                    return InstantiateRigidBody(bhkRigidBody);
+                    var rigidBodyCoroutine = InstantiateRigidBody(bhkRigidBody, onReadyCallback);
+                    if (rigidBodyCoroutine == null)
+                    {
+                        onReadyCallback(null);
+                        yield break;
+                    }
+
+                    while (rigidBodyCoroutine.MoveNext())
+                    {
+                        yield return null;
+                    }
+
+                    break;
                 default:
                     Debug.LogWarning($"Unsupported collision object body type: {body.GetType().Name}");
-                    return null;
+                    onReadyCallback(null);
+                    break;
             }
         }
 
-        private GameObject InstantiateRigidBody(BhkRigidBody bhkRigidBody)
+        private IEnumerator InstantiateRigidBody(BhkRigidBody bhkRigidBody, Action<GameObject> onReadyCallback)
         {
             var shapeInfo = _file.NiObjects[bhkRigidBody.ShapeReference];
             switch (shapeInfo)
             {
                 case BhkListShape bhkListShape:
-                    return InstantiateBhkListShape(bhkListShape);
+                    return InstantiateBhkListShape(bhkListShape, onReadyCallback);
                 case BhkConvexVerticesShape bhkConvexVerticesShape:
-                    return BhkConvexVerticesShapeToGameObject(bhkConvexVerticesShape);
+                    return BhkConvexVerticesShapeToGameObject(bhkConvexVerticesShape, onReadyCallback);
                 case BhkMoppBvTreeShape bhkMoppBvTreeShape:
-                    return BvTreeShapeToGameObject(bhkMoppBvTreeShape);
+                    return BvTreeShapeToGameObject(bhkMoppBvTreeShape, onReadyCallback);
                 default:
                     Debug.LogWarning($"Unsupported rigidbody shape type: {shapeInfo.GetType().Name}");
                     return null;
             }
         }
 
-        private GameObject InstantiateBhkListShape(BhkListShape bhkListShape)
+        private IEnumerator InstantiateBhkListShape(BhkListShape bhkListShape, Action<GameObject> onReadyCallback)
         {
             var shapeRefs = bhkListShape.SubShapeReferences.Select(subShapeRef => _file.NiObjects[subShapeRef]);
             var rootGameObject = new GameObject("bhkListShape");
+            yield return null;
             foreach (var subShape in shapeRefs)
             {
                 if (subShape is BhkConvexVerticesShape convexVerticesShape)
                 {
-                    var shapeObject = BhkConvexVerticesShapeToGameObject(convexVerticesShape);
-                    shapeObject.transform.SetParent(rootGameObject.transform, false);
+                    var shapeObjectCoroutine = BhkConvexVerticesShapeToGameObject(convexVerticesShape,
+                        shapeObject => { shapeObject.transform.SetParent(rootGameObject.transform, false); });
+                    while (shapeObjectCoroutine.MoveNext())
+                    {
+                        yield return null;
+                    }
                 }
                 else
                 {
                     Debug.LogWarning($"Unsupported list shape subshape type: {subShape.GetType().Name}");
+                    yield return null;
                 }
             }
 
-            return rootGameObject;
+            onReadyCallback(rootGameObject);
         }
 
-        private static GameObject BhkConvexVerticesShapeToGameObject(BhkConvexVerticesShape convexVerticesShape)
+        private static IEnumerator BhkConvexVerticesShapeToGameObject(BhkConvexVerticesShape convexVerticesShape,
+            Action<GameObject> onReadyCallback)
         {
             var gameObject = new GameObject("bhkConvexVerticesShape");
-            var vertices = convexVerticesShape.Vertices.Select(vertex => NifUtils.NifVectorToUnityVector(vertex.ToUnityVector())).ToArray();
+            var vertices = convexVerticesShape.Vertices
+                .Select(vertex => NifUtils.NifVectorToUnityVector(vertex.ToUnityVector())).ToArray();
+            yield return null;
             var mesh = new Mesh
             {
                 vertices = vertices
             };
+            yield return null;
             var collider = gameObject.AddComponent<MeshCollider>();
             collider.convex = true;
             collider.sharedMesh = mesh;
-            return gameObject;
+            yield return null;
+            onReadyCallback(gameObject);
         }
-        
-        private GameObject BvTreeShapeToGameObject(BhkBvTreeShape treeShape)
+
+        private IEnumerator BvTreeShapeToGameObject(BhkBvTreeShape treeShape, Action<GameObject> onReadyCallback)
         {
             var shapeInfo = _file.NiObjects[treeShape.ShapeReference];
             switch (shapeInfo)
             {
                 case BhkCompressedMeshShape compressedMeshShape:
-                    return CompressedShapeToGameObject(compressedMeshShape);
+                    return CompressedShapeToGameObject(compressedMeshShape, onReadyCallback);
                 case BhkListShape bhkListShape:
-                    return InstantiateBhkListShape(bhkListShape);
+                    return InstantiateBhkListShape(bhkListShape, onReadyCallback);
                 default:
                     Debug.LogWarning($"Unsupported BV tree shape type: {shapeInfo.GetType().Name}");
                     return null;
             }
         }
 
-        private GameObject CompressedShapeToGameObject(BhkCompressedMeshShape compressedMeshShape)
+        private IEnumerator CompressedShapeToGameObject(BhkCompressedMeshShape compressedMeshShape,
+            Action<GameObject> onReadyCallback)
         {
             var shapeData = _file.NiObjects[compressedMeshShape.DataRef];
             if (shapeData is BhkCompressedMeshShapeData compressedMeshShapeData)
             {
-                var shapeObject = CompressedShapeDataToGameObject(compressedMeshShapeData);
+                GameObject shapeObject = null;
+                var shapeObjectCoroutine = CompressedShapeDataToGameObject(compressedMeshShapeData,
+                    o => { shapeObject = o; });
+                while (shapeObjectCoroutine.MoveNext())
+                {
+                    yield return null;
+                }
+
                 shapeObject.transform.localScale =
                     NifUtils.NifVectorToUnityVector(compressedMeshShape.Scale.ToUnityVector());
-                return shapeObject;
+                onReadyCallback(shapeObject);
             }
             else
             {
                 Debug.LogWarning($"Unsupported compressed mesh shape data type: {shapeData.GetType().Name}");
-                return null;
+                onReadyCallback(null);
             }
         }
 
-        private static GameObject CompressedShapeDataToGameObject(BhkCompressedMeshShapeData compressedMeshShapeData)
+        private static IEnumerator CompressedShapeDataToGameObject(BhkCompressedMeshShapeData compressedMeshShapeData,
+            Action<GameObject> onReadyCallback)
         {
             var rootGameObject = new GameObject("bhkCompressedMeshShape");
             if (compressedMeshShapeData.NumBigVerts > 0 && compressedMeshShapeData.NumBigTris > 0)
             {
                 var vertices = new Vector3[compressedMeshShapeData.NumBigVerts];
                 var triangles = new int[compressedMeshShapeData.NumBigTris * 3];
+                yield return null;
+
                 for (var i = 0; i < compressedMeshShapeData.NumBigVerts; i++)
                 {
                     vertices[i] = NifUtils.NifVectorToUnityVector(compressedMeshShapeData.BigVerts[i].ToUnityVector());
                 }
+
+                yield return null;
 
                 for (var i = 0; i < compressedMeshShapeData.NumBigTris; i++)
                 {
@@ -420,17 +553,19 @@ namespace NIF.Converter
                     triangles[i * 3 + 2] = triangle.Vertex1;
                 }
 
+                yield return null;
+
                 var mesh = new Mesh
                 {
                     vertices = vertices,
                     triangles = triangles
                 };
                 rootGameObject.AddComponent<MeshCollider>().sharedMesh = mesh;
+                yield return null;
             }
 
             for (var i = 0; i < compressedMeshShapeData.NumChunks; i++)
             {
-                var chunkMesh = CompressedChunkToMesh(compressedMeshShapeData.Chunks[i]);
                 var chunkObject = new GameObject($"Chunk {i}")
                 {
                     transform =
@@ -443,25 +578,38 @@ namespace NIF.Converter
                             .ToUnityQuaternion())
                     }
                 };
-                chunkObject.AddComponent<MeshCollider>().sharedMesh = chunkMesh;
-                chunkObject.transform.SetParent(rootGameObject.transform, false);
+                var chunkMeshCoroutine = CompressedChunkToMesh(compressedMeshShapeData.Chunks[i],
+                    chunkMesh =>
+                    {
+                        chunkObject.AddComponent<MeshCollider>().sharedMesh = chunkMesh;
+                        chunkObject.transform.SetParent(rootGameObject.transform, false);
+                    });
+                while (chunkMeshCoroutine.MoveNext())
+                {
+                    yield return null;
+                }
             }
 
-            return rootGameObject;
+            yield return null;
+
+            onReadyCallback(rootGameObject);
         }
 
-        private static Mesh CompressedChunkToMesh(BhkCmsChunk chunk)
+        private static IEnumerator CompressedChunkToMesh(BhkCmsChunk chunk, Action<Mesh> onReadyCallback)
         {
             var vertices = new Vector3[chunk.Vertices.Length];
             var vertexTranslation = NifUtils.NifVectorToUnityVector(chunk.Translation.ToUnityVector());
             var triangles = new List<int>();
             var indicesArrayIndex = 0;
+            yield return null;
 
             for (var i = 0; i < chunk.Vertices.Length; i++)
             {
                 vertices[i] = NifUtils.NifVectorToUnityVector(chunk.Vertices[i].ToVector3().ToUnityVector()) +
                               vertexTranslation;
             }
+
+            yield return null;
 
             foreach (var currentStripLength in chunk.StripLengths)
             {
@@ -484,6 +632,8 @@ namespace NIF.Converter
                 indicesArrayIndex += currentStripLength;
             }
 
+            yield return null;
+
             for (var i = indicesArrayIndex; i < chunk.Indices.Length - 2; i += 3)
             {
                 triangles.Add(chunk.Indices[i + 2]);
@@ -491,11 +641,13 @@ namespace NIF.Converter
                 triangles.Add(chunk.Indices[i]);
             }
 
-            return new Mesh
+            yield return null;
+
+            onReadyCallback(new Mesh
             {
                 vertices = vertices,
                 triangles = triangles.ToArray()
-            };
+            });
         }
     }
 }

@@ -21,6 +21,7 @@ Shader "SkyrimBlendShader"
     }
     SubShader
     {
+        Offset -1, -1
         Tags {"Queue"="Transparent" "IgnoreProjector"="True" "RenderType"="Transparent"}
         LOD 200
         Blend [_BlendSrc] [_BlendDst]

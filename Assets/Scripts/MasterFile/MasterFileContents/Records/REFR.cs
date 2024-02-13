@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System.Collections.Generic;
+using System.IO;
 using MasterFile.MasterFileContents.Records.Structures;
 using UnityEngine;
 
@@ -84,6 +85,8 @@ namespace MasterFile.MasterFileContents.Records
 
         public Primitive Primitive { get; private set; }
 
+        public List<uint> LinkedRoomFormIDs { get; private set; } = new();
+
         private REFR(string type, uint dataSize, uint flag, uint formID, ushort timestamp, ushort versionControlInfo,
             ushort internalRecordVersion, ushort unknownData) : base(type, dataSize, flag, formID, timestamp,
             versionControlInfo, internalRecordVersion, unknownData)
@@ -128,6 +131,9 @@ namespace MasterFile.MasterFileContents.Records
                         break;
                     case "INAM":
                         refr.ImageSpaceReference = fileReader.ReadUInt32();
+                        break;
+                    case "XLRM":
+                        refr.LinkedRoomFormIDs.Add(fileReader.ReadUInt32());
                         break;
                     case "XEMI":
                         refr.EmittedLightReference = fileReader.ReadUInt32();

@@ -1,5 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Engine
 {
@@ -32,11 +35,12 @@ namespace Engine
             _textureManager = textureManager;
         }
 
-        public Material GetMaterialFromProperties(MaterialProperties materialProperties)
+        public IEnumerator GetMaterialFromProperties(MaterialProperties materialProperties, Action<Material> onReadyCallback)
         {
             if (_materialCache.TryGetValue(materialProperties, out var cachedMaterial))
             {
-                return cachedMaterial;
+                onReadyCallback(cachedMaterial);
+                yield break;
             }
 
             _textureManager.PreloadDiffuseMap(materialProperties.DiffuseMapPath);
@@ -46,12 +50,14 @@ namespace Engine
                 _textureManager.PreloadMetallicMap(materialProperties.MetallicMaskPath);
             if (!string.IsNullOrEmpty(materialProperties.GlowMapPath))
                 _textureManager.PreloadGlowMap(materialProperties.GlowMapPath);
+            yield return null;
 
             var material = materialProperties.AlphaInfo.AlphaBlend == false
                 ? materialProperties.AlphaInfo.AlphaTest == false
                     ? new Material(DefaultShader)
                     : new Material(AlphaTestShader)
                 : new Material(BlendShader);
+            yield return null;
 
             if (materialProperties.AlphaInfo.AlphaBlend)
             {
@@ -64,53 +70,106 @@ namespace Engine
                 material.SetFloat(Cutoff, materialProperties.AlphaInfo.AlphaTestThreshold/256f);
             }
 
-            material.SetTexture(MainTex, _textureManager.GetDiffuseMap(materialProperties.DiffuseMapPath));
+            var diffuseMapCoroutine = _textureManager.GetDiffuseMap(materialProperties.DiffuseMapPath,
+                texture2D =>
+                {
+                    material.SetTexture(MainTex, texture2D);
+                });
+            while (diffuseMapCoroutine.MoveNext())
+            {
+                yield return null;
+            }
+            
             material.SetInt(UsesVertexColors, materialProperties.UseVertexColors ? 1 : 0);
             material.SetFloat(Alpha, materialProperties.Alpha);
             material.SetFloat(Glossiness, materialProperties.Glossiness);
             material.SetFloat(SpecularStrength,
                 materialProperties.IsSpecular ? materialProperties.SpecularStrength : 0);
             material.SetColor(SpecularColor, materialProperties.SpecularColor);
+            
             if (!string.IsNullOrEmpty(materialProperties.NormalMapPath))
             {
-                material.EnableKeyword("_NORMALMAP");
-                material.SetTexture(NormalMap, _textureManager.GetNormalMap(materialProperties.NormalMapPath));
+                var normalMapCoroutine = _textureManager.GetNormalMap(materialProperties.NormalMapPath,
+                    texture2D =>
+                    {
+                        material.EnableKeyword("_NORMALMAP");
+                        material.SetTexture(NormalMap, texture2D);
+                    });
+                while (normalMapCoroutine.MoveNext())
+                {
+                    yield return null;
+                }
             }
 
             if (!string.IsNullOrEmpty(materialProperties.MetallicMaskPath))
-                material.SetTexture(MetallicMap, _textureManager.GetMetallicMap(materialProperties.MetallicMaskPath));
+            {
+                var metallicMapCoroutine = _textureManager.GetMetallicMap(materialProperties.MetallicMaskPath,
+                    texture2D =>
+                    {
+                        material.SetTexture(MetallicMap, texture2D);
+                    });
+                while (metallicMapCoroutine.MoveNext())
+                {
+                    yield return null;
+                }
+            }
+
             if (materialProperties.EmissiveColor != Color.black ||
                 !string.IsNullOrEmpty(materialProperties.GlowMapPath))
             {
                 material.SetInt(EnableEmission, 1);
                 material.SetColor(EmissionColor, materialProperties.EmissiveColor);
                 if (!string.IsNullOrEmpty(materialProperties.GlowMapPath))
-                    material.SetTexture(EmissionMap, _textureManager.GetGlowMap(materialProperties.GlowMapPath));
+                {
+                    var glowMapCoroutine = _textureManager.GetGlowMap(materialProperties.GlowMapPath,
+                        texture2D =>
+                        {
+                            material.SetTexture(EmissionMap, texture2D);
+                        });
+                    while (glowMapCoroutine.MoveNext())
+                    {
+                        yield return null;
+                    }
+                }
             }
 
             if (!string.IsNullOrEmpty(materialProperties.EnvironmentalMapPath))
             {
-                material.SetTexture(Cube, _textureManager.GetEnvMap(materialProperties.EnvironmentalMapPath));
-                material.SetFloat(CubeScale, materialProperties.EnvironmentalMapScale);
+                var envMapCoroutine = _textureManager.GetEnvMap(materialProperties.EnvironmentalMapPath,
+                    cubeMap =>
+                    {
+                        material.SetTexture(Cube, cubeMap);
+                        material.SetFloat(CubeScale, materialProperties.EnvironmentalMapScale);
+                    });
+                while (envMapCoroutine.MoveNext())
+                {
+                    yield return null;
+                }
             }
 
             _materialCache.Add(materialProperties, material);
 
-            return material;
+            onReadyCallback(material);
         }
 
         /// <summary>
         /// WARNING: Call this ONLY when textures and materials are not needed anymore
         /// </summary>
-        public void ClearCachedMaterialsAndTextures()
+        public IEnumerator ClearCachedMaterialsAndTextures()
         {
             foreach (var material in _materialCache.Values)
             {
                 Object.Destroy(material);
+                yield return null;
             }
 
             _materialCache.Clear();
-            _textureManager.ClearCachedTextures();
+            yield return null;
+            var clearTexturesCoroutine = _textureManager.ClearCachedTextures();
+            while (clearTexturesCoroutine.MoveNext())
+            {
+                yield return null;
+            }
         }
     }
 }
