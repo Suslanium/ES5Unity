@@ -1,6 +1,8 @@
 # <img src="https://github.com/Suslanium/ES5Unity/assets/84632927/4e23b155-8d36-472d-90f8-40c148b9b1e4" width="24" height="24"/> ES5Unity
 A WIP project whose goal is to run TES V: Skyrim on the Unity engine. Currently this **works ONLY with Skyrim LE (aka Oldrim)**. SE/AE support will be added once basic features are implemented.
 
+**❄️Currently almost frozen due to lack of free time. The development will likely continue in the summer**
+
 ##### Credits:
 + [UESP documentation for ESP/ESM file format](https://en.uesp.net/wiki/Skyrim_Mod:Mod_File_Format)
 + [UESP documentation for BSA file format](https://en.uesp.net/wiki/Skyrim_Mod:Archive_File_Format)
@@ -25,12 +27,13 @@ Some screenshots:
 + ✅**Add support for cell lighting import** *(Done at a basic level)*
 + ✅**Add support for transparent materials** *(Done)*
 + ✅**Figure out glossiness and specular map tint** *(Kind of done, though shaders are still not perfect at all)*
-+ ❌**Add occlusion culling** *(Failed to implement using Skyrim's room and portal markers due to some edge cases, probably going to implement some custom occlusion culling system later)*
++ ⚠️**Add occlusion culling** *(It works, but it is still far from perfect. Most likely it will be rewriteen from scratch later)*
 + ✅**Add support for collisions** *(Almost done; convex shapes and compressed meshes are supported as of now)*
 + ✅**Add a player that can walk around and explore the world** *(Done)*
-+ 🔄*Optimize cell loading, refactor code and add comments/documentation* *(Right now the code quality is pretty rough)*
-+ 🔲Add support for doors inside cells
-+ 🔲Figure out exterior cell loading
++ ✅**Optimize cell loading** *(Done, the cells now load with almost no lag)*
++ ✅**Add support for doors inside cells** *(Done, the door teleports now work correctly)*
++ 🔄*Refactor the code and add comments/documentation* *(Right now the code quality is pretty rough, there are some very long files, a lot of code that may be difficult to understand and maintain in the future, etc.)*
++ 🔲Figure out exterior cell loading *(Terrains, cell grid, LODs, etc)*
 + 🔲Add support for Skyrim SE meshes and archives
 + 🔲Add support for billboards
 + 🔲Add collectable items
