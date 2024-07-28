@@ -1,4 +1,5 @@
 ﻿using Core;
+using NIF.NiObjects;
 using UnityEngine;
 
 namespace NIF.Converter
@@ -61,6 +62,13 @@ namespace NIF.Converter
         {
             Quaternion unityQuat = new Quaternion(havokQuaternion.x, havokQuaternion.z, havokQuaternion.y, -havokQuaternion.w);
             return unityQuat;
+        }
+
+        public static void ApplyNiAvObjectTransform(NiAvObject anNiAvObject, GameObject obj)
+        {
+            obj.transform.position = NifPointToUnityPoint(anNiAvObject.Translation.ToUnityVector());
+            obj.transform.rotation = NifRotationMatrixToUnityQuaternion(anNiAvObject.Rotation.ToMatrix4X4());
+            obj.transform.localScale = anNiAvObject.Scale * Vector3.one;
         }
     }
 }
