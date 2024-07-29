@@ -5,7 +5,8 @@ using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
 using NIF;
-using NIF.Converter;
+using NIF.Builder;
+using NIF.Parser;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
