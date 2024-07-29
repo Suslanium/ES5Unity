@@ -6,15 +6,6 @@ using UnityEngine;
 
 namespace Engine.Textures
 {
-    public enum TextureType
-    {
-        DIFFUSE,
-        NORMAL,
-        METALLIC,
-        GLOW,
-        ENVIRONMENTAL
-    }
-
     public class TextureManager
     {
         private readonly Dictionary<TextureType, ITextureTypeManager<Texture>> _textureTypeHandlers;
@@ -22,6 +13,7 @@ namespace Engine.Textures
         public TextureManager(ResourceManager resourceManager)
         {
             Texture.allowThreadedTextureCreation = true;
+            //TODO replace this with DI or something
             _textureTypeHandlers = new Dictionary<TextureType, ITextureTypeManager<Texture>>
             {
                 { TextureType.DIFFUSE, new DefaultTexture2DManager(resourceManager) },
@@ -40,7 +32,7 @@ namespace Engine.Textures
                 Debug.LogError($"Handler for texture type {type} not found");
                 return;
             }
-            
+
             handler.PreloadMap(texturePath);
         }
 
@@ -58,10 +50,9 @@ namespace Engine.Textures
 
             if (handler is ITextureTypeManager<T> typedHandler)
                 return typedHandler.GetMap(texturePath, onReadyCallback);
-            
+
             Debug.LogError($"Handler for texture type {type} does not return textures of type {typeof(T)}");
             return null;
-
         }
 
         /// <summary>

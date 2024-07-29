@@ -74,10 +74,11 @@ namespace Engine.Textures
             var diffuseMapCoroutine = _textureManager.GetMap<Texture2D>(TextureType.DIFFUSE,
                 materialProperties.DiffuseMapPath,
                 texture2D => { material.SetTexture(MainTex, texture2D); });
-            while (diffuseMapCoroutine.MoveNext())
-            {
-                yield return null;
-            }
+            if (diffuseMapCoroutine != null)
+                while (diffuseMapCoroutine.MoveNext())
+                {
+                    yield return null;
+                }
 
             material.SetInt(UsesVertexColors, materialProperties.UseVertexColors ? 1 : 0);
             material.SetFloat(Alpha, materialProperties.Alpha);
@@ -95,10 +96,11 @@ namespace Engine.Textures
                         material.EnableKeyword("_NORMALMAP");
                         material.SetTexture(NormalMap, texture2D);
                     });
-                while (normalMapCoroutine.MoveNext())
-                {
-                    yield return null;
-                }
+                if (normalMapCoroutine != null)
+                    while (normalMapCoroutine.MoveNext())
+                    {
+                        yield return null;
+                    }
             }
 
             if (!string.IsNullOrEmpty(materialProperties.MetallicMaskPath))
@@ -106,10 +108,11 @@ namespace Engine.Textures
                 var metallicMapCoroutine = _textureManager.GetMap<Texture2D>(TextureType.METALLIC,
                     materialProperties.MetallicMaskPath,
                     texture2D => { material.SetTexture(MetallicMap, texture2D); });
-                while (metallicMapCoroutine.MoveNext())
-                {
-                    yield return null;
-                }
+                if (metallicMapCoroutine != null)
+                    while (metallicMapCoroutine.MoveNext())
+                    {
+                        yield return null;
+                    }
             }
 
             if (materialProperties.EmissiveColor != Color.black ||
@@ -122,10 +125,11 @@ namespace Engine.Textures
                     var glowMapCoroutine = _textureManager.GetMap<Texture2D>(TextureType.GLOW,
                         materialProperties.GlowMapPath,
                         texture2D => { material.SetTexture(EmissionMap, texture2D); });
-                    while (glowMapCoroutine.MoveNext())
-                    {
-                        yield return null;
-                    }
+                    if (glowMapCoroutine != null)
+                        while (glowMapCoroutine.MoveNext())
+                        {
+                            yield return null;
+                        }
                 }
             }
 
@@ -138,10 +142,11 @@ namespace Engine.Textures
                         material.SetTexture(Cube, cubeMap);
                         material.SetFloat(CubeScale, materialProperties.EnvironmentalMapScale);
                     });
-                while (envMapCoroutine.MoveNext())
-                {
-                    yield return null;
-                }
+                if (envMapCoroutine != null)
+                    while (envMapCoroutine.MoveNext())
+                    {
+                        yield return null;
+                    }
             }
 
             _materialCache.Add(materialProperties, material);
