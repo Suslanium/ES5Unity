@@ -6,8 +6,11 @@ namespace Engine.Textures.TypeManager
 {
     public class DefaultTexture2DManager : TextureTypeManager<Texture2D>
     {
-        public DefaultTexture2DManager(ResourceManager resourceManager) : base(resourceManager)
+        private readonly bool _linearTextures;
+        
+        public DefaultTexture2DManager(ResourceManager resourceManager, bool linearTextures = false) : base(resourceManager)
         {
+            _linearTextures = linearTextures;
         }
 
         public override IEnumerator GetMap(string texturePath, Action<Texture2D> onReadyCallback)
@@ -34,7 +37,7 @@ namespace Engine.Textures.TypeManager
             Texture2D texture = null;
             if (result != null)
             {
-                var textureCoroutine = result.ToTexture2D(texture2D => { texture = texture2D; });
+                var textureCoroutine = result.ToTexture2D(texture2D => { texture = texture2D; }, _linearTextures);
                 while (textureCoroutine.MoveNext())
                 {
                     yield return null;

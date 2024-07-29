@@ -17,7 +17,7 @@ namespace Engine.Textures
             _textureTypeHandlers = new Dictionary<TextureType, ITextureTypeManager<Texture>>
             {
                 { TextureType.DIFFUSE, new DefaultTexture2DManager(resourceManager) },
-                { TextureType.NORMAL, new DefaultTexture2DManager(resourceManager) },
+                { TextureType.NORMAL, new DefaultTexture2DManager(resourceManager, true) },
                 { TextureType.METALLIC, new DefaultTexture2DManager(resourceManager) },
                 { TextureType.GLOW, new DefaultTexture2DManager(resourceManager) },
                 { TextureType.ENVIRONMENTAL, new DefaultCubeMapManager(resourceManager) }
