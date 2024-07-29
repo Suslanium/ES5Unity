@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace Engine
+namespace Engine.Textures
 {
     public class MaterialManager
     {
@@ -35,7 +35,8 @@ namespace Engine
             _textureManager = textureManager;
         }
 
-        public IEnumerator GetMaterialFromProperties(MaterialProperties materialProperties, Action<Material> onReadyCallback)
+        public IEnumerator GetMaterialFromProperties(MaterialProperties materialProperties,
+            Action<Material> onReadyCallback)
         {
             if (_materialCache.TryGetValue(materialProperties, out var cachedMaterial))
             {
@@ -43,13 +44,13 @@ namespace Engine
                 yield break;
             }
 
-            _textureManager.PreloadDiffuseMap(materialProperties.DiffuseMapPath);
+            _textureManager.PreloadMap(TextureType.DIFFUSE, materialProperties.DiffuseMapPath);
             if (!string.IsNullOrEmpty(materialProperties.NormalMapPath))
-                _textureManager.PreloadNormalMap(materialProperties.NormalMapPath);
+                _textureManager.PreloadMap(TextureType.NORMAL, materialProperties.NormalMapPath);
             if (!string.IsNullOrEmpty(materialProperties.MetallicMaskPath))
-                _textureManager.PreloadMetallicMap(materialProperties.MetallicMaskPath);
+                _textureManager.PreloadMap(TextureType.METALLIC, materialProperties.MetallicMaskPath);
             if (!string.IsNullOrEmpty(materialProperties.GlowMapPath))
-                _textureManager.PreloadGlowMap(materialProperties.GlowMapPath);
+                _textureManager.PreloadMap(TextureType.GLOW, materialProperties.GlowMapPath);
             yield return null;
 
             var material = materialProperties.AlphaInfo.AlphaBlend == false
@@ -67,29 +68,28 @@ namespace Engine
 
             if (materialProperties.AlphaInfo.AlphaTest)
             {
-                material.SetFloat(Cutoff, materialProperties.AlphaInfo.AlphaTestThreshold/256f);
+                material.SetFloat(Cutoff, materialProperties.AlphaInfo.AlphaTestThreshold / 256f);
             }
 
-            var diffuseMapCoroutine = _textureManager.GetDiffuseMap(materialProperties.DiffuseMapPath,
-                texture2D =>
-                {
-                    material.SetTexture(MainTex, texture2D);
-                });
+            var diffuseMapCoroutine = _textureManager.GetMap<Texture2D>(TextureType.DIFFUSE,
+                materialProperties.DiffuseMapPath,
+                texture2D => { material.SetTexture(MainTex, texture2D); });
             while (diffuseMapCoroutine.MoveNext())
             {
                 yield return null;
             }
-            
+
             material.SetInt(UsesVertexColors, materialProperties.UseVertexColors ? 1 : 0);
             material.SetFloat(Alpha, materialProperties.Alpha);
             material.SetFloat(Glossiness, materialProperties.Glossiness);
             material.SetFloat(SpecularStrength,
                 materialProperties.IsSpecular ? materialProperties.SpecularStrength : 0);
             material.SetColor(SpecularColor, materialProperties.SpecularColor);
-            
+
             if (!string.IsNullOrEmpty(materialProperties.NormalMapPath))
             {
-                var normalMapCoroutine = _textureManager.GetNormalMap(materialProperties.NormalMapPath,
+                var normalMapCoroutine = _textureManager.GetMap<Texture2D>(TextureType.NORMAL,
+                    materialProperties.NormalMapPath,
                     texture2D =>
                     {
                         material.EnableKeyword("_NORMALMAP");
@@ -103,11 +103,9 @@ namespace Engine
 
             if (!string.IsNullOrEmpty(materialProperties.MetallicMaskPath))
             {
-                var metallicMapCoroutine = _textureManager.GetMetallicMap(materialProperties.MetallicMaskPath,
-                    texture2D =>
-                    {
-                        material.SetTexture(MetallicMap, texture2D);
-                    });
+                var metallicMapCoroutine = _textureManager.GetMap<Texture2D>(TextureType.METALLIC,
+                    materialProperties.MetallicMaskPath,
+                    texture2D => { material.SetTexture(MetallicMap, texture2D); });
                 while (metallicMapCoroutine.MoveNext())
                 {
                     yield return null;
@@ -121,11 +119,9 @@ namespace Engine
                 material.SetColor(EmissionColor, materialProperties.EmissiveColor);
                 if (!string.IsNullOrEmpty(materialProperties.GlowMapPath))
                 {
-                    var glowMapCoroutine = _textureManager.GetGlowMap(materialProperties.GlowMapPath,
-                        texture2D =>
-                        {
-                            material.SetTexture(EmissionMap, texture2D);
-                        });
+                    var glowMapCoroutine = _textureManager.GetMap<Texture2D>(TextureType.GLOW,
+                        materialProperties.GlowMapPath,
+                        texture2D => { material.SetTexture(EmissionMap, texture2D); });
                     while (glowMapCoroutine.MoveNext())
                     {
                         yield return null;
@@ -135,7 +131,8 @@ namespace Engine
 
             if (!string.IsNullOrEmpty(materialProperties.EnvironmentalMapPath))
             {
-                var envMapCoroutine = _textureManager.GetEnvMap(materialProperties.EnvironmentalMapPath,
+                var envMapCoroutine = _textureManager.GetMap<Cubemap>(TextureType.ENVIRONMENTAL,
+                    materialProperties.EnvironmentalMapPath,
                     cubeMap =>
                     {
                         material.SetTexture(Cube, cubeMap);

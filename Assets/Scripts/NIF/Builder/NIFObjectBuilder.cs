@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Engine;
+using Engine.Textures;
 using NIF.Builder.Delegate;
 using NIF.Builder.Delegate.Collision;
 using NIF.Parser;

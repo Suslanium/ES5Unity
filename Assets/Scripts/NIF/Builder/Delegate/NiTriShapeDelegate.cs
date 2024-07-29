@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using Engine;
+using Engine.Textures;
 using NIF.Parser;
 using NIF.Parser.NiObjects;
 using UnityEngine;

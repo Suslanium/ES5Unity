@@ -1,4 +1,5 @@
 ﻿using Engine;
+using Engine.Textures;
 using UnityEngine;
 
 namespace Tests

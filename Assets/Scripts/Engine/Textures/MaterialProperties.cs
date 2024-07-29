@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.Rendering;
 
-namespace Engine
+namespace Engine.Textures
 {
     public struct MaterialProperties
     {

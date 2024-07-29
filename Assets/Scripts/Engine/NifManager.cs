@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
-using NIF;
+using Engine.Textures;
 using NIF.Builder;
 using NIF.Parser;
 using UnityEngine;
