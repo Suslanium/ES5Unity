@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using Engine.Resource;
 using UnityEngine;
 
 namespace Engine.Textures.TypeManager

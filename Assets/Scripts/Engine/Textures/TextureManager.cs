@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using Engine.Resource;
 using Engine.Textures.TypeManager;
 using UnityEngine;
 

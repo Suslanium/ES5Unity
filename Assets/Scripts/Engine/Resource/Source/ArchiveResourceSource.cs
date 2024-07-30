@@ -3,34 +3,31 @@ using System.IO;
 using System.Linq;
 using BSA;
 
-namespace Engine
+namespace Engine.Resource.Source
 {
-    public class ResourceManager
+    public class ArchiveResourceSource : ResourceSource
     {
-        private readonly string _dataFolderPath;
+        public override int Priority => 1;
+        
         private readonly List<BsaFile> _archives = new();
-
-        public ResourceManager(string dataFolderPath)
+        
+        public ArchiveResourceSource(string dataFolderPath) : base(dataFolderPath)
         {
-            _dataFolderPath = dataFolderPath;
-            var archivePaths = Directory.GetFiles(_dataFolderPath, "*.bsa", SearchOption.TopDirectoryOnly);
+            var archivePaths = Directory.GetFiles(dataFolderPath, "*.bsa", SearchOption.TopDirectoryOnly);
             foreach (var archivePath in archivePaths)
             {
                 _archives.Add(new BsaFile(new BinaryReader(File.Open(archivePath, FileMode.Open))));
             }
         }
 
-        public MemoryStream GetFileOrNull(string resourcePath)
+        public override Stream GetResourceOrNull(string resourcePath)
         {
             return (from archive in _archives
                 where archive.CheckIfFileExists(resourcePath)
                 select archive.GetFile(resourcePath)).FirstOrDefault();
         }
 
-        /// <summary>
-        /// Call this only when exiting the game
-        /// </summary>
-        public void Close()
+        public override void Close()
         {
             foreach (var archive in _archives)
             {
