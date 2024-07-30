@@ -351,6 +351,12 @@ MonoBehaviour:
   pathText: {fileID: 408992875}
   cellText: {fileID: 927703840}
   UIManager: {fileID: 213492973}
+  masterFileNames:
+  - Skyrim.esm
+  - Update.esm
+  - Dawnguard.esm
+  - HearthFires.esm
+  - Dragonborn.esm
 --- !u!114 &213492973
 MonoBehaviour:
   m_ObjectHideFlags: 0

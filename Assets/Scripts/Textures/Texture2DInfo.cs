@@ -45,7 +45,6 @@ namespace Textures
             yield return null;
             texture.Apply();
             yield return null;
-            Debug.Log($"MipmapCount: {texture.mipmapCount}");
 
             onReadyCallback(texture);
         }

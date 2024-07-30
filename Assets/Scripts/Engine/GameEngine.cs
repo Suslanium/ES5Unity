@@ -2,8 +2,8 @@
 using System.Collections;
 using Core;
 using Engine.Door;
+using Engine.MasterFile;
 using Engine.Textures;
-using MasterFile;
 using UnityEngine;
 
 namespace Engine
@@ -19,7 +19,7 @@ namespace Engine
     {
         private const float DesiredWorkTimePerFrame = 1.0f / 200;
         private readonly ResourceManager _resourceManager;
-        private readonly ESMasterFile _esMasterFile;
+        private readonly MasterFileManager _masterFileManager;
         private readonly TextureManager _textureManager;
         private readonly MaterialManager _materialManager;
         private readonly NifManager _nifManager;
@@ -62,22 +62,22 @@ namespace Engine
         private GameState _backingState;
         public DoorTeleport ActiveDoorTeleport;
 
-        public GameEngine(ResourceManager resourceManager, ESMasterFile masterFile, GameObject player,
+        public GameEngine(ResourceManager resourceManager, MasterFileManager masterFileManager, GameObject player,
             UIManager uiManager, LoadingScreenManager loadingScreenManager, Camera mainCamera)
         {
             _resourceManager = resourceManager;
-            _esMasterFile = masterFile;
+            _masterFileManager = masterFileManager;
             _textureManager = new TextureManager(_resourceManager);
             _materialManager = new MaterialManager(_textureManager);
             _nifManager = new NifManager(_materialManager, _resourceManager);
             _loadBalancer = new TemporalLoadBalancer();
-            _cellManager = new CellManager(_esMasterFile, _nifManager, _loadBalancer, this, player);
+            _cellManager = new CellManager(_masterFileManager, _nifManager, _loadBalancer, this, player);
             _loadingScreenManager = loadingScreenManager;
             _player = player;
             _uiManager = uiManager;
             uiManager.SetGameEngine(this);
             MainCamera = mainCamera;
-            _loadingScreenManager.Initialize(masterFile, _nifManager, _loadBalancer);
+            _loadingScreenManager.Initialize(masterFileManager, _nifManager, _loadBalancer);
         }
 
         // ReSharper disable Unity.PerformanceAnalysis

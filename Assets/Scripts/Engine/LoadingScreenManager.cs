@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using Core;
+using Engine.MasterFile;
 using MasterFile;
 using MasterFile.MasterFileContents.Records;
 using NIF.Builder;
@@ -13,7 +14,7 @@ namespace Engine
 
         [SerializeField] private Camera loadingScreenCamera;
 
-        private ESMasterFile _masterFile;
+        private MasterFileManager _masterFileManager;
         private NifManager _nifManager;
         private TemporalLoadBalancer _temporalLoadBalancer;
         private const string LoadingScreenRecordType = "LSCR";
@@ -42,7 +43,7 @@ namespace Engine
 
         private IEnumerator LoadRandomLoadingScreen()
         {
-            var randomScreenTask = _masterFile.GetRandomRecordOfTypeTask(LoadingScreenRecordType);
+            var randomScreenTask = _masterFileManager.GetRandomRecordOfTypeTask(LoadingScreenRecordType);
             while (!randomScreenTask.IsCompleted)
             {
                 yield return null;
@@ -50,7 +51,7 @@ namespace Engine
 
             var loadingScreenInfo = (LSCR)randomScreenTask.Result;
 
-            var staticModelTask = _masterFile.GetFromFormIDTask(loadingScreenInfo.StaticNifFormID);
+            var staticModelTask = _masterFileManager.GetFromFormIDTask(loadingScreenInfo.StaticNifFormID);
             while (!staticModelTask.IsCompleted)
             {
                 yield return null;
@@ -86,9 +87,9 @@ namespace Engine
                     loadingScreenInfo.InitialRotation[1], loadingScreenInfo.InitialRotation[2]));
         }
 
-        public void Initialize(ESMasterFile masterFile, NifManager nifManager, TemporalLoadBalancer loadBalancer)
+        public void Initialize(MasterFileManager masterFileManager, NifManager nifManager, TemporalLoadBalancer loadBalancer)
         {
-            _masterFile = masterFile;
+            _masterFileManager = masterFileManager;
             _nifManager = nifManager;
             _temporalLoadBalancer = loadBalancer;
         }

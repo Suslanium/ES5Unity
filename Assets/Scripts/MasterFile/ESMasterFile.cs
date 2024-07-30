@@ -28,12 +28,12 @@ namespace MasterFile
         public ESMasterFile(BinaryReader fileReader)
         {
             _fileReader = fileReader;
+            PluginInfo = MasterFileEntry.Parse(fileReader, 0) as TES4;
             _initializationTask = Task.Run(() => Initialize(fileReader));
         }
 
         private void Initialize(BinaryReader fileReader)
         {
-            PluginInfo = MasterFileEntry.Parse(fileReader, 0) as TES4;
             Group currentGroup = null;
             while (fileReader.BaseStream.Position < fileReader.BaseStream.Length)
             {
@@ -70,11 +70,18 @@ namespace MasterFile
                 }
             }
         }
+        
+        public async Task AwaitInitialization()
+        {
+            await _initializationTask;
+        }
 
         /// <summary>
-        /// WARNING: If the next object is a group - this will read the entire group including all its records.
+        /// CAUTION: If the next object is a group - this will read the entire group including all its records.
+        /// CAUTION #2: This should be called only after the master file has been initialized.
+        /// If the master file has not been initialized, this function won't work properly.
         /// </summary>
-        private MasterFileEntry ReadNext()
+        public MasterFileEntry ReadNext()
         {
             return MasterFileEntry.Parse(_fileReader, _fileReader.BaseStream.Position);
         }
@@ -89,15 +96,15 @@ namespace MasterFile
             });
         }
 
-        private Record GetFromFormID(uint formId)
+        /// <summary>
+        /// CAUTION: This should be called only after the master file has been initialized.
+        /// If the master file has not been initialized, this function won't work properly.
+        /// </summary>
+        public Record GetFromFormID(uint formId)
         {
-            if (FormIdToPosition.TryGetValue(formId, out var position))
-            {
-                var record = (Record)MasterFileEntry.Parse(_fileReader, position);
-                return record;
-            }
-
-            return null;
+            if (!FormIdToPosition.TryGetValue(formId, out var position)) return null;
+            var record = (Record)MasterFileEntry.Parse(_fileReader, position);
+            return record;
         }
 
         public Task<Record> GetFromFormIDTask(uint formId)
@@ -109,8 +116,22 @@ namespace MasterFile
                 return GetFromFormID(formId);
             });
         }
+        
+        /// <summary>
+        /// Checks if a record with the specified FormID exists in the master file.
+        /// CAUTION: This should be called only after the master file has been initialized.
+        /// If the master file has not been initialized, this function won't work properly.
+        /// </summary>
+        public bool RecordExists(uint formId)
+        {
+            return FormIdToPosition.ContainsKey(formId);
+        }
 
-        private CELL FindCellByEditorID(string editorID)
+        /// <summary>
+        /// CAUTION: This should be called only after the master file has been initialized.
+        /// If the master file has not been initialized, this function won't work properly.
+        /// </summary>
+        public CELL FindCellByEditorID(string editorID)
         {
             editorID += "\0";
             var cellRecordDictionary = RecordTypeDictionary["CELL"];
@@ -128,7 +149,11 @@ namespace MasterFile
             });
         }
 
-        private Record GetRandomRecordOfType(string type)
+        /// <summary>
+        /// CAUTION: This should be called only after the master file has been initialized.
+        /// If the master file has not been initialized, this function won't work properly.
+        /// </summary>
+        public Record GetRandomRecordOfType(string type)
         {
             var records = RecordTypeDictionary[type];
             var recordPos = records.ElementAt(_random.Next(0, records.Count)).Value;
@@ -144,6 +169,15 @@ namespace MasterFile
                     _initializationTask.Wait();
                 return GetRandomRecordOfType(type);
             });
+        }
+        
+        /// <summary>
+        /// CAUTION: This should be called only after the master file has been initialized.
+        /// If the master file has not been initialized, this function won't work properly.
+        /// </summary>
+        public bool ContainsRecordsOfType(string type)
+        {
+            return RecordTypeDictionary.ContainsKey(type);
         }
 
         /// <summary>

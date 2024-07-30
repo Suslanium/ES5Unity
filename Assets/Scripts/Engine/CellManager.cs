@@ -1,11 +1,10 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using System.IO;
 using Cinemachine;
 using Core;
 using Engine.Door;
+using Engine.MasterFile;
 using Engine.Occlusion;
-using MasterFile;
 using MasterFile.MasterFileContents;
 using MasterFile.MasterFileContents.Records;
 using NIF.Builder;
@@ -34,7 +33,7 @@ namespace Engine
     public class CellManager
     {
         private readonly GameEngine _gameEngine;
-        private readonly ESMasterFile _masterFile;
+        private readonly MasterFileManager _masterFileManager;
         private readonly NifManager _nifManager;
         private readonly TemporalLoadBalancer _temporalLoadBalancer;
         private readonly List<CellInfo> _cells = new();
@@ -48,10 +47,11 @@ namespace Engine
         private readonly List<(uint, uint)> _tempLinkedRooms = new();
         private const int DefaultCameraFarPlane = 500;
 
-        public CellManager(ESMasterFile masterFile, NifManager nifManager, TemporalLoadBalancer temporalLoadBalancer,
+        public CellManager(MasterFileManager masterFileManager, NifManager nifManager,
+            TemporalLoadBalancer temporalLoadBalancer,
             GameEngine gameEngine, GameObject player)
         {
-            _masterFile = masterFile;
+            _masterFileManager = masterFileManager;
             _nifManager = nifManager;
             _temporalLoadBalancer = temporalLoadBalancer;
             _gameEngine = gameEngine;
@@ -85,7 +85,7 @@ namespace Engine
 
         private IEnumerator StartCellLoading(string editorId, CellInfo cellInfo, bool persistentOnly = false)
         {
-            var cellTask = _masterFile.FindCellByEditorIDTask(editorId);
+            var cellTask = _masterFileManager.FindCellByEditorIDTask(editorId);
             while (!cellTask.IsCompleted)
             {
                 yield return null;
@@ -103,7 +103,7 @@ namespace Engine
         private IEnumerator StartCellLoading(uint formId, CellInfo cellInfo, LoadCause loadCause,
             bool persistentOnly = false)
         {
-            var cellTask = _masterFile.GetFromFormIDTask(formId);
+            var cellTask = _masterFileManager.GetFromFormIDTask(formId);
             while (!cellTask.IsCompleted)
             {
                 yield return null;
@@ -124,15 +124,13 @@ namespace Engine
             //if ((cell.CellFlag & 0x0001) == 0)
             //    throw new InvalidDataException("Trying to load exterior cell as interior");
 
-            var childrenTask = _masterFile.ReadNextTask();
+            var childrenTask = _masterFileManager.GetCellDataTask(cell.FormID);
             while (!childrenTask.IsCompleted)
             {
                 yield return null;
             }
 
-            var children = childrenTask.Result;
-            if (children is not Group { GroupType: 6 } childrenGroup)
-                throw new InvalidDataException("Cell children group not found");
+            var cellChildren = childrenTask.Result;
 
             yield return null;
 
@@ -141,13 +139,18 @@ namespace Engine
             cellInfo.CellGameObject = cellGameObject;
             cellGameObject.SetActive(false);
 
-            foreach (var subGroup in childrenGroup.GroupData)
+            var persistentObjectsInstantiationTask =
+                InstantiateCellReferences(cellChildren.PersistentChildren, cellGameObject, loadCause);
+            while (persistentObjectsInstantiationTask.MoveNext())
             {
-                if (subGroup is not Group group) continue;
-                if (group.GroupType != 8 && (group.GroupType != 9 || persistentOnly)) continue;
+                yield return null;
+            }
 
-                var objectInstantiationTask = InstantiateCellReferences(group, cellGameObject, loadCause);
-                while (objectInstantiationTask.MoveNext())
+            if (!persistentOnly)
+            {
+                var temporaryObjectsInstantiationTask =
+                    InstantiateCellReferences(cellChildren.TemporaryChildren, cellGameObject, loadCause);
+                while (temporaryObjectsInstantiationTask.MoveNext())
                 {
                     yield return null;
                 }
@@ -188,7 +191,7 @@ namespace Engine
                     yield return null;
                 }
             }
-            
+
             if (setPlayerPos)
             {
                 _player.transform.position = _tempPlayerPosition;
@@ -233,13 +236,14 @@ namespace Engine
             LGTM template = null;
             if (cellRecord.LightingTemplateReference > 0)
             {
-                var templateTask = _masterFile.GetFromFormIDTask(cellRecord.LightingTemplateReference);
+                var templateTask = _masterFileManager.GetFromFormIDTask(cellRecord.LightingTemplateReference);
                 while (!templateTask.IsCompleted)
                 {
                     yield return null;
                 }
 
-                template = (LGTM)templateTask.Result;
+                if (templateTask.Result is LGTM lgtm)
+                    template = lgtm;
             }
 
             var directionalLight = RenderSettings.sun;
@@ -388,13 +392,12 @@ namespace Engine
             }
         }
 
-        private IEnumerator InstantiateCellReferences(Group referencesGroup, GameObject parent, LoadCause loadCause)
+        private IEnumerator InstantiateCellReferences(List<Record> children, GameObject parent, LoadCause loadCause)
         {
-            foreach (var entry in referencesGroup.GroupData)
+            foreach (var record in children)
             {
-                if (entry is not Record record) continue;
                 if (record is not REFR reference) continue;
-                var referencedRecordTask = _masterFile.GetFromFormIDTask(reference.BaseObjectReference);
+                var referencedRecordTask = _masterFileManager.GetFromFormIDTask(reference.BaseObjectReference);
                 while (!referencedRecordTask.IsCompleted)
                 {
                     yield return null;
@@ -490,11 +493,10 @@ namespace Engine
 
             yield return null;
 
-            foreach (var entry in referencesGroup.GroupData)
+            foreach (var record in children)
             {
-                if (entry is not Record record) continue;
                 if (record is not REFR reference) continue;
-                var referencedRecordTask = _masterFile.GetFromFormIDTask(reference.BaseObjectReference);
+                var referencedRecordTask = _masterFileManager.GetFromFormIDTask(reference.BaseObjectReference);
                 while (!referencedRecordTask.IsCompleted)
                 {
                     yield return null;
@@ -581,8 +583,8 @@ namespace Engine
                 /*This should be baked into the savefile, but for now it is random every time*/
                 doorBase.RandomTeleports[Random.Range(0, doorBase.RandomTeleports.Count)];
 
-            var cellFormID = _masterFile.GetParentFormID(destinationDoorFormID);
-            var destinationTask = _masterFile.GetFromFormIDTask(cellFormID);
+            var cellFormID = _masterFileManager.GetParentFormID(destinationDoorFormID);
+            var destinationTask = _masterFileManager.GetFromFormIDTask(cellFormID);
             while (!destinationTask.IsCompleted)
             {
                 yield return null;
@@ -697,6 +699,7 @@ namespace Engine
             {
                 yield return null;
             }
+
             foreach (var cell in _cells)
             {
                 if (cell.CellGameObject != null) Object.Destroy(cell.CellGameObject);
