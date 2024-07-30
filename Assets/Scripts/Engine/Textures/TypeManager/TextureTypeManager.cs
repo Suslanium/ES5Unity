@@ -2,7 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using DDS;
+using Textures;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
@@ -26,7 +26,7 @@ namespace Engine.Textures.TypeManager
             {
                 var fileStream = ResourceManager.GetFileOrNull(texturePath);
                 var texture = fileStream != null
-                    ? DDSReader.LoadDDSTexture(fileStream)
+                    ? TextureReader.LoadTexture(fileStream)
                     : null;
                 fileStream?.Close();
                 return texture;

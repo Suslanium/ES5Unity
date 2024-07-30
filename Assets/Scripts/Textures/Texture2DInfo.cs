@@ -4,7 +4,7 @@ using System.IO;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace DDS
+namespace Textures
 {
     /// <summary>
     /// Stores information about a 2D texture.
@@ -20,11 +20,11 @@ namespace DDS
 
         public Texture2DInfo(int width, int height, TextureFormat format, bool hasMipmaps, byte[] rawData)
         {
-            this.Width = width;
-            this.Height = height;
-            this.Format = format;
-            this.HasMipmaps = hasMipmaps;
-            this.RawData = rawData;
+            Width = width;
+            Height = height;
+            Format = format;
+            HasMipmaps = hasMipmaps;
+            RawData = rawData;
         }
 
         /// <summary>
@@ -45,22 +45,18 @@ namespace DDS
             yield return null;
             texture.Apply();
             yield return null;
+            Debug.Log($"MipmapCount: {texture.mipmapCount}");
 
             onReadyCallback(texture);
         }
 
-        public IEnumerator ToLinearTexture2D(Action<Texture2D> onReadyCallback)
-        {
-            return ToTexture2D(onReadyCallback, true);
-        }
-
-        public IEnumerator ToCubemap(Action<Cubemap> onReadyCallback)
+        public IEnumerator ToCubeMap(Action<Cubemap> onReadyCallback)
         {
             if (Width != Height)
                 throw new InvalidDataException(
-                    "Cubemap cannot be created from texture with non-equal width and height");
+                    "CubeMap cannot be created from texture with non-equal width and height");
             
-            var cubemap = new Cubemap(Width, Format, HasMipmaps);
+            var cubeMap = new Cubemap(Width, Format, HasMipmaps);
             yield return null;
 
             Texture2D texture = null;
@@ -72,25 +68,25 @@ namespace DDS
 
             for (var i = 0; i < texture.mipmapCount; i++)
             {
-                cubemap.SetPixels(texture.GetPixels(i), CubemapFace.NegativeX, i);
+                cubeMap.SetPixels(texture.GetPixels(i), CubemapFace.NegativeX, i);
                 yield return null;
-                cubemap.SetPixels(texture.GetPixels(i), CubemapFace.NegativeY, i);
+                cubeMap.SetPixels(texture.GetPixels(i), CubemapFace.NegativeY, i);
                 yield return null;
-                cubemap.SetPixels(texture.GetPixels(i), CubemapFace.NegativeZ, i);
+                cubeMap.SetPixels(texture.GetPixels(i), CubemapFace.NegativeZ, i);
                 yield return null;
-                cubemap.SetPixels(texture.GetPixels(i), CubemapFace.PositiveX, i);
+                cubeMap.SetPixels(texture.GetPixels(i), CubemapFace.PositiveX, i);
                 yield return null;
-                cubemap.SetPixels(texture.GetPixels(i), CubemapFace.PositiveY, i);
+                cubeMap.SetPixels(texture.GetPixels(i), CubemapFace.PositiveY, i);
                 yield return null;
-                cubemap.SetPixels(texture.GetPixels(i), CubemapFace.PositiveZ, i);
+                cubeMap.SetPixels(texture.GetPixels(i), CubemapFace.PositiveZ, i);
                 yield return null;
             }
 
-            cubemap.Apply();
+            cubeMap.Apply();
             yield return null;
             Object.Destroy(texture);
             yield return null;
-            onReadyCallback(cubemap);
+            onReadyCallback(cubeMap);
         }
     }
 }

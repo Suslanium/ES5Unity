@@ -34,7 +34,7 @@ namespace Engine.Textures.TypeManager
             Cubemap texture = null;
             if (result != null)
             {
-                var textureCoroutine = result.ToCubemap(texture2D => { texture = texture2D; });
+                var textureCoroutine = result.ToCubeMap(texture2D => { texture = texture2D; });
                 while (textureCoroutine.MoveNext())
                 {
                     yield return null;

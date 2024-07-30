@@ -1,4 +1,4 @@
-﻿using DDS;
+﻿using Textures;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -11,7 +11,7 @@ namespace Tests
 
         private void Start()
         {
-            var textureInfo = DDSReader.LoadDDSTexture(texturePath);
+            var textureInfo = TextureReader.LoadTexture(texturePath);
             var textureCoroutine = textureInfo.ToTexture2D(texture =>
             {
                 rawImage.texture = texture;
