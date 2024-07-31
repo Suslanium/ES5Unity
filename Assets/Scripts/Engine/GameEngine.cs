@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using Engine.Cell;
 using Engine.Door;
 using Engine.MasterFile;
 using Engine.Resource;
@@ -35,12 +36,14 @@ namespace Engine
         public GameState GameState
         {
             get => _backingState;
-            set
+            private set
             {
                 switch (value)
                 {
                     case GameState.Loading:
                         _uiManager.SetLoadingState();
+                        if (_player.activeSelf)
+                            _player.SetActive(false);
                         _loadingScreenManager.ShowLoadingScreen();
                         break;
                     case GameState.InGame:
@@ -84,7 +87,6 @@ namespace Engine
         // ReSharper disable Unity.PerformanceAnalysis
         public void LoadCell(string editorId, bool clearPrevious = false)
         {
-            _player.SetActive(false);
             var startCellLoadingCoroutine = LoadCellCoroutine(editorId, clearPrevious);
             _loadBalancer.AddTask(startCellLoadingCoroutine);
         }
@@ -93,8 +95,6 @@ namespace Engine
         public void LoadCell(uint formID, LoadCause loadCause, Vector3 startPosition, Quaternion startRotation,
             bool clearPrevious = false)
         {
-            if (loadCause != LoadCause.OpenWorldLoad)
-                _player.SetActive(false);
             var startCellLoadingCoroutine =
                 LoadCellCoroutine(formID, loadCause, startPosition, startRotation, clearPrevious);
             _loadBalancer.AddTask(startCellLoadingCoroutine);
@@ -119,11 +119,14 @@ namespace Engine
 
             ActiveDoorTeleport = null;
             GameState = GameState.Loading;
-            _cellManager.LoadCell(editorId);
+            _cellManager.LoadCell(editorId, () =>
+            {
+                GameState = GameState.InGame;
+            });
         }
 
-        private IEnumerator LoadCellCoroutine(uint formID, LoadCause loadCause, Vector3 startPosition,
-            Quaternion startRotation, bool clearPrevious = false)
+        private IEnumerator LoadCellCoroutine(uint formID, LoadCause loadCause, Vector3? startPosition,
+            Quaternion? startRotation, bool clearPrevious = false)
         {
             if (clearPrevious)
             {
@@ -135,8 +138,17 @@ namespace Engine
             }
 
             ActiveDoorTeleport = null;
-            GameState = GameState.Loading;
-            _cellManager.LoadCell(formID, loadCause, startPosition, startRotation);
+            if (loadCause != LoadCause.OpenWorldLoad)
+                GameState = GameState.Loading;
+            _cellManager.LoadCell(formID, loadCause, () =>
+            {
+                if (startPosition is { } nonNullStartPos)
+                    _player.transform.position = nonNullStartPos;
+                if (startRotation is { } nonNullStartRot)
+                    _player.transform.rotation = nonNullStartRot;
+                if (loadCause != LoadCause.OpenWorldLoad)
+                    GameState = GameState.InGame;
+            });
         }
 
         private IEnumerator DestroyAndClearEverything()
