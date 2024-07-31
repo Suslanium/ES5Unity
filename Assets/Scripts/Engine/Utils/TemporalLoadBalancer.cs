@@ -1,9 +1,9 @@
-﻿namespace Core
-{
-    using System.Collections;
-    using System.Collections.Generic;
-    using System.Diagnostics;
+﻿using System.Collections;
+using System.Collections.Generic;
+using System.Diagnostics;
 
+namespace Engine.Utils
+{
     /// <summary>
     /// Distributes work (the execution of coroutines) over several frames to avoid freezes by soft-limiting execution time.
     /// (Taken from https://github.com/ColeDeanShepherd/TESUnity/blob/f4d5e19f68da380da9da745356c7904f3428b9d6/Assets/Scripts/Core/TemporalLoadBalancer.cs#L8)

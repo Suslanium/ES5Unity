@@ -1,17 +1,17 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using Cinemachine;
-using Core;
 using Engine.Door;
 using Engine.MasterFile;
 using Engine.Occlusion;
+using Engine.Utils;
 using MasterFile.MasterFileContents;
 using MasterFile.MasterFileContents.Records;
 using NIF.Builder;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.Rendering;
-using Convert = Core.Convert;
+using Convert = Engine.Utils.Convert;
 using Object = UnityEngine.Object;
 
 namespace Engine

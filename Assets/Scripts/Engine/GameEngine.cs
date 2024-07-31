@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections;
-using Core;
 using Engine.Door;
 using Engine.MasterFile;
 using Engine.Resource;
 using Engine.Textures;
+using Engine.Utils;
 using UnityEngine;
 
 namespace Engine
