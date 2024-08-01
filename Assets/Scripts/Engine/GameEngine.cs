@@ -20,9 +20,6 @@ namespace Engine
     public class GameEngine
     {
         private const float DesiredWorkTimePerFrame = 1.0f / 200;
-        private readonly ResourceManager _resourceManager;
-        private readonly MasterFileManager _masterFileManager;
-        private readonly TextureManager _textureManager;
         private readonly MaterialManager _materialManager;
         private readonly NifManager _nifManager;
         private readonly CellManager _cellManager;
@@ -69,13 +66,11 @@ namespace Engine
         public GameEngine(ResourceManager resourceManager, MasterFileManager masterFileManager, GameObject player,
             UIManager uiManager, LoadingScreenManager loadingScreenManager, Camera mainCamera)
         {
-            _resourceManager = resourceManager;
-            _masterFileManager = masterFileManager;
-            _textureManager = new TextureManager(_resourceManager);
-            _materialManager = new MaterialManager(_textureManager);
-            _nifManager = new NifManager(_materialManager, _resourceManager);
+            var textureManager = new TextureManager(resourceManager);
+            _materialManager = new MaterialManager(textureManager);
+            _nifManager = new NifManager(_materialManager, resourceManager);
             _loadBalancer = new TemporalLoadBalancer();
-            _cellManager = new CellManager(_masterFileManager, _nifManager, _loadBalancer, this, player);
+            _cellManager = new CellManager(masterFileManager, _nifManager, _loadBalancer, this, player);
             _loadingScreenManager = loadingScreenManager;
             _player = player;
             _uiManager = uiManager;
@@ -179,9 +174,7 @@ namespace Engine
         {
             var clearCoroutine = DestroyAndClearEverything();
             //Iterating through the IEnumerator without using load balancer so that everything is going to happen instantly
-            while (clearCoroutine.MoveNext())
-            {
-            }
+            while (clearCoroutine.MoveNext()) {}
         }
     }
 }

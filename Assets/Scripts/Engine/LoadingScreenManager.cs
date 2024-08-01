@@ -1,7 +1,6 @@
 ﻿using System.Collections;
 using Engine.MasterFile;
 using Engine.Utils;
-using MasterFile;
 using MasterFile.MasterFileContents.Records;
 using NIF.Builder;
 using UnityEngine;
@@ -45,39 +44,29 @@ namespace Engine
         {
             var randomScreenTask = _masterFileManager.GetRandomRecordOfTypeTask(LoadingScreenRecordType);
             while (!randomScreenTask.IsCompleted)
-            {
                 yield return null;
-            }
 
             var loadingScreenInfo = (LSCR)randomScreenTask.Result;
 
             var staticModelTask = _masterFileManager.GetFromFormIDTask(loadingScreenInfo.StaticNifFormID);
             while (!staticModelTask.IsCompleted)
-            {
                 yield return null;
-            }
 
             var staticModelInfo = (STAT)staticModelTask.Result;
 
             var modelObjectCoroutine = _nifManager.InstantiateNif(staticModelInfo.NifModelFilename,
                 modelObject => { _currentLoadingScreenModel = modelObject; });
             while (modelObjectCoroutine.MoveNext())
-            {
                 yield return null;
-            }
 
             if (_currentLoadingScreenModel == null) yield break;
             _currentLoadingScreenModel.layer = _loadScreenLayer;
             var children = _currentLoadingScreenModel.GetComponentsInChildren<Transform>(includeInactive: true);
             foreach (var child in children)
-            {
                 child.gameObject.layer = _loadScreenLayer;
-            }
             
             if (loadingScreenInfo.InitialScale != 0f)
-            {
                 _currentLoadingScreenModel.transform.localScale = Vector3.one * loadingScreenInfo.InitialScale;
-            }
 
             _currentLoadingScreenModel.transform.position +=
                 NifUtils.NifPointToUnityPoint(new Vector3(loadingScreenInfo.InitialTranslation[0],
