@@ -3,8 +3,9 @@ using System.Collections;
 using System.Collections.Generic;
 using Engine.Cell.Delegate;
 using Engine.Cell.Delegate.Interfaces;
+using Engine.Cell.Delegate.Reference;
+using Engine.Core;
 using Engine.MasterFile;
-using Engine.Utils;
 using MasterFile.MasterFileContents;
 using MasterFile.MasterFileContents.Records;
 using UnityEngine;
@@ -32,8 +33,8 @@ namespace Engine.Cell
         private readonly TemporalLoadBalancer _temporalLoadBalancer;
         private readonly List<CellInfo> _cells = new();
 
-        private readonly List<ICellReferencePreprocessDelegate> _preprocessDelegates;
-        private readonly List<ICellReferenceInstantiationDelegate> _instantiationDelegates;
+        private readonly Dictionary<Type, ICellRecordPreprocessDelegate> _preprocessDelegates;
+        private readonly Dictionary<Type, ICellRecordInstantiationDelegate> _instantiationDelegates;
         private readonly List<ICellPostProcessDelegate> _postProcessDelegates;
         private readonly List<ICellDestroyDelegate> _destroyDelegates;
 
@@ -44,13 +45,14 @@ namespace Engine.Cell
             _masterFileManager = masterFileManager;
             _temporalLoadBalancer = temporalLoadBalancer;
 
+            //TODO replace with DI or something
             var cellLightingDelegate = new CellLightingDelegate(gameEngine, masterFileManager);
             var doorDelegate = new DoorDelegate(nifManager, masterFileManager, gameEngine);
             var lightingObjectDelegate = new LightingObjectDelegate(nifManager);
             var occlusionCullingDelegate = new OcclusionCullingDelegate(player, gameEngine);
             var staticObjectDelegate = new StaticObjectDelegate(nifManager);
             var cocPlayerPositionDelegate = new CocPlayerPositionDelegate(player);
-            _preprocessDelegates = new List<ICellReferencePreprocessDelegate>
+            var referencePreprocessDelegates = new List<ICellReferencePreprocessDelegate>
             {
                 cocPlayerPositionDelegate,
                 occlusionCullingDelegate,
@@ -58,11 +60,29 @@ namespace Engine.Cell
                 lightingObjectDelegate,
                 staticObjectDelegate
             };
-            _instantiationDelegates = new List<ICellReferenceInstantiationDelegate>
+            var referenceInstantiationDelegates = new List<ICellReferenceInstantiationDelegate>
             {
                 doorDelegate,
                 lightingObjectDelegate,
                 staticObjectDelegate
+            };
+            _preprocessDelegates = new Dictionary<Type, ICellRecordPreprocessDelegate>
+            {
+                {
+                    typeof(REFR),
+                    new CellReferencePreprocessDelegateManager(referencePreprocessDelegates, masterFileManager)
+                },
+                {
+                    typeof(LAND),
+                    new TerrainDelegate()
+                }
+            };
+            _instantiationDelegates = new Dictionary<Type, ICellRecordInstantiationDelegate>
+            {
+                {
+                    typeof(REFR),
+                    new CellReferenceInstantiationDelegateManager(referenceInstantiationDelegates, masterFileManager)
+                }
             };
             _postProcessDelegates = new List<ICellPostProcessDelegate>
             {
@@ -144,14 +164,14 @@ namespace Engine.Cell
             cellGameObject.SetActive(false);
 
             var persistentObjectsInstantiationTask =
-                InstantiateCellReferences(cell, cellChildren.PersistentChildren, cellGameObject, loadCause);
+                InstantiateCellRecords(cell, cellChildren.PersistentChildren, cellGameObject, loadCause);
             while (persistentObjectsInstantiationTask.MoveNext())
                 yield return null;
 
             if (!persistentOnly)
             {
                 var temporaryObjectsInstantiationTask =
-                    InstantiateCellReferences(cell, cellChildren.TemporaryChildren, cellGameObject, loadCause);
+                    InstantiateCellRecords(cell, cellChildren.TemporaryChildren, cellGameObject, loadCause);
                 while (temporaryObjectsInstantiationTask.MoveNext())
                     yield return null;
             }
@@ -177,67 +197,25 @@ namespace Engine.Cell
             }
         }
 
-        private IEnumerator InstantiateCellReferences(CELL cell, List<Record> children, GameObject parent,
+        private IEnumerator InstantiateCellRecords(CELL cell, List<Record> children, GameObject parent,
             LoadCause loadCause)
         {
             foreach (var record in children)
             {
-                if (record is not REFR reference) continue;
-                var referencedRecordTask = _masterFileManager.GetFromFormIDTask(reference.BaseObjectReference);
-                while (!referencedRecordTask.IsCompleted)
+                _preprocessDelegates.TryGetValue(record.GetType(), out var preprocessDelegate);
+                var preprocessCoroutine = preprocessDelegate?.PreprocessRecord(cell, record, parent, loadCause);
+                if (preprocessCoroutine == null) continue;
+                while (preprocessCoroutine.MoveNext())
                     yield return null;
-
-                var referencedRecord = referencedRecordTask.Result;
-
-                foreach (var preprocessDelegate in _preprocessDelegates)
-                {
-                    if (!preprocessDelegate.IsPreprocessApplicable(cell, loadCause, reference, referencedRecord))
-                        continue;
-
-                    var preprocessCoroutine =
-                        preprocessDelegate.PreprocessObject(cell, parent, loadCause, reference, referencedRecord);
-                    if (preprocessCoroutine == null) continue;
-
-                    while (preprocessCoroutine.MoveNext())
-                        yield return null;
-                }
-
-                yield return null;
             }
 
             yield return null;
 
             foreach (var record in children)
             {
-                if (record is not REFR reference) continue;
-                var referencedRecordTask = _masterFileManager.GetFromFormIDTask(reference.BaseObjectReference);
-                while (!referencedRecordTask.IsCompleted)
-                    yield return null;
-
-                var referencedRecord = referencedRecordTask.Result;
-                var objectInstantiationCoroutine =
-                    InstantiateCellObject(cell, loadCause, parent, reference, referencedRecord);
-                if (objectInstantiationCoroutine == null) continue;
-                while (objectInstantiationCoroutine.MoveNext())
-                    yield return null;
-            }
-        }
-
-        private IEnumerator InstantiateCellObject(CELL cell, LoadCause loadCause, GameObject parent,
-            REFR referenceRecord,
-            Record referencedRecord)
-        {
-            if (referencedRecord == null) yield break;
-            foreach (var delegateInstance in _instantiationDelegates)
-            {
-                if (!delegateInstance.IsInstantiationApplicable(cell, loadCause, referenceRecord,
-                        referencedRecord))
-                    continue;
-
-                var instantiationCoroutine = delegateInstance.InstantiateObject(cell, parent,
-                    loadCause, referenceRecord, referencedRecord);
+                _instantiationDelegates.TryGetValue(record.GetType(), out var instantiationDelegate);
+                var instantiationCoroutine = instantiationDelegate?.InstantiateRecord(cell, record, parent, loadCause);
                 if (instantiationCoroutine == null) continue;
-
                 while (instantiationCoroutine.MoveNext())
                     yield return null;
             }

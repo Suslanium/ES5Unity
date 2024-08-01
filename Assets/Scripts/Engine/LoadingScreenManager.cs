@@ -1,6 +1,6 @@
 ﻿using System.Collections;
+using Engine.Core;
 using Engine.MasterFile;
-using Engine.Utils;
 using MasterFile.MasterFileContents.Records;
 using NIF.Builder;
 using UnityEngine;

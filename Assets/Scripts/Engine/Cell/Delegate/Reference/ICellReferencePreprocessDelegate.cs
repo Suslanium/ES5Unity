@@ -3,7 +3,7 @@ using MasterFile.MasterFileContents;
 using MasterFile.MasterFileContents.Records;
 using UnityEngine;
 
-namespace Engine.Cell.Delegate.Interfaces
+namespace Engine.Cell.Delegate.Reference
 {
     public interface ICellReferencePreprocessDelegate
     {

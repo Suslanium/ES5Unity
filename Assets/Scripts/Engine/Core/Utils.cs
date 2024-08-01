@@ -1,7 +1,7 @@
 ﻿using System;
 using UnityEngine;
 
-namespace Engine.Utils
+namespace Engine.Core
 {
 	/// <summary>
 	/// Taken from https://github.com/ColeDeanShepherd/TESUnity/blob/f4d5e19f68da380da9da745356c7904f3428b9d6/Assets/Scripts/Core/Utils.cs
@@ -87,6 +87,21 @@ namespace Engine.Utils
 			var xPct = (x - min0) / range0;
 
 			return min1 + (xPct * range1);
+		}
+		
+		/// <summary>
+		/// Calculates the minimum and maximum values of a 2D array.
+		/// </summary>
+		public static void GetExtrema(float[,] array, out float min, out float max)
+		{
+			min = float.MaxValue;
+			max = float.MinValue;
+
+			foreach(var element in array)
+			{
+				min = Math.Min(min, element);
+				max = Math.Max(max, element);
+			}
 		}
 	}
 }

@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 
-namespace Engine.Utils
+namespace Engine.Core
 {
     /// <summary>
     /// Distributes work (the execution of coroutines) over several frames to avoid freezes by soft-limiting execution time.
