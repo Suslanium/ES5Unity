@@ -1,10 +1,27 @@
-﻿using System.IO;
+﻿using System.Collections.Generic;
+using System.IO;
 using Engine.Core;
 using JetBrains.Annotations;
 using UnityEngine;
 
 namespace MasterFile.MasterFileContents.Records
 {
+    public struct BaseTexture
+    {
+        public readonly uint LandTextureFormID;
+
+        public readonly byte Quadrant;
+
+        public BaseTexture(uint landTextureFormID, byte quadrant)
+        {
+            LandTextureFormID = landTextureFormID;
+            Quadrant = quadrant;
+        }
+    }
+
+    /// <summary>
+    /// Exterior cell land data (terrain) record.
+    /// </summary>
     public class LAND : Record
     {
         private const int LandSideLength = Convert.ExteriorCellSideLengthInSamples;
@@ -18,6 +35,8 @@ namespace MasterFile.MasterFileContents.Records
         [CanBeNull] public Color[,] VertexColors { get; private set; }
 
         [CanBeNull] public Vector3[,] VertexNormals { get; private set; }
+
+        public List<BaseTexture> BaseTextures { get; private set; } = new();
 
         private LAND(string type, uint dataSize, uint flag, uint formID, ushort timestamp, ushort versionControlInfo,
             ushort internalRecordVersion, ushort unknownData) : base(type, dataSize, flag, formID, timestamp,
@@ -95,6 +114,13 @@ namespace MasterFile.MasterFileContents.Records
                             vertexNormals[row, column] = normal;
                         }
 
+                        break;
+                    case "BTXT":
+                        var landTextureFormID = fileReader.ReadUInt32();
+                        var quadrant = fileReader.ReadByte();
+                        fileReader.BaseStream.Seek(3, SeekOrigin.Current);
+
+                        land.BaseTextures.Add(new BaseTexture(landTextureFormID, quadrant));
                         break;
                     default:
                         fileReader.BaseStream.Seek(fieldSize, SeekOrigin.Current);

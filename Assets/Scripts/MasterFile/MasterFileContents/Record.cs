@@ -166,6 +166,8 @@ namespace MasterFile.MasterFileContents
                 "DOOR" => DOOR.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position),
                 "LSCR" => LSCR.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position),
                 "LAND" => LAND.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position),
+                "LTEX" => LTEX.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position),
+                "TXST" => TXST.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position),
                 _ => basicRecordInfo
             };
 

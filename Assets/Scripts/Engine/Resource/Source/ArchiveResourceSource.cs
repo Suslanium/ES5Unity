@@ -8,9 +8,9 @@ namespace Engine.Resource.Source
     public class ArchiveResourceSource : ResourceSource
     {
         public override int Priority => 1;
-        
+
         private readonly List<BsaFile> _archives = new();
-        
+
         public ArchiveResourceSource(string dataFolderPath) : base(dataFolderPath)
         {
             var archivePaths = Directory.GetFiles(dataFolderPath, "*.bsa", SearchOption.TopDirectoryOnly);

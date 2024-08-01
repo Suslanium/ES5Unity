@@ -5,14 +5,14 @@ namespace Engine.Resource.Source
     public class FileResourceSource : ResourceSource
     {
         public override int Priority => 0;
-        
+
         public FileResourceSource(string dataFolderPath) : base(dataFolderPath)
         {
         }
 
         public override Stream GetResourceOrNull(string resourcePath)
         {
-            var fullPath = Path.Combine(DataFolderPath, resourcePath);
+            var fullPath = Path.Combine(DataFolderPath, resourcePath.Replace('\\', '/').TrimEnd('\0'));
             return !File.Exists(fullPath) ? null : File.Open(fullPath, FileMode.Open);
         }
 

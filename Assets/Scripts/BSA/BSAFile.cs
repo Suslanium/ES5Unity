@@ -109,12 +109,12 @@ namespace BSA
         private static string ConvertFileName(string fullFileName)
         {
             fullFileName = fullFileName.ToLowerInvariant();
-            fullFileName = fullFileName.Trim();
+            fullFileName = fullFileName.Trim().Trim('\0');
             if (fullFileName.IndexOf("/", StringComparison.Ordinal) == -1) return fullFileName;
             var fileNameBuilder = new StringBuilder(fullFileName, fullFileName.Length);
             fileNameBuilder.Replace('/', '\\');
             fullFileName = fileNameBuilder.ToString();
-
+            
             return fullFileName;
         }
 

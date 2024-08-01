@@ -6,6 +6,7 @@ using Engine.Cell.Delegate.Interfaces;
 using Engine.Cell.Delegate.Reference;
 using Engine.Core;
 using Engine.MasterFile;
+using Engine.Textures;
 using MasterFile.MasterFileContents;
 using MasterFile.MasterFileContents.Records;
 using UnityEngine;
@@ -38,7 +39,7 @@ namespace Engine.Cell
         private readonly List<ICellPostProcessDelegate> _postProcessDelegates;
         private readonly List<ICellDestroyDelegate> _destroyDelegates;
 
-        public CellManager(MasterFileManager masterFileManager, NifManager nifManager,
+        public CellManager(MasterFileManager masterFileManager, NifManager nifManager, TextureManager textureManager,
             TemporalLoadBalancer temporalLoadBalancer,
             GameEngine gameEngine, GameObject player)
         {
@@ -74,7 +75,7 @@ namespace Engine.Cell
                 },
                 {
                     typeof(LAND),
-                    new TerrainDelegate()
+                    new TerrainDelegate(masterFileManager, textureManager)
                 }
             };
             _instantiationDelegates = new Dictionary<Type, ICellRecordInstantiationDelegate>

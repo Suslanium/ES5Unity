@@ -70,7 +70,7 @@ namespace Engine
             _materialManager = new MaterialManager(textureManager);
             _nifManager = new NifManager(_materialManager, resourceManager);
             _loadBalancer = new TemporalLoadBalancer();
-            _cellManager = new CellManager(masterFileManager, _nifManager, _loadBalancer, this, player);
+            _cellManager = new CellManager(masterFileManager, _nifManager, textureManager, _loadBalancer, this, player);
             _loadingScreenManager = loadingScreenManager;
             _player = player;
             _uiManager = uiManager;
@@ -114,10 +114,7 @@ namespace Engine
 
             ActiveDoorTeleport = null;
             GameState = GameState.Loading;
-            _cellManager.LoadCell(editorId, () =>
-            {
-                GameState = GameState.InGame;
-            });
+            _cellManager.LoadCell(editorId, () => { GameState = GameState.InGame; });
         }
 
         private IEnumerator LoadCellCoroutine(uint formID, LoadCause loadCause, Vector3? startPosition,
@@ -174,7 +171,9 @@ namespace Engine
         {
             var clearCoroutine = DestroyAndClearEverything();
             //Iterating through the IEnumerator without using load balancer so that everything is going to happen instantly
-            while (clearCoroutine.MoveNext()) {}
+            while (clearCoroutine.MoveNext())
+            {
+            }
         }
     }
 }
