@@ -1,11 +1,30 @@
 ﻿using System.Collections.Generic;
 using System.IO;
-using Engine.Core;
 using JetBrains.Annotations;
 using UnityEngine;
+using Convert = Engine.Core.Convert;
 
 namespace MasterFile.MasterFileContents.Records
 {
+    public struct AdditionalTexture
+    {
+        public readonly uint LandTextureFormID;
+
+        public readonly byte Quadrant;
+
+        public readonly ushort Layer;
+
+        public readonly float[,] QuadrantAlphaMap;
+
+        public AdditionalTexture(uint landTextureFormID, byte quadrant, ushort layer, float[,] quadrantAlphaMap)
+        {
+            LandTextureFormID = landTextureFormID;
+            Quadrant = quadrant;
+            Layer = layer;
+            QuadrantAlphaMap = quadrantAlphaMap;
+        }
+    }
+
     public struct BaseTexture
     {
         public readonly uint LandTextureFormID;
@@ -25,6 +44,7 @@ namespace MasterFile.MasterFileContents.Records
     public class LAND : Record
     {
         private const int LandSideLength = Convert.ExteriorCellSideLengthInSamples;
+        private const int QuadrantSideLength = Convert.ExteriorCellQuadrantSideLengthInSamples;
 
         /// <summary>
         /// Land vertex height map in game units.
@@ -37,6 +57,8 @@ namespace MasterFile.MasterFileContents.Records
         [CanBeNull] public Vector3[,] VertexNormals { get; private set; }
 
         public List<BaseTexture> BaseTextures { get; private set; } = new();
+
+        public List<AdditionalTexture> AdditionalTextures { get; private set; } = new();
 
         private LAND(string type, uint dataSize, uint flag, uint formID, ushort timestamp, ushort versionControlInfo,
             ushort internalRecordVersion, ushort unknownData) : base(type, dataSize, flag, formID, timestamp,
@@ -121,6 +143,29 @@ namespace MasterFile.MasterFileContents.Records
                         fileReader.BaseStream.Seek(3, SeekOrigin.Current);
 
                         land.BaseTextures.Add(new BaseTexture(landTextureFormID, quadrant));
+                        break;
+                    case "ATXT":
+                        var additionalTextureFormID = fileReader.ReadUInt32();
+                        var additionalTextureQuadrant = fileReader.ReadByte();
+                        fileReader.BaseStream.Seek(1, SeekOrigin.Current);
+                        var layer = fileReader.ReadUInt16();
+                        var quadrantAlphaMap = new float[QuadrantSideLength, QuadrantSideLength];
+
+                        land.AdditionalTextures.Add(new AdditionalTexture(additionalTextureFormID,
+                            additionalTextureQuadrant, layer, quadrantAlphaMap));
+                        break;
+                    case "VTXT":
+                        for (var currentByte = 0; currentByte < fieldSize; currentByte+=8)
+                        {
+                            var texturePosition = fileReader.ReadUInt16();
+                            fileReader.BaseStream.Seek(2, SeekOrigin.Current);
+                            var positionAlpha = fileReader.ReadSingle();
+                            
+                            var row = texturePosition / QuadrantSideLength;
+                            var column = texturePosition % QuadrantSideLength;
+                            
+                            land.AdditionalTextures[^1].QuadrantAlphaMap[row, column] = positionAlpha;
+                        }
                         break;
                     default:
                         fileReader.BaseStream.Seek(fieldSize, SeekOrigin.Current);

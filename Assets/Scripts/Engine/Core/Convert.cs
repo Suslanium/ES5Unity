@@ -12,6 +12,7 @@ namespace Engine.Core
         public const float meterInMWUnits = meterInYards * yardInMWUnits;
 
         public const int ExteriorCellSideLengthInSamples = 33;
+        public const int ExteriorCellQuadrantSideLengthInSamples = 17;
         public const int ExteriorCellSideLengthInMWUnits = 4096;
         public const float ExteriorCellSideLengthInMeters = (float)ExteriorCellSideLengthInMWUnits / meterInMWUnits;
 
