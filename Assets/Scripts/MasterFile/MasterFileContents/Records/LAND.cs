@@ -119,7 +119,8 @@ namespace MasterFile.MasterFileContents.Records
 
                             vertexColors[row, column] = color;
                         }
-
+                        
+                        land.VertexColors = vertexColors;
                         break;
                     case "VNML":
                         var vertexNormals = new Vector3[LandSideLength, LandSideLength];
