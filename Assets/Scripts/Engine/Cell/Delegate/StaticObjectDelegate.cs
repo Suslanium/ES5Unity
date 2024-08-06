@@ -17,7 +17,7 @@ namespace Engine.Cell.Delegate
 
         public bool IsPreprocessApplicable(CELL cell, LoadCause loadCause, REFR reference, Record referencedRecord)
         {
-            return referencedRecord is STAT or MSTT or FURN;
+            return referencedRecord is STAT or MSTT or FURN or TREE;
         }
 
         public IEnumerator PreprocessObject(CELL cell, GameObject cellGameObject, LoadCause loadCause, REFR reference,
@@ -34,6 +34,9 @@ namespace Engine.Cell.Delegate
                 case FURN furn:
                     _nifManager.PreloadNifFile(furn.NifModelFilename);
                     break;
+                case TREE tree:
+                    _nifManager.PreloadNifFile(tree.NifModelFilename);
+                    break;
             }
 
             yield break;
@@ -41,7 +44,7 @@ namespace Engine.Cell.Delegate
 
         public bool IsInstantiationApplicable(CELL cell, LoadCause loadCause, REFR reference, Record referencedRecord)
         {
-            return referencedRecord is STAT or MSTT or FURN;
+            return referencedRecord is STAT or MSTT or FURN or TREE;
         }
 
         public IEnumerator InstantiateObject(CELL cell, GameObject cellGameObject, LoadCause loadCause, REFR reference,
@@ -54,6 +57,8 @@ namespace Engine.Cell.Delegate
                 MSTT mstt => InstantiateModelAtPositionAndRotation(mstt.NifModelFilename, reference.Position,
                     reference.Rotation, reference.Scale, cellGameObject),
                 FURN furn => InstantiateModelAtPositionAndRotation(furn.NifModelFilename, reference.Position,
+                    reference.Rotation, reference.Scale, cellGameObject),
+                TREE tree => InstantiateModelAtPositionAndRotation(tree.NifModelFilename, reference.Position,
                     reference.Rotation, reference.Scale, cellGameObject),
                 _ => null
             };

@@ -168,6 +168,7 @@ namespace MasterFile.MasterFileContents
                 "LAND" => LAND.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position),
                 "LTEX" => LTEX.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position),
                 "TXST" => TXST.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position),
+                "TREE" => TREE.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position),
                 _ => basicRecordInfo
             };
 

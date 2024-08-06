@@ -14,6 +14,7 @@ namespace NIF.Parser
         {
             { "NiNode", NiNode.Parse },
             { "BSFadeNode", BsFadeNode.Parse },
+            { "BSLeafAnimNode", BsLeafAnimNode.Parse },
             { "NiExtraData", NiExtraData.Parse },
             { "NiIntegerExtraData", NiIntegerExtraData.Parse },
             { "BSXFlags", BsxFlags.Parse },

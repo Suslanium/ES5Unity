@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using Engine.Cell.Delegate.Interfaces;
@@ -11,6 +12,7 @@ using JetBrains.Annotations;
 using MasterFile.MasterFileContents.Records;
 using UnityEngine;
 using Convert = Engine.Core.Convert;
+using Debug = UnityEngine.Debug;
 
 namespace Engine.Cell.Delegate
 {
@@ -73,6 +75,7 @@ namespace Engine.Cell.Delegate
 
     public class TerrainDelegate : CellRecordPreprocessDelegate<LAND>
     {
+        private readonly Stopwatch _stopwatch = new();
         private const int LandSideLength = Convert.ExteriorCellSideLengthInSamples;
         private const string TexturePathPrefix = "Textures";
         private static readonly string DefaultDiffuseTexturePath = @"Textures\Landscape\Dirt02.dds";
@@ -539,6 +542,27 @@ namespace Engine.Cell.Delegate
             onReadyCallback(baseTextures);
         }
 
+        // private static Texture2D CreateTextureFromVertexColors(Color[,] vertexColors)
+        // {
+        //     var width = vertexColors.GetLength(0);
+        //     var height = vertexColors.GetLength(1);
+        //     var texture = new Texture2D(width, height);
+        //
+        //     for (var i = 0; i < width; i++)
+        //     {
+        //         for (var j = 0; j < height; j++)
+        //         {
+        //             var flippedI = width - i - 1;
+        //             var flippedJ = height - flippedI - 1;
+        //
+        //             texture.SetPixel(j, flippedJ, vertexColors[i, j]);
+        //         }
+        //     }
+        //
+        //     texture.Apply();
+        //     return texture;
+        // }
+
         private IEnumerator GetAdditionalTerrainLayersInfo(LAND record, int terrainWidth, int terrainHeight,
             Action<Dictionary<Quadrant, List<NonLoadedTerrainLayer>>> onReadyCallback)
         {
@@ -608,7 +632,8 @@ namespace Engine.Cell.Delegate
             onReadyCallback(loadedTerrainLayers);
         }
 
-        private static IEnumerator PaintTextures(TerrainData terrainData, List<TerrainTexture> textures)
+        private static IEnumerator PaintTextures(TerrainData terrainData, List<TerrainTexture> textures,
+            Color[,] vertexColors)
         {
             var terrainLayers = new List<TerrainLayer>();
             var alphaMaps = new List<float[,]>();
@@ -626,6 +651,27 @@ namespace Engine.Cell.Delegate
                 yield return null;
             }
 
+            // if (vertexColors != null && vertexColors.GetLength(0) > 0)
+            // {
+            //     Debug.Log("Painting terrain with vertex colors");
+            //     var vertexColorLayer = new TerrainLayer
+            //     {
+            //         diffuseTexture = CreateTextureFromVertexColors(vertexColors),
+            //         tileSize = new Vector2(terrainData.size.x, terrainData.size.z)
+            //     };
+            //     terrainLayers.Add(vertexColorLayer);
+            //     var alphaMap = new float[terrainData.alphamapWidth, terrainData.alphamapHeight];
+            //     for (var y = 0; y < terrainData.alphamapHeight; y++)
+            //     {
+            //         for (var x = 0; x < terrainData.alphamapWidth; x++)
+            //         {
+            //             alphaMap[x, y] = 1;
+            //             yield return null;
+            //         }
+            //     }
+            //     alphaMaps.Add(alphaMap);
+            // }
+
             terrainData.terrainLayers = terrainLayers.ToArray();
             yield return null;
 
@@ -640,6 +686,8 @@ namespace Engine.Cell.Delegate
 
         private IEnumerator CreateTerrain(CELL cell, LAND land, Action<GameObject> onReadyCallback)
         {
+            _stopwatch.Reset();
+            _stopwatch.Start();
             TerrainData terrainData = null;
             float minHeight = 0;
             var terrainDataCoroutine = CreateTerrainData(land.VertexHeightMap, (data, calculatedMinHeight) =>
@@ -695,7 +743,7 @@ namespace Engine.Cell.Delegate
             while (loadTerrainLayersCoroutine.MoveNext())
                 yield return null;
 
-            var paintCoroutine = PaintTextures(terrainData, loadedTerrainLayers);
+            var paintCoroutine = PaintTextures(terrainData, loadedTerrainLayers, land.VertexColors);
             while (paintCoroutine.MoveNext())
                 yield return null;
 
@@ -714,6 +762,8 @@ namespace Engine.Cell.Delegate
             gameObject.transform.position = terrainPosition;
             yield return null;
 
+            Debug.Log($"Terrain instantiation took {_stopwatch.Elapsed.TotalSeconds} seconds.");
+            _stopwatch.Stop();
             onReadyCallback(gameObject);
         }
 
