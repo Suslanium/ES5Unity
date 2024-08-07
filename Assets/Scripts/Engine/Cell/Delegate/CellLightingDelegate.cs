@@ -29,6 +29,8 @@ namespace Engine.Cell.Delegate
         public IEnumerator PostProcessCell(CELL cell, GameObject cellGameObject)
         {
             if (cell.CellLightingInfo == null) yield break;
+            //Don't process lighting for exterior cells
+            if ((cell.CellFlag & 0x0001) == 0) yield break;
             var lightingCoroutine = ConfigureCellLighting(cell);
             while (lightingCoroutine.MoveNext())
             {

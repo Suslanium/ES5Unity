@@ -87,6 +87,7 @@ namespace Engine.Cell
             };
             _postProcessDelegates = new List<ICellPostProcessDelegate>
             {
+                cocPlayerPositionDelegate,
                 occlusionCullingDelegate,
                 cellLightingDelegate
             };
