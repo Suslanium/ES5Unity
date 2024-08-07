@@ -15,10 +15,24 @@ namespace NIF.Builder
 
             return nifVector;
         }
+        
+        public static Vector3 UnityVectorToNifVector(Vector3 unityVector)
+        {
+            Utils.Swap(ref unityVector.y, ref unityVector.z);
+
+            return unityVector;
+        }
+        
         public static Vector3 NifPointToUnityPoint(Vector3 nifPoint)
         {
             return NifVectorToUnityVector(nifPoint) / Convert.meterInMWUnits;
         }
+        
+        public static Vector3 UnityPointToNifPoint(Vector3 unityPoint)
+        {
+            return UnityVectorToNifVector(unityPoint) * Convert.meterInMWUnits;
+        }
+        
         public static Matrix4x4 NifRotationMatrixToUnityRotationMatrix(Matrix4x4 nifRotationMatrix)
         {
             var matrix = new Matrix4x4

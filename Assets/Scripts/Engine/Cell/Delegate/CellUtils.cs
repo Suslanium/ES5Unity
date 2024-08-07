@@ -9,6 +9,8 @@ namespace Engine.Cell.Delegate
             GameObject modelObject)
         {
             if (modelObject == null) return;
+            if (position is not { Length: 3 }) return;
+            if (rotation is not { Length: 3 }) return;
             if (scale != 0f)
             {
                 modelObject.transform.localScale = Vector3.one * scale;

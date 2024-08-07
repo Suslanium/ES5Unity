@@ -1,4 +1,6 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
+using UnityEngine;
 
 namespace Engine.Resource.Source
 {
@@ -12,8 +14,16 @@ namespace Engine.Resource.Source
 
         public override Stream GetResourceOrNull(string resourcePath)
         {
-            var fullPath = Path.Combine(DataFolderPath, resourcePath.Replace('\\', '/').TrimEnd('\0'));
-            return !File.Exists(fullPath) ? null : File.Open(fullPath, FileMode.Open);
+            try
+            {
+                var fullPath = Path.Combine(DataFolderPath, resourcePath.Replace('\\', '/').TrimEnd('\0'));
+                return !File.Exists(fullPath) ? null : File.Open(fullPath, FileMode.Open);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"{resourcePath.Replace('\\', '/').TrimEnd('\0')} : {e.StackTrace}");
+                return null;
+            }
         }
 
         public override void Close()

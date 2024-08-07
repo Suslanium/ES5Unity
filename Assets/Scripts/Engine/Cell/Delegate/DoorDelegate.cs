@@ -15,14 +15,14 @@ namespace Engine.Cell.Delegate
         private readonly NifManager _nifManager;
         private readonly MasterFileManager _masterFileManager;
         private readonly GameEngine _gameEngine;
-        
+
         public DoorDelegate(NifManager nifManager, MasterFileManager masterFileManager, GameEngine gameEngine)
         {
             _nifManager = nifManager;
             _masterFileManager = masterFileManager;
             _gameEngine = gameEngine;
         }
-        
+
         public bool IsPreprocessApplicable(CELL cell, LoadCause loadCause, REFR reference, Record referencedRecord)
         {
             return referencedRecord is DOOR door && !string.IsNullOrEmpty(door.NifModelFilename) &&
@@ -52,16 +52,14 @@ namespace Engine.Cell.Delegate
         {
             if (referencedRecord is not DOOR door)
                 yield break;
-            
+
             var doorInstantiationCoroutine = InstantiateDoorTeleportAtPositionAndRotation(reference, door,
                 reference.Position,
                 reference.Rotation, reference.Scale, cellGameObject);
             while (doorInstantiationCoroutine.MoveNext())
-            {
                 yield return null;
-            }
         }
-        
+
         private IEnumerator InstantiateDoorTeleportAtPositionAndRotation(REFR doorRef, DOOR doorBase, float[] position,
             float[] rotation,
             float scale, GameObject parent)
@@ -72,9 +70,7 @@ namespace Engine.Cell.Delegate
                 var modelObjectCoroutine =
                     _nifManager.InstantiateNif(doorBase.NifModelFilename, o => { modelObject = o; });
                 while (modelObjectCoroutine.MoveNext())
-                {
                     yield return null;
-                }
             }
 
             if (modelObject == null)
@@ -104,8 +100,33 @@ namespace Engine.Cell.Delegate
             var cellFormID = _masterFileManager.GetParentFormID(destinationDoorFormID);
             var destinationTask = _masterFileManager.GetFromFormIDTask(cellFormID);
             while (!destinationTask.IsCompleted)
-            {
                 yield return null;
+
+            if (destinationTask.Result is not CELL destinationCell)
+            {
+                Debug.LogError($"Destination cell not found for door {doorBase.EditorID}");
+                yield break;
+            }
+
+            var destinationName = destinationCell.EditorID;
+            if ((destinationCell.CellFlag & 0x0001) == 0)
+            {
+                //TODO Exterior load
+                var worldSpaceFormId = _masterFileManager.GetParentFormID(cellFormID);
+                var worldSpaceTask = _masterFileManager.GetFromFormIDTask(worldSpaceFormId);
+                while (!worldSpaceTask.IsCompleted)
+                    yield return null;
+
+                if (worldSpaceTask.Result is not WRLD worldSpace)
+                {
+                    Debug.LogError(worldSpaceTask.Result == null
+                        ? $"Worldspace not found for door {doorBase.EditorID}"
+                        : $"Worldspace record is not WRLD for door {doorBase.EditorID} ({worldSpaceTask.Result.Type})");
+                }
+                else
+                {
+                    destinationName = worldSpace.EditorID;
+                }
             }
 
             var children = modelObject.GetComponentsInChildren<Transform>();
@@ -127,7 +148,7 @@ namespace Engine.Cell.Delegate
             doorTeleport.teleportPosition = teleportPos;
             doorTeleport.teleportRotation = teleportRot;
             doorTeleport.cellFormID = cellFormID;
-            doorTeleport.destinationCellName = ((CELL)destinationTask.Result).EditorID;
+            doorTeleport.destinationCellName = destinationName;
             doorTeleport.GameEngine = _gameEngine;
             doorTeleport.ChildrenTransforms = childrenSet;
 

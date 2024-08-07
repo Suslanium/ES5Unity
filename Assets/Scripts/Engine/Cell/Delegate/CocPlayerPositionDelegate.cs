@@ -10,15 +10,15 @@ namespace Engine.Cell.Delegate
 {
     public class CocPlayerPositionDelegate : ICellReferencePreprocessDelegate, ICellPostProcessDelegate
     {
-        private readonly GameObject _player;
+        private readonly PlayerManager _playerManager;
         private const uint CocMarkerFormID = 0x32;
         private const string Marker = "Marker";
         private Vector3? _tempPosition;
         private Quaternion? _tempRotation;
 
-        public CocPlayerPositionDelegate(GameObject player)
+        public CocPlayerPositionDelegate(PlayerManager playerManager)
         {
-            _player = player;
+            _playerManager = playerManager;
         }
 
         public bool IsPreprocessApplicable(CELL cell, LoadCause loadCause, REFR reference, Record referencedRecord)
@@ -42,8 +42,8 @@ namespace Engine.Cell.Delegate
         public IEnumerator PostProcessCell(CELL cell, GameObject cellGameObject)
         {
             if (_tempPosition == null || _tempRotation == null) yield break;
-            _player.transform.position = _tempPosition.Value;
-            _player.transform.rotation = _tempRotation.Value;
+            _playerManager.PlayerPosition = _tempPosition.Value;
+            _playerManager.PlayerRotation = _tempRotation.Value;
         }
     }
 }

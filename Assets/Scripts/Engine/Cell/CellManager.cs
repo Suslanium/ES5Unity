@@ -41,7 +41,7 @@ namespace Engine.Cell
 
         public CellManager(MasterFileManager masterFileManager, NifManager nifManager, TextureManager textureManager,
             TemporalLoadBalancer temporalLoadBalancer,
-            GameEngine gameEngine, GameObject player)
+            GameEngine gameEngine, PlayerManager playerManager)
         {
             _masterFileManager = masterFileManager;
             _temporalLoadBalancer = temporalLoadBalancer;
@@ -50,9 +50,9 @@ namespace Engine.Cell
             var cellLightingDelegate = new CellLightingDelegate(gameEngine, masterFileManager);
             var doorDelegate = new DoorDelegate(nifManager, masterFileManager, gameEngine);
             var lightingObjectDelegate = new LightingObjectDelegate(nifManager);
-            var occlusionCullingDelegate = new OcclusionCullingDelegate(player, gameEngine);
+            var occlusionCullingDelegate = new OcclusionCullingDelegate(playerManager, gameEngine);
             var staticObjectDelegate = new StaticObjectDelegate(nifManager);
-            var cocPlayerPositionDelegate = new CocPlayerPositionDelegate(player);
+            var cocPlayerPositionDelegate = new CocPlayerPositionDelegate(playerManager);
             var referencePreprocessDelegates = new List<ICellReferencePreprocessDelegate>
             {
                 cocPlayerPositionDelegate,

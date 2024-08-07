@@ -17,14 +17,14 @@ namespace Engine.Cell.Delegate
         private readonly List<(GameObject, uint, uint)> _tempPortals = new();
         private readonly Dictionary<uint, GameObject> _tempRooms = new();
         private readonly List<(uint, uint)> _tempLinkedRooms = new();
-        private readonly GameObject _player;
+        private readonly PlayerManager _playerManager;
         private readonly GameEngine _gameEngine;
         private const uint PortalFormID = 0x20;
         private const uint RoomFormID = 0x1F;
         
-        public OcclusionCullingDelegate(GameObject player, GameEngine gameEngine)
+        public OcclusionCullingDelegate(PlayerManager playerManager, GameEngine gameEngine)
         {
-            _player = player;
+            _playerManager = playerManager;
             _gameEngine = gameEngine;
         }
 
@@ -96,7 +96,7 @@ namespace Engine.Cell.Delegate
             {
                 var cellOcclusion = cellGameObject.AddComponent<CellOcclusion>();
                 cellOcclusion.Init(_tempPortals, _tempRooms, _tempLinkedRooms, cellGameObject,
-                    _player.GetComponentInChildren<Collider>(), _gameEngine.MainCamera);
+                    _playerManager.PlayerCollider, _gameEngine.MainCamera);
             }
 
             _tempLinkedRooms.Clear();

@@ -25,7 +25,7 @@ namespace Engine
         private readonly CellManager _cellManager;
         private readonly TemporalLoadBalancer _loadBalancer;
         private readonly UIManager _uiManager;
-        private readonly GameObject _player;
+        private readonly PlayerManager _playerManager;
         private readonly LoadingScreenManager _loadingScreenManager;
         public readonly Camera MainCamera;
         public Plane[] CameraPlanes { get; private set; }
@@ -39,14 +39,14 @@ namespace Engine
                 {
                     case GameState.Loading:
                         _uiManager.SetLoadingState();
-                        if (_player.activeSelf)
-                            _player.SetActive(false);
+                        if (_playerManager.PlayerActive)
+                            _playerManager.PlayerActive = false;
                         _loadingScreenManager.ShowLoadingScreen();
                         break;
                     case GameState.InGame:
                         _loadingScreenManager.HideLoadingScreen();
-                        if (!_player.activeSelf)
-                            _player.SetActive(true);
+                        if (!_playerManager.PlayerActive)
+                            _playerManager.PlayerActive = true;
                         _uiManager.SetInGameState();
                         break;
                     case GameState.Paused:
@@ -70,9 +70,10 @@ namespace Engine
             _materialManager = new MaterialManager(textureManager);
             _nifManager = new NifManager(_materialManager, resourceManager);
             _loadBalancer = new TemporalLoadBalancer();
-            _cellManager = new CellManager(masterFileManager, _nifManager, textureManager, _loadBalancer, this, player);
+            _playerManager = new PlayerManager(player);
+            _cellManager = new CellManager(masterFileManager, _nifManager, textureManager, _loadBalancer, this,
+                _playerManager);
             _loadingScreenManager = loadingScreenManager;
-            _player = player;
             _uiManager = uiManager;
             uiManager.SetGameEngine(this);
             MainCamera = mainCamera;
@@ -135,9 +136,9 @@ namespace Engine
             _cellManager.LoadCell(formID, loadCause, () =>
             {
                 if (startPosition is { } nonNullStartPos)
-                    _player.transform.position = nonNullStartPos;
+                    _playerManager.PlayerPosition = nonNullStartPos;
                 if (startRotation is { } nonNullStartRot)
-                    _player.transform.rotation = nonNullStartRot;
+                    _playerManager.PlayerRotation = nonNullStartRot;
                 if (loadCause != LoadCause.OpenWorldLoad)
                     GameState = GameState.InGame;
             });
