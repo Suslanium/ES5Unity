@@ -58,6 +58,61 @@ namespace Engine.MasterFile
             await Task.WhenAll(initializationTasks);
         }
 
+        public Task<Structures.CellInfo> GetWorldSpacePersistentCellDataTask(uint worldSpaceFormID)
+        {
+            return Task.Run(async () =>
+            {
+                if (!_masterFilesAreInitialized)
+                {
+                    await AwaitInitialization();
+                    _masterFilesAreInitialized = true;
+                }
+
+                List<(ESMasterFile, CELL)> cellRecords = new();
+                CELL cellRecord = null;
+                
+                foreach (var masterFile in _reverseLoadOrder.Select(fileName => _masterFiles[fileName]).Reverse())
+                {
+                    var currentCellRecord = masterFile.GetPersistentWorldSpaceCell(worldSpaceFormID);
+                    if (currentCellRecord == null) continue;
+                    cellRecords.Add((masterFile, currentCellRecord));
+                    cellRecord = currentCellRecord;
+                }
+                
+                if (cellRecord == null) return null;
+
+                var persistentChildren = new Dictionary<uint, Record>();
+                var temporaryChildren = new Dictionary<uint, Record>();
+
+                foreach (var (masterFile, currentCellRecord) in cellRecords)
+                {
+                    var fileData = masterFile.ReadAfterRecord(currentCellRecord);
+
+                    if (fileData is not Group { GroupType: 6 } childrenGroup)
+                    {
+                        Debug.LogWarning("Cell children group not found");
+                        continue;
+                    }
+
+                    foreach (var subGroup in childrenGroup.GroupData)
+                    {
+                        if (subGroup is not Group group) continue;
+                        if (group.GroupType != 8 && group.GroupType != 9) continue;
+
+                        foreach (var entry in group.GroupData)
+                        {
+                            if (entry is not Record record) continue;
+                            if (group.GroupType == 8) persistentChildren[record.FormID] = record;
+                            else temporaryChildren[record.FormID] = record;
+                        }
+                    }
+                }
+
+                return new Structures.CellInfo(persistentChildren.Values.ToList(), temporaryChildren.Values.ToList(),
+                    cellRecord);
+            });
+        }
+
         public Task<Structures.CellInfo> GetExteriorCellDataTask(uint worldSpaceFormID, WorldSpacePosition position)
         {
             return Task.Run(async () =>
@@ -71,7 +126,7 @@ namespace Engine.MasterFile
                 List<(ESMasterFile, CELL)> cellRecords = new();
                 CELL cellRecord = null;
 
-                foreach (var masterFile in _reverseLoadOrder.Select(fileName => _masterFiles[fileName]))
+                foreach (var masterFile in _reverseLoadOrder.Select(fileName => _masterFiles[fileName]).Reverse())
                 {
                     var currentCellRecord = masterFile.GetExteriorCellByGridPosition(worldSpaceFormID,
                         (short)position.Block.x,

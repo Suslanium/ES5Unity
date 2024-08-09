@@ -46,6 +46,7 @@ namespace MasterFile
         private readonly Dictionary<string, long> _typeToTopGroupPosition = new();
         private readonly Dictionary<string, Dictionary<uint, long>> _recordTypeDictionary = new();
         private readonly Dictionary<ExteriorCellSubBlockID, List<uint>> _exteriorCellSubBlockToCellFormIDs = new();
+        private readonly Dictionary<uint, long> _worldSpaceFormIDToPersistentCellPosition = new();
 
         private readonly ConcurrentDictionary<ExteriorCellSubBlockID, Dictionary<Vector2Int, CELL>>
             _loadedExteriorCellSubBlocks = new();
@@ -81,8 +82,8 @@ namespace MasterFile
                             break;
                         endPos = groupStack.Peek().Item2;
                     }
-                    
-                    if (groupStack.Count > 0) 
+
+                    if (groupStack.Count > 0)
                         currentGroup = groupStack.Peek().Item1;
                 }
 
@@ -108,11 +109,16 @@ namespace MasterFile
                         {
                             currentWorldSpaceFormID = record.FormID;
                         }
-                        else if (currentGroup != null && record.Type == "CELL" &&
+                        else if (record.Type == "CELL" &&
                                  currentGroup is { GroupType: 5 } &&
                                  currentExteriorCellSubBlockID != null)
                         {
                             _exteriorCellSubBlockToCellFormIDs[currentExteriorCellSubBlockID.Value].Add(record.FormID);
+                        }
+                        else if (currentGroup is { GroupType: 1 } &&
+                                 record.Type == "CELL")
+                        {
+                            _worldSpaceFormIDToPersistentCellPosition[currentWorldSpaceFormID] = entryStartPos;
                         }
 
                         break;
@@ -266,9 +272,7 @@ namespace MasterFile
         {
             _formIdToParentGroup.TryGetValue(recordFormID, out var parentGroup);
             if (parentGroup == null)
-            {
                 return 0;
-            }
 
             return parentGroup.GroupType is not 1 and not 6 and not 7 and not 8 and not 9
                 ? 0
@@ -278,14 +282,10 @@ namespace MasterFile
         private Dictionary<Vector2Int, CELL> LoadCellSubBlock(ExteriorCellSubBlockID exteriorCellSubBlockID)
         {
             if (_loadedExteriorCellSubBlocks.TryGetValue(exteriorCellSubBlockID, out var value))
-            {
                 return value;
-            }
 
             if (!_exteriorCellSubBlockToCellFormIDs.TryGetValue(exteriorCellSubBlockID, out var cellFormIDs))
-            {
                 return null;
-            }
 
             var cellDictionary = new Dictionary<Vector2Int, CELL>();
             foreach (var cellFormID in cellFormIDs)
@@ -310,12 +310,23 @@ namespace MasterFile
                 new ExteriorCellSubBlockID(worldSpaceFormId, blockX, blockY, subBlockX, subBlockY);
             var cellDictionary = LoadCellSubBlock(exteriorCellSubBlockID);
             if (cellDictionary == null)
-            {
                 return null;
-            }
 
             cellDictionary.TryGetValue(new Vector2Int(xGridPosition, yGridPosition), out var cell);
             return cell;
+        }
+
+        /// <summary>
+        /// CAUTION: This should be called only after the master file has been initialized.
+        /// If the master file has not been initialized, this function won't work properly.
+        /// </summary>
+        public CELL GetPersistentWorldSpaceCell(uint worldSpaceFormId)
+        {
+            if (!_worldSpaceFormIDToPersistentCellPosition.TryGetValue(worldSpaceFormId, out var position))
+                return null;
+            
+            var entry = MasterFileEntry.Parse(_fileReader, position);
+            return entry as CELL;
         }
 
         /// <summary>
