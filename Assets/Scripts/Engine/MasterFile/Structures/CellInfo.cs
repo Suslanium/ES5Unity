@@ -4,7 +4,7 @@ using MasterFile.MasterFileContents.Records;
 
 namespace Engine.MasterFile.Structures
 {
-    public class CellInfo
+    public class CellData
     {
         public readonly List<Record> PersistentChildren;
         
@@ -12,7 +12,7 @@ namespace Engine.MasterFile.Structures
 
         public readonly CELL CellRecord;
         
-        public CellInfo(List<Record> persistentChildren, List<Record> temporaryChildren, CELL cellRecord)
+        public CellData(List<Record> persistentChildren, List<Record> temporaryChildren, CELL cellRecord)
         {
             PersistentChildren = persistentChildren;
             TemporaryChildren = temporaryChildren;

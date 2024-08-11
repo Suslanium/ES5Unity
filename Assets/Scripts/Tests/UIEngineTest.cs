@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Engine;
+using Engine.Cell;
 using Engine.MasterFile;
 using Engine.Resource;
 using TMPro;
@@ -40,20 +41,14 @@ namespace Tests
         public void Load()
         {
             var path = pathText.text;
-            var cells = cellText.text;
+            var cell = cellText.text;
             loadUIPanel.SetActive(false);
             _resourceManager = new ResourceManager(path);
             _masterFileManager = new MasterFileManager(masterFileNames
                 .Select(fileName => $"{path}{Path.DirectorySeparatorChar}{fileName}").ToList());
             _gameEngine = new GameEngine(_resourceManager, _masterFileManager, player, UIManager, loadingScreenManager,
                 mainCamera);
-            UIManager.FadeIn(() =>
-            {
-                foreach (var cell in cells.Split(','))
-                {
-                    _gameEngine.LoadCell(cell);
-                }
-            });
+            UIManager.FadeIn(() => { _gameEngine.LoadCell(cell, LoadCause.Coc, Vector3.zero, Quaternion.identity); });
         }
 
         private void OnApplicationQuit()

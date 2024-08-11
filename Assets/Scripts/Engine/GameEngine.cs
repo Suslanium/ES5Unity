@@ -71,7 +71,8 @@ namespace Engine
             _nifManager = new NifManager(_materialManager, resourceManager);
             _loadBalancer = new TemporalLoadBalancer();
             _playerManager = new PlayerManager(player);
-            _cellManager = new CellManager(masterFileManager, _nifManager, textureManager, _loadBalancer, this,
+            _cellManager = new CellManager(masterFileManager, _nifManager, textureManager,
+                _loadBalancer, this,
                 _playerManager);
             _loadingScreenManager = loadingScreenManager;
             _uiManager = uiManager;
@@ -81,67 +82,66 @@ namespace Engine
         }
 
         // ReSharper disable Unity.PerformanceAnalysis
-        public void LoadCell(string editorId, bool clearPrevious = false)
+        public void LoadCell(string editorId, LoadCause loadCause, Vector3 startPosition, Quaternion startRotation)
         {
-            var startCellLoadingCoroutine = LoadCellCoroutine(editorId, clearPrevious);
-            _loadBalancer.AddTask(startCellLoadingCoroutine);
+            var loadCoroutine = LoadCellCoroutine(editorId, loadCause, startPosition, startRotation);
+            _loadBalancer.AddTaskPriority(loadCoroutine);
         }
 
-        // ReSharper disable Unity.PerformanceAnalysis
-        public void LoadCell(uint formID, LoadCause loadCause, Vector3 startPosition, Quaternion startRotation,
-            bool clearPrevious = false)
+        private IEnumerator LoadCellCoroutine(string editorId, LoadCause loadCause, Vector3 startPosition,
+            Quaternion startRotation)
         {
-            var startCellLoadingCoroutine =
-                LoadCellCoroutine(formID, loadCause, startPosition, startRotation, clearPrevious);
-            _loadBalancer.AddTask(startCellLoadingCoroutine);
-        }
-
-        public void Update()
-        {
-            CameraPlanes = GeometryUtility.CalculateFrustumPlanes(MainCamera);
-            _loadBalancer.RunTasks(DesiredWorkTimePerFrame);
-        }
-
-        private IEnumerator LoadCellCoroutine(string editorId, bool clearPrevious = false)
-        {
-            if (clearPrevious)
+            if (loadCause != LoadCause.OpenWorldLoad)
             {
                 var clearCoroutine = DestroyAndClearEverything();
                 while (clearCoroutine.MoveNext())
-                {
                     yield return null;
-                }
-            }
-
-            ActiveDoorTeleport = null;
-            GameState = GameState.Loading;
-            _cellManager.LoadCell(editorId, () => { GameState = GameState.InGame; });
-        }
-
-        private IEnumerator LoadCellCoroutine(uint formID, LoadCause loadCause, Vector3? startPosition,
-            Quaternion? startRotation, bool clearPrevious = false)
-        {
-            if (clearPrevious)
-            {
-                var clearCoroutine = DestroyAndClearEverything();
-                while (clearCoroutine.MoveNext())
-                {
-                    yield return null;
-                }
             }
 
             ActiveDoorTeleport = null;
             if (loadCause != LoadCause.OpenWorldLoad)
                 GameState = GameState.Loading;
-            _cellManager.LoadCell(formID, loadCause, () =>
+            _cellManager.LoadCell(editorId, loadCause, startPosition, startRotation,
+                () =>
+                {
+                    if (loadCause != LoadCause.OpenWorldLoad)
+                        GameState = GameState.InGame;
+                });
+        }
+
+        // ReSharper disable Unity.PerformanceAnalysis
+        public void LoadCell(uint formID, LoadCause loadCause, Vector3 startPosition, Quaternion startRotation)
+        {
+            var loadCoroutine = LoadCellCoroutine(formID, loadCause, startPosition, startRotation);
+            _loadBalancer.AddTaskPriority(loadCoroutine);
+        }
+
+        private IEnumerator LoadCellCoroutine(uint formID, LoadCause loadCause, Vector3 startPosition,
+            Quaternion startRotation)
+        {
+            if (loadCause != LoadCause.OpenWorldLoad)
             {
-                if (startPosition is { } nonNullStartPos)
-                    _playerManager.PlayerPosition = nonNullStartPos;
-                if (startRotation is { } nonNullStartRot)
-                    _playerManager.PlayerRotation = nonNullStartRot;
-                if (loadCause != LoadCause.OpenWorldLoad)
-                    GameState = GameState.InGame;
-            });
+                var clearCoroutine = DestroyAndClearEverything();
+                while (clearCoroutine.MoveNext())
+                    yield return null;
+            }
+
+            ActiveDoorTeleport = null;
+            if (loadCause != LoadCause.OpenWorldLoad)
+                GameState = GameState.Loading;
+            _cellManager.LoadCell(formID, loadCause, startPosition, startRotation,
+                () =>
+                {
+                    if (loadCause != LoadCause.OpenWorldLoad)
+                        GameState = GameState.InGame;
+                });
+        }
+
+        public void Update()
+        {
+            CameraPlanes = GeometryUtility.CalculateFrustumPlanes(MainCamera);
+            _cellManager.Update();
+            _loadBalancer.RunTasks(DesiredWorkTimePerFrame);
         }
 
         private IEnumerator DestroyAndClearEverything()

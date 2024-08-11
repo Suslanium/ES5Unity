@@ -19,6 +19,17 @@ namespace Engine.Core
 
             return taskCoroutine;
         }
+        
+        /// <summary>
+        /// Adds a task coroutine to be run next and returns it.
+        /// </summary>
+        public IEnumerator AddTaskPriority(IEnumerator taskCoroutine)
+        {
+            _tasks.Insert(0, taskCoroutine);
+
+            return taskCoroutine;
+        }
+        
         public void CancelTask(IEnumerator taskCoroutine)
         {
             _tasks.Remove(taskCoroutine);

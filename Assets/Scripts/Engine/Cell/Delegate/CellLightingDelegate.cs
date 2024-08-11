@@ -26,7 +26,7 @@ namespace Engine.Cell.Delegate
             _masterFileManager = masterFileManager;
         }
         
-        public IEnumerator PostProcessCell(CELL cell, GameObject cellGameObject)
+        public IEnumerator PostProcessCell(CELL cell, GameObject cellGameObject, LoadCause loadCause)
         {
             if (cell.CellLightingInfo == null) yield break;
             //Don't process lighting for exterior cells

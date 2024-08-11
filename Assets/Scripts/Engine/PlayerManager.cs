@@ -7,16 +7,6 @@ namespace Engine
     public struct WorldSpacePosition
     {
         /// <summary>
-        /// Cell block coordinates.
-        /// </summary>
-        public readonly Vector2Int Block;
-
-        /// <summary>
-        /// Cell sub-block coordinates.
-        /// </summary>
-        public readonly Vector2Int SubBlock;
-
-        /// <summary>
         /// Cell grid coordinates.
         /// </summary>
         public readonly Vector2Int CellGridPosition;
@@ -31,10 +21,6 @@ namespace Engine
             Position = position;
             CellGridPosition = new Vector2Int(Mathf.FloorToInt(position.x / Convert.ExteriorCellSideLengthInMWUnits),
                 Mathf.FloorToInt(position.y / Convert.ExteriorCellSideLengthInMWUnits));
-            SubBlock = new Vector2Int(Mathf.FloorToInt((float)CellGridPosition.x / Convert.ExteriorSubBlockSideLengthInCells),
-                Mathf.FloorToInt((float)CellGridPosition.y / Convert.ExteriorSubBlockSideLengthInCells));
-            Block = new Vector2Int(Mathf.FloorToInt((float)SubBlock.x / Convert.ExteriorBlockSideLengthInSubBlocks),
-                Mathf.FloorToInt((float)SubBlock.y / Convert.ExteriorBlockSideLengthInSubBlocks));
         }
     }
 

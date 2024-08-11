@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Engine.Cell;
 using MasterFile;
 using MasterFile.MasterFileContents;
 using MasterFile.MasterFileContents.Records;
@@ -58,7 +59,7 @@ namespace Engine.MasterFile
             await Task.WhenAll(initializationTasks);
         }
 
-        public Task<Structures.CellInfo> GetWorldSpacePersistentCellDataTask(uint worldSpaceFormID)
+        public Task<Structures.CellData> GetWorldSpacePersistentCellDataTask(uint worldSpaceFormID)
         {
             return Task.Run(async () =>
             {
@@ -108,12 +109,12 @@ namespace Engine.MasterFile
                     }
                 }
 
-                return new Structures.CellInfo(persistentChildren.Values.ToList(), temporaryChildren.Values.ToList(),
+                return new Structures.CellData(persistentChildren.Values.ToList(), temporaryChildren.Values.ToList(),
                     cellRecord);
             });
         }
 
-        public Task<Structures.CellInfo> GetExteriorCellDataTask(uint worldSpaceFormID, WorldSpacePosition position)
+        public Task<Structures.CellData> GetExteriorCellDataTask(uint worldSpaceFormID, CellPosition position)
         {
             return Task.Run(async () =>
             {
@@ -131,8 +132,8 @@ namespace Engine.MasterFile
                     var currentCellRecord = masterFile.GetExteriorCellByGridPosition(worldSpaceFormID,
                         (short)position.Block.x,
                         (short)position.Block.y, (short)position.SubBlock.x, (short)position.SubBlock.y,
-                        position.CellGridPosition.x,
-                        position.CellGridPosition.y);
+                        position.GridPosition.x,
+                        position.GridPosition.y);
                     if (currentCellRecord == null) continue;
                     cellRecords.Add((masterFile, currentCellRecord));
                     cellRecord = currentCellRecord;
@@ -167,12 +168,12 @@ namespace Engine.MasterFile
                     }
                 }
 
-                return new Structures.CellInfo(persistentChildren.Values.ToList(), temporaryChildren.Values.ToList(),
+                return new Structures.CellData(persistentChildren.Values.ToList(), temporaryChildren.Values.ToList(),
                     cellRecord);
             });
         }
 
-        public Task<Structures.CellInfo> GetCellDataTask(uint cellFormID)
+        public Task<Structures.CellData> GetCellDataTask(uint cellFormID)
         {
             return Task.Run(async () =>
             {
@@ -218,7 +219,7 @@ namespace Engine.MasterFile
 
                 return cellRecord == null
                     ? null
-                    : new Structures.CellInfo(persistentChildren.Values.ToList(), temporaryChildren.Values.ToList(),
+                    : new Structures.CellData(persistentChildren.Values.ToList(), temporaryChildren.Values.ToList(),
                         cellRecord);
             });
         }
@@ -312,6 +313,20 @@ namespace Engine.MasterFile
                 .Select(fileName => _masterFiles[fileName]).FirstOrDefault();
 
             return masterFile?.GetParentFormID(recordFormID) ?? 0;
+        }
+        
+        public uint GetWorldSpaceFormID(uint cellFormID)
+        {
+            if (!_masterFilesAreInitialized)
+            {
+                AwaitInitialization().Wait();
+                _masterFilesAreInitialized = true;
+            }
+
+            var masterFile = _reverseLoadOrder.Where(fileName => _masterFiles[fileName].RecordExists(cellFormID))
+                .Select(fileName => _masterFiles[fileName]).FirstOrDefault();
+
+            return masterFile?.GetWorldSpaceFormID(cellFormID) ?? 0;
         }
 
         public void Close()

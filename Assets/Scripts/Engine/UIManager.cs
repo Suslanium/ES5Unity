@@ -59,8 +59,7 @@ namespace Engine
             FadeIn(() =>
             {
                 _gameEngine?.LoadCell(_gameEngine.ActiveDoorTeleport.cellFormID, LoadCause.DoorTeleport,
-                    _gameEngine.ActiveDoorTeleport.teleportPosition, _gameEngine.ActiveDoorTeleport.teleportRotation,
-                    true);
+                    _gameEngine.ActiveDoorTeleport.teleportPosition, _gameEngine.ActiveDoorTeleport.teleportRotation);
             });
         }
 

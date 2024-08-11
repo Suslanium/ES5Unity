@@ -47,6 +47,7 @@ namespace MasterFile
         private readonly Dictionary<string, Dictionary<uint, long>> _recordTypeDictionary = new();
         private readonly Dictionary<ExteriorCellSubBlockID, List<uint>> _exteriorCellSubBlockToCellFormIDs = new();
         private readonly Dictionary<uint, long> _worldSpaceFormIDToPersistentCellPosition = new();
+        private readonly Dictionary<uint, uint> _cellFormIdToWorldSpaceFormId = new();
 
         private readonly ConcurrentDictionary<ExteriorCellSubBlockID, Dictionary<Vector2Int, CELL>>
             _loadedExteriorCellSubBlocks = new();
@@ -114,11 +115,13 @@ namespace MasterFile
                                  currentExteriorCellSubBlockID != null)
                         {
                             _exteriorCellSubBlockToCellFormIDs[currentExteriorCellSubBlockID.Value].Add(record.FormID);
+                            _cellFormIdToWorldSpaceFormId[record.FormID] = currentWorldSpaceFormID;
                         }
                         else if (currentGroup is { GroupType: 1 } &&
                                  record.Type == "CELL")
                         {
                             _worldSpaceFormIDToPersistentCellPosition[currentWorldSpaceFormID] = entryStartPos;
+                            _cellFormIdToWorldSpaceFormId[record.FormID] = currentWorldSpaceFormID;
                         }
 
                         break;
@@ -190,16 +193,6 @@ namespace MasterFile
             return record;
         }
 
-        public Task<Record> GetFromFormIDTask(uint formId)
-        {
-            return Task.Run(() =>
-            {
-                if (!_initializationTask.IsCompleted)
-                    _initializationTask.Wait();
-                return GetFromFormID(formId);
-            });
-        }
-
         /// <summary>
         /// Checks if a record with the specified FormID exists in the master file.
         /// CAUTION: This should be called only after the master file has been initialized.
@@ -222,16 +215,6 @@ namespace MasterFile
                 .FirstOrDefault(record => record.EditorID == editorID);
         }
 
-        public Task<CELL> FindCellByEditorIDTask(string editorID)
-        {
-            return Task.Run(() =>
-            {
-                if (!_initializationTask.IsCompleted)
-                    _initializationTask.Wait();
-                return FindCellByEditorID(editorID);
-            });
-        }
-
         /// <summary>
         /// CAUTION: This should be called only after the master file has been initialized.
         /// If the master file has not been initialized, this function won't work properly.
@@ -242,16 +225,6 @@ namespace MasterFile
             var recordPos = records.ElementAt(_random.Next(0, records.Count)).Value;
             var record = (Record)MasterFileEntry.Parse(_fileReader, recordPos);
             return record;
-        }
-
-        public Task<Record> GetRandomRecordOfTypeTask(string type)
-        {
-            return Task.Run(() =>
-            {
-                if (!_initializationTask.IsCompleted)
-                    _initializationTask.Wait();
-                return GetRandomRecordOfType(type);
-            });
         }
 
         /// <summary>
@@ -265,6 +238,8 @@ namespace MasterFile
 
         /// <summary>
         /// For the record stored in the World Children/Cell (Persistent/Temporary) Children/Topic Children Group, find the FormID of their parent WRLD/CELL/DIAL
+        /// CAUTION: This should be called only after the master file has been initialized.
+        /// If the master file has not been initialized, this function won't work properly.
         /// </summary>
         /// <param name="recordFormID">The formID of the record stored in the group</param>
         /// <returns>The formID of the parent record, or 0 if the record does not exist or is not stored in one of the groups specified above</returns>
@@ -277,6 +252,16 @@ namespace MasterFile
             return parentGroup.GroupType is not 1 and not 6 and not 7 and not 8 and not 9
                 ? 0
                 : BitConverter.ToUInt32(parentGroup.Label);
+        }
+
+        /// <summary>
+        /// CAUTION: This should be called only after the master file has been initialized.
+        /// If the master file has not been initialized, this function won't work properly.
+        /// </summary>
+        public uint GetWorldSpaceFormID(uint cellFormID)
+        {
+            _cellFormIdToWorldSpaceFormId.TryGetValue(cellFormID, out var worldSpaceFormID);
+            return worldSpaceFormID;
         }
 
         private Dictionary<Vector2Int, CELL> LoadCellSubBlock(ExteriorCellSubBlockID exteriorCellSubBlockID)

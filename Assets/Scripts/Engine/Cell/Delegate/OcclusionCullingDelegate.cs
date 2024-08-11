@@ -90,7 +90,7 @@ namespace Engine.Cell.Delegate
             }
         }
 
-        public IEnumerator PostProcessCell(CELL cell, GameObject cellGameObject)
+        public IEnumerator PostProcessCell(CELL cell, GameObject cellGameObject, LoadCause loadCause)
         {
             if (_tempPortals.Count > 0 || _tempRooms.Count > 0)
             {

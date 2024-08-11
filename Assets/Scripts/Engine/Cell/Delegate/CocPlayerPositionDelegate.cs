@@ -8,13 +8,14 @@ using UnityEngine;
 
 namespace Engine.Cell.Delegate
 {
-    public class CocPlayerPositionDelegate : ICellReferencePreprocessDelegate, ICellPostProcessDelegate
+    public class CocPlayerPositionDelegate : ICellReferencePreprocessDelegate, ICellPostProcessDelegate, ICellDestroyDelegate
     {
         private readonly PlayerManager _playerManager;
         private const uint CocMarkerFormID = 0x32;
         private const string Marker = "Marker";
         private Vector3? _tempPosition;
         private Quaternion? _tempRotation;
+        private bool _canSetPlayerPosition = true;
 
         public CocPlayerPositionDelegate(PlayerManager playerManager)
         {
@@ -39,11 +40,22 @@ namespace Engine.Cell.Delegate
             yield break;
         }
 
-        public IEnumerator PostProcessCell(CELL cell, GameObject cellGameObject)
+        public IEnumerator PostProcessCell(CELL cell, GameObject cellGameObject, LoadCause loadCause)
         {
             if (_tempPosition == null || _tempRotation == null) yield break;
+            if (loadCause != LoadCause.Coc) yield break;
+            if (!_canSetPlayerPosition) yield break;
             _playerManager.PlayerPosition = _tempPosition.Value;
             _playerManager.PlayerRotation = _tempRotation.Value;
+            _canSetPlayerPosition = false;
+        }
+
+        public IEnumerator OnDestroy()
+        {
+            _tempPosition = null;
+            _tempRotation = null;
+            _canSetPlayerPosition = true;
+            yield break;
         }
     }
 }
