@@ -9,18 +9,18 @@ namespace Engine.Cell.Delegate
     public class StaticObjectDelegate : ICellReferencePreprocessDelegate, ICellReferenceInstantiationDelegate
     {
         private readonly NifManager _nifManager;
-        
+
         public StaticObjectDelegate(NifManager nifManager)
         {
             _nifManager = nifManager;
         }
 
-        public bool IsPreprocessApplicable(CELL cell, LoadCause loadCause, REFR reference, Record referencedRecord)
+        public bool IsPreprocessApplicable(CELL cell, REFR reference, Record referencedRecord)
         {
             return referencedRecord is STAT or MSTT or FURN or TREE;
         }
 
-        public IEnumerator PreprocessObject(CELL cell, GameObject cellGameObject, LoadCause loadCause, REFR reference,
+        public IEnumerator PreprocessObject(CELL cell, GameObject cellGameObject, REFR reference,
             Record referencedRecord)
         {
             switch (referencedRecord)
@@ -42,12 +42,12 @@ namespace Engine.Cell.Delegate
             yield break;
         }
 
-        public bool IsInstantiationApplicable(CELL cell, LoadCause loadCause, REFR reference, Record referencedRecord)
+        public bool IsInstantiationApplicable(CELL cell, REFR reference, Record referencedRecord)
         {
             return referencedRecord is STAT or MSTT or FURN or TREE;
         }
 
-        public IEnumerator InstantiateObject(CELL cell, GameObject cellGameObject, LoadCause loadCause, REFR reference,
+        public IEnumerator InstantiateObject(CELL cell, GameObject cellGameObject, REFR reference,
             Record referencedRecord)
         {
             var instantiationCoroutine = referencedRecord switch
@@ -64,7 +64,7 @@ namespace Engine.Cell.Delegate
             };
 
             if (instantiationCoroutine == null) yield break;
-            
+
             while (instantiationCoroutine.MoveNext())
             {
                 yield return null;

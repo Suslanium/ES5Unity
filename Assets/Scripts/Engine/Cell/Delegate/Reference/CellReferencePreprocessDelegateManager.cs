@@ -19,7 +19,7 @@ namespace Engine.Cell.Delegate.Reference
             _masterFileManager = masterFileManager;
         }
 
-        protected override IEnumerator PreprocessRecord(CELL cell, REFR record, GameObject parent, LoadCause loadCause)
+        protected override IEnumerator PreprocessRecord(CELL cell, REFR record, GameObject parent)
         {
             var referencedRecordTask = _masterFileManager.GetFromFormIDTask(record.BaseObjectReference);
             while (!referencedRecordTask.IsCompleted)
@@ -29,11 +29,11 @@ namespace Engine.Cell.Delegate.Reference
 
             foreach (var preprocessDelegate in _preprocessDelegates)
             {
-                if (!preprocessDelegate.IsPreprocessApplicable(cell, loadCause, record, referencedRecord))
+                if (!preprocessDelegate.IsPreprocessApplicable(cell, record, referencedRecord))
                     continue;
 
                 var preprocessCoroutine =
-                    preprocessDelegate.PreprocessObject(cell, parent, loadCause, record, referencedRecord);
+                    preprocessDelegate.PreprocessObject(cell, parent, record, referencedRecord);
                 if (preprocessCoroutine == null) continue;
 
                 while (preprocessCoroutine.MoveNext())

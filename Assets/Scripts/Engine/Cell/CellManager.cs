@@ -7,7 +7,6 @@ using Engine.Cell.Delegate.Reference;
 using Engine.Core;
 using Engine.MasterFile;
 using Engine.MasterFile.Structures;
-using Engine.Textures;
 using MasterFile.MasterFileContents;
 using MasterFile.MasterFileContents.Records;
 using NIF.Builder;
@@ -17,13 +16,6 @@ using Object = UnityEngine.Object;
 
 namespace Engine.Cell
 {
-    public enum LoadCause
-    {
-        DoorTeleport,
-        Coc,
-        OpenWorldLoad
-    }
-
     public class CellInfo
     {
         public GameObject CellGameObject { get; set; }
@@ -53,6 +45,7 @@ namespace Engine.Cell
         private readonly MasterFileManager _masterFileManager;
         private readonly TemporalLoadBalancer _temporalLoadBalancer;
         private readonly PlayerManager _playerManager;
+        private readonly GameEngine _gameEngine;
         private readonly List<CellInfo> _cells = new();
         private readonly Dictionary<Vector2Int, CellInfo> _exteriorCells = new();
         private readonly List<IEnumerator> _initialLoadingCoroutines = new();
@@ -66,13 +59,13 @@ namespace Engine.Cell
         private readonly List<ICellDestroyDelegate> _destroyDelegates;
 
         public CellManager(MasterFileManager masterFileManager, NifManager nifManager,
-            TextureManager textureManager,
             TemporalLoadBalancer temporalLoadBalancer,
             GameEngine gameEngine, PlayerManager playerManager)
         {
             _masterFileManager = masterFileManager;
             _temporalLoadBalancer = temporalLoadBalancer;
             _playerManager = playerManager;
+            _gameEngine = gameEngine;
 
             //TODO replace with DI or something
             var cellLightingDelegate = new CellLightingDelegate(gameEngine, masterFileManager);
@@ -127,20 +120,20 @@ namespace Engine.Cell
             };
         }
 
-        public void LoadCell(string editorID, LoadCause loadCause, Vector3 startPos,
-            Quaternion startRot, Action onReadyCallback, bool persistentOnly = false)
+        public void LoadCell(string editorID, Vector3? startPos,
+            Quaternion? startRot, Action onReadyCallback, bool persistentOnly = false)
         {
-            var creationCoroutine = InitializeCellLoading(editorID, loadCause, startPos, startRot, onReadyCallback,
+            var creationCoroutine = InitializeCellLoading(editorID, startPos, startRot, onReadyCallback,
                 persistentOnly);
             _initialLoadingCoroutines.Add(creationCoroutine);
             _temporalLoadBalancer.AddTask(creationCoroutine);
         }
 
-        public void LoadCell(uint formID, LoadCause loadCause, Vector3 startPos,
-            Quaternion startRot, Action onReadyCallback, bool persistentOnly = false)
+        public void LoadCell(uint formID, Vector3? startPos,
+            Quaternion? startRot, Action onReadyCallback, bool persistentOnly = false)
         {
             var creationCoroutine =
-                InitializeCellLoading(formID, loadCause, startPos, startRot, onReadyCallback, persistentOnly);
+                InitializeCellLoading(formID, startPos, startRot, onReadyCallback, persistentOnly);
             _initialLoadingCoroutines.Add(creationCoroutine);
             _temporalLoadBalancer.AddTask(creationCoroutine);
         }
@@ -194,7 +187,7 @@ namespace Engine.Cell
         public void Update()
         {
             if (_currentWorldSpaceFormID == 0) return;
-            if (!_playerManager.PlayerActive) return;
+            if (_gameEngine.GameState != GameState.InGame) return;
             var newCells = GetExteriorCellPositions(_playerManager.WorldPlayerPosition.CellGridPosition);
             if (newCells == null || newCells.Count == 0) return;
             foreach (var cellPos in newCells)
@@ -216,13 +209,13 @@ namespace Engine.Cell
 
             var extCell = extCellTask.Result;
             if (extCell == null) yield break;
-            var extCellLoadingCoroutine = LoadCellFromData(extCell, cellInfo, LoadCause.OpenWorldLoad, () => { });
+            var extCellLoadingCoroutine = LoadCellFromData(extCell, cellInfo, () => { });
             while (extCellLoadingCoroutine.MoveNext())
                 yield return null;
         }
 
-        private IEnumerator InitializeCellLoading(string editorId, LoadCause loadCause, Vector3 startPos,
-            Quaternion startRot, Action onReadyCallback, bool persistentOnly = false)
+        private IEnumerator InitializeCellLoading(string editorId, Vector3? startPos,
+            Quaternion? startRot, Action onReadyCallback, bool persistentOnly = false)
         {
             var cellTask = _masterFileManager.FindCellByEditorIDTask(editorId);
             while (!cellTask.IsCompleted)
@@ -238,15 +231,15 @@ namespace Engine.Cell
             var cellData = cellDataTask.Result;
             if (cellData == null) yield break;
 
-            var initializationCoroutine = InitializeCellLoading(cellData, loadCause, startPos, startRot,
+            var initializationCoroutine = InitializeCellLoading(cellData, startPos, startRot,
                 onReadyCallback,
                 persistentOnly);
             while (initializationCoroutine.MoveNext())
                 yield return null;
         }
 
-        private IEnumerator InitializeCellLoading(uint formId, LoadCause loadCause, Vector3 startPos,
-            Quaternion startRot, Action onReadyCallback, bool persistentOnly = false)
+        private IEnumerator InitializeCellLoading(uint formId, Vector3? startPos,
+            Quaternion? startRot, Action onReadyCallback, bool persistentOnly = false)
         {
             var cellTask = _masterFileManager.GetCellDataTask(formId);
             while (!cellTask.IsCompleted)
@@ -255,15 +248,15 @@ namespace Engine.Cell
             var cellData = cellTask.Result;
             if (cellData == null) yield break;
 
-            var initializationCoroutine = InitializeCellLoading(cellData, loadCause, startPos, startRot,
+            var initializationCoroutine = InitializeCellLoading(cellData, startPos, startRot,
                 onReadyCallback,
                 persistentOnly);
             while (initializationCoroutine.MoveNext())
                 yield return null;
         }
 
-        private IEnumerator InitializeCellLoading(CellData cellData, LoadCause loadCause, Vector3 startPos,
-            Quaternion startRot, Action onReadyCallback, bool persistentOnly = false)
+        private IEnumerator InitializeCellLoading(CellData cellData, Vector3? startPos,
+            Quaternion? startRot, Action onReadyCallback, bool persistentOnly = false)
         {
             if ((cellData.CellRecord.CellFlag & 0x0001) == 0)
             {
@@ -279,8 +272,11 @@ namespace Engine.Cell
 
                 var exteriorCellPositions =
                     GetExteriorCellPositions(persistentCellData.CellRecord.FormID == cellData.CellRecord.FormID
-                        ? new WorldSpacePosition(NifUtils.UnityPointToNifPoint(startPos)).CellGridPosition
+                        ? new WorldSpacePosition(NifUtils.UnityPointToNifPoint(startPos.GetValueOrDefault()))
+                            .CellGridPosition
                         : new Vector2Int(cellData.CellRecord.XGridPosition, cellData.CellRecord.YGridPosition));
+
+                cellData = persistentCellData;
                 //Load the current exterior cells
                 foreach (var cellPosition in exteriorCellPositions)
                 {
@@ -293,52 +289,36 @@ namespace Engine.Cell
                     if (extCell == null) continue;
                     var extCellInfo = new CellInfo();
                     var extCellLoadingCoroutine =
-                        LoadCellFromData(extCell, extCellInfo, loadCause, () => { }, persistentOnly);
+                        LoadCellFromData(extCell, extCellInfo, () => { }, persistentOnly);
                     extCellInfo.ObjectCreationCoroutines.Add(extCellLoadingCoroutine);
                     _cells.Add(extCellInfo);
                     _exteriorCells.Add(cellPosition.GridPosition, extCellInfo);
                     _temporalLoadBalancer.AddTask(extCellLoadingCoroutine);
                 }
-
-                var cellInfo = new CellInfo();
-                var cellLoadingCoroutine =
-                    LoadCellFromData(persistentCellData, cellInfo, loadCause, () =>
-                    {
-                        if (loadCause == LoadCause.DoorTeleport)
-                        {
-                            _playerManager.PlayerPosition = startPos;
-                            _playerManager.PlayerRotation = startRot;
-                        }
-
-                        onReadyCallback();
-                    }, persistentOnly);
-                cellInfo.ObjectCreationCoroutines.Add(cellLoadingCoroutine);
-                _cells.Add(cellInfo);
-                _temporalLoadBalancer.AddTask(cellLoadingCoroutine);
             }
             else
             {
                 //Interior
                 _currentWorldSpaceFormID = 0;
-                var cellInfo = new CellInfo();
-                var cellLoadingCoroutine =
-                    LoadCellFromData(cellData, cellInfo, loadCause, () =>
-                    {
-                        if (loadCause == LoadCause.DoorTeleport)
-                        {
-                            _playerManager.PlayerPosition = startPos;
-                            _playerManager.PlayerRotation = startRot;
-                        }
-
-                        onReadyCallback();
-                    }, persistentOnly);
-                cellInfo.ObjectCreationCoroutines.Add(cellLoadingCoroutine);
-                _cells.Add(cellInfo);
-                _temporalLoadBalancer.AddTask(cellLoadingCoroutine);
             }
+
+            var cellInfo = new CellInfo();
+            var cellLoadingCoroutine =
+                LoadCellFromData(cellData, cellInfo, () =>
+                {
+                    if (startPos != null)
+                        _playerManager.PlayerPosition = startPos.Value;
+                    if (startRot != null)
+                        _playerManager.PlayerRotation = startRot.Value;
+
+                    onReadyCallback();
+                }, persistentOnly);
+            cellInfo.ObjectCreationCoroutines.Add(cellLoadingCoroutine);
+            _cells.Add(cellInfo);
+            _temporalLoadBalancer.AddTask(cellLoadingCoroutine);
         }
 
-        private IEnumerator LoadCellFromData(CellData cellData, CellInfo cellInfo, LoadCause loadCause,
+        private IEnumerator LoadCellFromData(CellData cellData, CellInfo cellInfo,
             Action onReadyCallback,
             bool persistentOnly = false)
         {
@@ -350,49 +330,49 @@ namespace Engine.Cell
             cellGameObject.SetActive(false);
 
             var persistentObjectsInstantiationTask =
-                InstantiateCellRecords(cellData.CellRecord, cellData.PersistentChildren, cellGameObject, loadCause);
+                InstantiateCellRecords(cellData.CellRecord, cellData.PersistentChildren, cellGameObject);
             while (persistentObjectsInstantiationTask.MoveNext())
                 yield return null;
 
             if (!persistentOnly)
             {
                 var temporaryObjectsInstantiationTask =
-                    InstantiateCellRecords(cellData.CellRecord, cellData.TemporaryChildren, cellGameObject, loadCause);
+                    InstantiateCellRecords(cellData.CellRecord, cellData.TemporaryChildren, cellGameObject);
                 while (temporaryObjectsInstantiationTask.MoveNext())
                     yield return null;
             }
 
-            var postProcessTask = PostProcessCell(cellData.CellRecord, cellGameObject, loadCause);
+            var postProcessTask = PostProcessCell(cellData.CellRecord, cellGameObject);
             while (postProcessTask.MoveNext())
                 yield return null;
 
             onReadyCallback();
         }
 
-        private IEnumerator PostProcessCell(CELL cell, GameObject cellGameObject, LoadCause loadCause)
+        private IEnumerator PostProcessCell(CELL cell, GameObject cellGameObject)
         {
             cellGameObject.SetActive(true);
             //TODO static batching causes a huge freeze
-            if (loadCause != LoadCause.OpenWorldLoad)
+            //(Only doing during loading screens so that open world loading doesn't freeze the game)
+            if (_gameEngine.GameState != GameState.InGame)
                 StaticBatchingUtility.Combine(cellGameObject);
             yield return null;
 
             foreach (var delegateInstance in _postProcessDelegates)
             {
-                var postProcessCoroutine = delegateInstance.PostProcessCell(cell, cellGameObject, loadCause);
+                var postProcessCoroutine = delegateInstance.PostProcessCell(cell, cellGameObject);
                 if (postProcessCoroutine == null) continue;
                 while (postProcessCoroutine.MoveNext())
                     yield return null;
             }
         }
 
-        private IEnumerator InstantiateCellRecords(CELL cell, List<Record> children, GameObject parent,
-            LoadCause loadCause)
+        private IEnumerator InstantiateCellRecords(CELL cell, List<Record> children, GameObject parent)
         {
             foreach (var record in children)
             {
                 _preprocessDelegates.TryGetValue(record.GetType(), out var preprocessDelegate);
-                var preprocessCoroutine = preprocessDelegate?.PreprocessRecord(cell, record, parent, loadCause);
+                var preprocessCoroutine = preprocessDelegate?.PreprocessRecord(cell, record, parent);
                 if (preprocessCoroutine == null) continue;
                 while (preprocessCoroutine.MoveNext())
                     yield return null;
@@ -403,7 +383,7 @@ namespace Engine.Cell
             foreach (var record in children)
             {
                 _instantiationDelegates.TryGetValue(record.GetType(), out var instantiationDelegate);
-                var instantiationCoroutine = instantiationDelegate?.InstantiateRecord(cell, record, parent, loadCause);
+                var instantiationCoroutine = instantiationDelegate?.InstantiateRecord(cell, record, parent);
                 if (instantiationCoroutine == null) continue;
                 while (instantiationCoroutine.MoveNext())
                     yield return null;

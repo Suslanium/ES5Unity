@@ -265,7 +265,7 @@ namespace Engine.Cell.Delegate
             while (stack.Count > 0)
             {
                 var (i0, i1, i2, i3, currentList, currentSize) = stack.Pop();
-                
+
                 if (i0 >= indexLimit || i1 >= indexLimit || i2 >= indexLimit || i3 >= indexLimit)
                     continue;
 
@@ -367,7 +367,7 @@ namespace Engine.Cell.Delegate
                     var newMergedLayer = new MergedLayer(diffuseMap, normalMap, alphaMapIndices);
                     return newMergedLayer;
                 }).ToList();
-                
+
                 yield return null;
 
                 var newCurrentList = new List<MergedLayer>(currentList);
@@ -380,7 +380,7 @@ namespace Engine.Cell.Delegate
                     var ni2 = i2 + ((advance & 4) > 0 ? 1 : 0);
                     var ni3 = i3 + ((advance & 8) > 0 ? 1 : 0);
                     stack.Push((ni0, ni1, ni2, ni3, newCurrentList, newCurrentList.Count));
-                    
+
                     yield return null;
                 }
             }
@@ -767,7 +767,7 @@ namespace Engine.Cell.Delegate
             onReadyCallback(gameObject);
         }
 
-        protected override IEnumerator PreprocessRecord(CELL cell, LAND record, GameObject parent, LoadCause loadCause)
+        protected override IEnumerator PreprocessRecord(CELL cell, LAND record, GameObject parent)
         {
             return CreateTerrain(cell, record, terrain => { terrain.transform.parent = parent.transform; });
         }

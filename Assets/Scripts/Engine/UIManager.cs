@@ -1,5 +1,4 @@
 ﻿using System;
-using Engine.Cell;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -58,7 +57,7 @@ namespace Engine
         {
             FadeIn(() =>
             {
-                _gameEngine?.LoadCell(_gameEngine.ActiveDoorTeleport.cellFormID, LoadCause.DoorTeleport,
+                _gameEngine?.LoadCell(_gameEngine.ActiveDoorTeleport.cellFormID,
                     _gameEngine.ActiveDoorTeleport.teleportPosition, _gameEngine.ActiveDoorTeleport.teleportRotation);
             });
         }

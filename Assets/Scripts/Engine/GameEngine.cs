@@ -71,7 +71,7 @@ namespace Engine
             _nifManager = new NifManager(_materialManager, resourceManager);
             _loadBalancer = new TemporalLoadBalancer();
             _playerManager = new PlayerManager(player);
-            _cellManager = new CellManager(masterFileManager, _nifManager, textureManager,
+            _cellManager = new CellManager(masterFileManager, _nifManager,
                 _loadBalancer, this,
                 _playerManager);
             _loadingScreenManager = loadingScreenManager;
@@ -82,59 +82,43 @@ namespace Engine
         }
 
         // ReSharper disable Unity.PerformanceAnalysis
-        public void LoadCell(string editorId, LoadCause loadCause, Vector3 startPosition, Quaternion startRotation)
+        public void LoadCell(string editorId, Vector3? startPosition, Quaternion? startRotation)
         {
-            var loadCoroutine = LoadCellCoroutine(editorId, loadCause, startPosition, startRotation);
+            var loadCoroutine = LoadCellCoroutine(editorId, startPosition, startRotation);
             _loadBalancer.AddTaskPriority(loadCoroutine);
         }
 
-        private IEnumerator LoadCellCoroutine(string editorId, LoadCause loadCause, Vector3 startPosition,
-            Quaternion startRotation)
+        private IEnumerator LoadCellCoroutine(string editorId, Vector3? startPosition,
+            Quaternion? startRotation)
         {
-            if (loadCause != LoadCause.OpenWorldLoad)
-            {
-                var clearCoroutine = DestroyAndClearEverything();
-                while (clearCoroutine.MoveNext())
-                    yield return null;
-            }
+            var clearCoroutine = DestroyAndClearEverything();
+            while (clearCoroutine.MoveNext())
+                yield return null;
 
             ActiveDoorTeleport = null;
-            if (loadCause != LoadCause.OpenWorldLoad)
-                GameState = GameState.Loading;
-            _cellManager.LoadCell(editorId, loadCause, startPosition, startRotation,
-                () =>
-                {
-                    if (loadCause != LoadCause.OpenWorldLoad)
-                        GameState = GameState.InGame;
-                });
+            GameState = GameState.Loading;
+            _cellManager.LoadCell(editorId, startPosition, startRotation,
+                () => { GameState = GameState.InGame; });
         }
 
         // ReSharper disable Unity.PerformanceAnalysis
-        public void LoadCell(uint formID, LoadCause loadCause, Vector3 startPosition, Quaternion startRotation)
+        public void LoadCell(uint formID, Vector3? startPosition, Quaternion? startRotation)
         {
-            var loadCoroutine = LoadCellCoroutine(formID, loadCause, startPosition, startRotation);
+            var loadCoroutine = LoadCellCoroutine(formID, startPosition, startRotation);
             _loadBalancer.AddTaskPriority(loadCoroutine);
         }
 
-        private IEnumerator LoadCellCoroutine(uint formID, LoadCause loadCause, Vector3 startPosition,
-            Quaternion startRotation)
+        private IEnumerator LoadCellCoroutine(uint formID, Vector3? startPosition,
+            Quaternion? startRotation)
         {
-            if (loadCause != LoadCause.OpenWorldLoad)
-            {
-                var clearCoroutine = DestroyAndClearEverything();
-                while (clearCoroutine.MoveNext())
-                    yield return null;
-            }
+            var clearCoroutine = DestroyAndClearEverything();
+            while (clearCoroutine.MoveNext())
+                yield return null;
 
             ActiveDoorTeleport = null;
-            if (loadCause != LoadCause.OpenWorldLoad)
-                GameState = GameState.Loading;
-            _cellManager.LoadCell(formID, loadCause, startPosition, startRotation,
-                () =>
-                {
-                    if (loadCause != LoadCause.OpenWorldLoad)
-                        GameState = GameState.InGame;
-                });
+            GameState = GameState.Loading;
+            _cellManager.LoadCell(formID, startPosition, startRotation,
+                () => { GameState = GameState.InGame; });
         }
 
         public void Update()

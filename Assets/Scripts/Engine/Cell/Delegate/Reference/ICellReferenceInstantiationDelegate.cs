@@ -7,9 +7,9 @@ namespace Engine.Cell.Delegate.Reference
 {
     public interface ICellReferenceInstantiationDelegate
     {
-        public bool IsInstantiationApplicable(CELL cell, LoadCause loadCause, REFR reference, Record referencedRecord);
-        
-        public IEnumerator InstantiateObject(CELL cell, GameObject cellGameObject, LoadCause loadCause, REFR reference,
+        public bool IsInstantiationApplicable(CELL cell, REFR reference, Record referencedRecord);
+
+        public IEnumerator InstantiateObject(CELL cell, GameObject cellGameObject, REFR reference,
             Record referencedRecord);
     }
 }

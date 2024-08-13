@@ -13,18 +13,18 @@ namespace Engine.Cell.Delegate
     public class LightingObjectDelegate : ICellReferencePreprocessDelegate, ICellReferenceInstantiationDelegate
     {
         private readonly NifManager _nifManager;
-        
+
         public LightingObjectDelegate(NifManager nifManager)
         {
             _nifManager = nifManager;
         }
 
-        public bool IsPreprocessApplicable(CELL cell, LoadCause loadCause, REFR reference, Record referencedRecord)
+        public bool IsPreprocessApplicable(CELL cell, REFR reference, Record referencedRecord)
         {
             return referencedRecord is LIGH light && !string.IsNullOrEmpty(light.NifModelFilename);
         }
 
-        public IEnumerator PreprocessObject(CELL cell, GameObject cellGameObject, LoadCause loadCause, REFR reference,
+        public IEnumerator PreprocessObject(CELL cell, GameObject cellGameObject, REFR reference,
             Record referencedRecord)
         {
             if (referencedRecord is not LIGH light)
@@ -32,17 +32,17 @@ namespace Engine.Cell.Delegate
             _nifManager.PreloadNifFile(light.NifModelFilename);
         }
 
-        public bool IsInstantiationApplicable(CELL cell, LoadCause loadCause, REFR reference, Record referencedRecord)
+        public bool IsInstantiationApplicable(CELL cell, REFR reference, Record referencedRecord)
         {
             return referencedRecord is LIGH;
         }
 
-        public IEnumerator InstantiateObject(CELL cell, GameObject cellGameObject, LoadCause loadCause, REFR reference,
+        public IEnumerator InstantiateObject(CELL cell, GameObject cellGameObject, REFR reference,
             Record referencedRecord)
         {
             if (referencedRecord is not LIGH light)
                 yield break;
-            
+
             var lightInstantiationCoroutine = InstantiateLightAtPositionAndRotation(reference, light,
                 reference.Position,
                 reference.Rotation, reference.Scale, cellGameObject);

@@ -23,7 +23,7 @@ namespace Engine.Cell.Delegate
             _gameEngine = gameEngine;
         }
 
-        public bool IsPreprocessApplicable(CELL cell, LoadCause loadCause, REFR reference, Record referencedRecord)
+        public bool IsPreprocessApplicable(CELL cell, REFR reference, Record referencedRecord)
         {
             return referencedRecord is DOOR door && !string.IsNullOrEmpty(door.NifModelFilename) &&
                    //Currently only teleport doors are loaded because regular doors
@@ -31,7 +31,7 @@ namespace Engine.Cell.Delegate
                    reference.DoorTeleport != null;
         }
 
-        public IEnumerator PreprocessObject(CELL cell, GameObject cellGameObject, LoadCause loadCause, REFR reference,
+        public IEnumerator PreprocessObject(CELL cell, GameObject cellGameObject, REFR reference,
             Record referencedRecord)
         {
             if (referencedRecord is not DOOR door)
@@ -39,7 +39,7 @@ namespace Engine.Cell.Delegate
             _nifManager.PreloadNifFile(door.NifModelFilename);
         }
 
-        public bool IsInstantiationApplicable(CELL cell, LoadCause loadCause, REFR reference, Record referencedRecord)
+        public bool IsInstantiationApplicable(CELL cell, REFR reference, Record referencedRecord)
         {
             return referencedRecord is DOOR &&
                    //Currently only teleport doors are loaded because regular doors
@@ -47,7 +47,7 @@ namespace Engine.Cell.Delegate
                    reference.DoorTeleport != null;
         }
 
-        public IEnumerator InstantiateObject(CELL cell, GameObject cellGameObject, LoadCause loadCause, REFR reference,
+        public IEnumerator InstantiateObject(CELL cell, GameObject cellGameObject, REFR reference,
             Record referencedRecord)
         {
             if (referencedRecord is not DOOR door)
@@ -104,6 +104,7 @@ namespace Engine.Cell.Delegate
 
             if (destinationTask.Result is not CELL destinationCell)
             {
+                Object.Destroy(modelObject);
                 Debug.LogError($"Destination cell not found for door {doorBase.EditorID}");
                 yield break;
             }

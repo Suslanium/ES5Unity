@@ -19,14 +19,14 @@ namespace Engine.Cell.Delegate
         private const int DefaultCameraFarPlane = 500;
         private readonly GameEngine _gameEngine;
         private readonly MasterFileManager _masterFileManager;
-        
+
         public CellLightingDelegate(GameEngine gameEngine, MasterFileManager masterFileManager)
         {
             _gameEngine = gameEngine;
             _masterFileManager = masterFileManager;
         }
-        
-        public IEnumerator PostProcessCell(CELL cell, GameObject cellGameObject, LoadCause loadCause)
+
+        public IEnumerator PostProcessCell(CELL cell, GameObject cellGameObject)
         {
             if (cell.CellLightingInfo == null) yield break;
             //Don't process lighting for exterior cells
@@ -42,7 +42,7 @@ namespace Engine.Cell.Delegate
         {
             return ResetLighting();
         }
-        
+
         private IEnumerator ResetLighting()
         {
             RenderSettings.ambientMode = AmbientMode.Skybox;
@@ -68,7 +68,7 @@ namespace Engine.Cell.Delegate
                 mainCamera.farClipPlane = DefaultCameraFarPlane;
             }
         }
-        
+
         private IEnumerator ConfigureCellLighting(CELL cellRecord)
         {
             LGTM template = null;

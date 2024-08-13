@@ -7,9 +7,9 @@ namespace Engine.Cell.Delegate.Reference
 {
     public interface ICellReferencePreprocessDelegate
     {
-        public bool IsPreprocessApplicable(CELL cell, LoadCause loadCause, REFR reference, Record referencedRecord);
-        
-        public IEnumerator PreprocessObject(CELL cell, GameObject cellGameObject, LoadCause loadCause, REFR reference,
+        public bool IsPreprocessApplicable(CELL cell, REFR reference, Record referencedRecord);
+
+        public IEnumerator PreprocessObject(CELL cell, GameObject cellGameObject, REFR reference,
             Record referencedRecord);
     }
 }

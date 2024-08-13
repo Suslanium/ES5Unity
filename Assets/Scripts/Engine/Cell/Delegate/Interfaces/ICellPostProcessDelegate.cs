@@ -6,6 +6,6 @@ namespace Engine.Cell.Delegate.Interfaces
 {
     public interface ICellPostProcessDelegate
     {
-        public IEnumerator PostProcessCell(CELL cell, GameObject cellGameObject, LoadCause loadCause);
+        public IEnumerator PostProcessCell(CELL cell, GameObject cellGameObject);
     }
 }

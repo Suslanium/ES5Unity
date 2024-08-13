@@ -21,7 +21,7 @@ namespace Engine.Cell.Delegate.Reference
             _masterFileManager = masterFileManager;
         }
 
-        protected override IEnumerator InstantiateRecord(CELL cell, REFR record, GameObject parent, LoadCause loadCause)
+        protected override IEnumerator InstantiateRecord(CELL cell, REFR record, GameObject parent)
         {
             var referencedRecordTask = _masterFileManager.GetFromFormIDTask(record.BaseObjectReference);
             while (!referencedRecordTask.IsCompleted)
@@ -29,25 +29,25 @@ namespace Engine.Cell.Delegate.Reference
 
             var referencedRecord = referencedRecordTask.Result;
             var objectInstantiationCoroutine =
-                InstantiateCellReference(cell, loadCause, parent, record, referencedRecord);
+                InstantiateCellReference(cell, parent, record, referencedRecord);
             if (objectInstantiationCoroutine == null) yield break;
             while (objectInstantiationCoroutine.MoveNext())
                 yield return null;
         }
 
-        private IEnumerator InstantiateCellReference(CELL cell, LoadCause loadCause, GameObject parent,
+        private IEnumerator InstantiateCellReference(CELL cell, GameObject parent,
             REFR referenceRecord,
             Record referencedRecord)
         {
             if (referencedRecord == null) yield break;
             foreach (var delegateInstance in _instantiationDelegates)
             {
-                if (!delegateInstance.IsInstantiationApplicable(cell, loadCause, referenceRecord,
+                if (!delegateInstance.IsInstantiationApplicable(cell, referenceRecord,
                         referencedRecord))
                     continue;
 
-                var instantiationCoroutine = delegateInstance.InstantiateObject(cell, parent,
-                    loadCause, referenceRecord, referencedRecord);
+                var instantiationCoroutine =
+                    delegateInstance.InstantiateObject(cell, parent, referenceRecord, referencedRecord);
                 if (instantiationCoroutine == null) continue;
 
                 while (instantiationCoroutine.MoveNext())

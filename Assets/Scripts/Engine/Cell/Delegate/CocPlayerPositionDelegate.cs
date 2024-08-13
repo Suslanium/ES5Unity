@@ -22,14 +22,14 @@ namespace Engine.Cell.Delegate
             _playerManager = playerManager;
         }
 
-        public bool IsPreprocessApplicable(CELL cell, LoadCause loadCause, REFR reference, Record referencedRecord)
+        public bool IsPreprocessApplicable(CELL cell, REFR reference, Record referencedRecord)
         {
-            return loadCause == LoadCause.Coc && (referencedRecord is STAT { FormID: CocMarkerFormID } ||
+            return _canSetPlayerPosition && (referencedRecord is STAT { FormID: CocMarkerFormID } ||
                                                   (_tempPosition == null && _tempRotation == null &&
                                                    reference.EditorID != null && reference.EditorID.Contains(Marker)));
         }
 
-        public IEnumerator PreprocessObject(CELL cell, GameObject cellGameObject, LoadCause loadCause, REFR reference,
+        public IEnumerator PreprocessObject(CELL cell, GameObject cellGameObject, REFR reference,
             Record referencedRecord)
         {
             _tempPosition = NifUtils.NifPointToUnityPoint(new Vector3(reference.Position[0],
@@ -40,10 +40,9 @@ namespace Engine.Cell.Delegate
             yield break;
         }
 
-        public IEnumerator PostProcessCell(CELL cell, GameObject cellGameObject, LoadCause loadCause)
+        public IEnumerator PostProcessCell(CELL cell, GameObject cellGameObject)
         {
             if (_tempPosition == null || _tempRotation == null) yield break;
-            if (loadCause != LoadCause.Coc) yield break;
             if (!_canSetPlayerPosition) yield break;
             _playerManager.PlayerPosition = _tempPosition.Value;
             _playerManager.PlayerRotation = _tempRotation.Value;

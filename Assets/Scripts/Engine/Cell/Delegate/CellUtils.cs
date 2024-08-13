@@ -9,8 +9,15 @@ namespace Engine.Cell.Delegate
             GameObject modelObject)
         {
             if (modelObject == null) return;
-            if (position is not { Length: 3 }) return;
-            if (rotation is not { Length: 3 }) return;
+            if (position is not { Length: 3 } || rotation is not { Length: 3 })
+            {
+                modelObject.SetActive(false);
+                Debug.LogWarning(
+                    $"Position and/or rotation array is invalid, deactivating GameObject {modelObject.name}");
+                modelObject.transform.parent = parent.transform;
+                return;
+            }
+
             if (scale != 0f)
             {
                 modelObject.transform.localScale = Vector3.one * scale;

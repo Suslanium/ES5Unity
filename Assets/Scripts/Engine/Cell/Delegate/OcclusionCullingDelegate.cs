@@ -21,19 +21,19 @@ namespace Engine.Cell.Delegate
         private readonly GameEngine _gameEngine;
         private const uint PortalFormID = 0x20;
         private const uint RoomFormID = 0x1F;
-        
+
         public OcclusionCullingDelegate(PlayerManager playerManager, GameEngine gameEngine)
         {
             _playerManager = playerManager;
             _gameEngine = gameEngine;
         }
 
-        public bool IsPreprocessApplicable(CELL cell, LoadCause loadCause, REFR reference, Record referencedRecord)
+        public bool IsPreprocessApplicable(CELL cell, REFR reference, Record referencedRecord)
         {
             return referencedRecord is STAT { FormID: PortalFormID or RoomFormID };
         }
 
-        public IEnumerator PreprocessObject(CELL cell, GameObject cellGameObject, LoadCause loadCause, REFR reference,
+        public IEnumerator PreprocessObject(CELL cell, GameObject cellGameObject, REFR reference,
             Record referencedRecord)
         {
             if (referencedRecord is not STAT staticRecord)
@@ -90,7 +90,7 @@ namespace Engine.Cell.Delegate
             }
         }
 
-        public IEnumerator PostProcessCell(CELL cell, GameObject cellGameObject, LoadCause loadCause)
+        public IEnumerator PostProcessCell(CELL cell, GameObject cellGameObject)
         {
             if (_tempPortals.Count > 0 || _tempRooms.Count > 0)
             {
@@ -102,7 +102,7 @@ namespace Engine.Cell.Delegate
             _tempLinkedRooms.Clear();
             _tempPortals.Clear();
             _tempRooms.Clear();
-            
+
             yield break;
         }
     }

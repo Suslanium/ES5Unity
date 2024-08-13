@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Engine;
-using Engine.Cell;
 using Engine.MasterFile;
 using Engine.Resource;
 using TMPro;
@@ -48,7 +47,7 @@ namespace Tests
                 .Select(fileName => $"{path}{Path.DirectorySeparatorChar}{fileName}").ToList());
             _gameEngine = new GameEngine(_resourceManager, _masterFileManager, player, UIManager, loadingScreenManager,
                 mainCamera);
-            UIManager.FadeIn(() => { _gameEngine.LoadCell(cell, LoadCause.Coc, Vector3.zero, Quaternion.identity); });
+            UIManager.FadeIn(() => { _gameEngine.LoadCell(cell, null, null); });
         }
 
         private void OnApplicationQuit()
