@@ -2,7 +2,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using Engine;
 using Engine.Textures;
 using NIF.Builder.Delegate;
 using NIF.Builder.Delegate.Collision;
@@ -19,19 +18,19 @@ namespace NIF.Builder
     public class NifObjectBuilder
     {
         private readonly NiFile _file;
-        private readonly List<INiObjectDelegate> _modelDelegates;
-        private readonly List<INiObjectDelegate> _collisionDelegates;
+        private static List<INiObjectDelegate> _modelDelegates;
+        private static List<INiObjectDelegate> _collisionDelegates;
 
         public NifObjectBuilder(NiFile file, MaterialManager materialManager)
         {
             _file = file;
             //TODO replace this with DI or something
-            _modelDelegates = new List<INiObjectDelegate>
+            _modelDelegates ??= new List<INiObjectDelegate>
             {
                 new NiNodeDelegate(),
                 new NiTriShapeDelegate(materialManager)
             };
-            _collisionDelegates = new List<INiObjectDelegate>
+            _collisionDelegates ??= new List<INiObjectDelegate>
             {
                 new BhkCollisionObjectDelegate(),
                 new BhkCompressedMeshShapeDataDelegate(),
@@ -174,7 +173,8 @@ namespace NIF.Builder
 
         private IEnumerator InstantiateCollisionObject(NiObject collisionObj, Action<GameObject> onReadyCallback)
         {
-            var collisionDelegate = _collisionDelegates.FirstOrDefault(collisionDelegate => collisionDelegate.IsApplicable(collisionObj));
+            var collisionDelegate =
+                _collisionDelegates.FirstOrDefault(collisionDelegate => collisionDelegate.IsApplicable(collisionObj));
             if (collisionDelegate != null)
                 return collisionDelegate.Instantiate(_file, collisionObj, InstantiateCollisionObject, onReadyCallback);
             Debug.LogWarning($"No delegate found for {collisionObj.GetType().Name}");

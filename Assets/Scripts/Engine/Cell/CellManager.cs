@@ -20,7 +20,9 @@ namespace Engine.Cell
     {
         public GameObject CellGameObject { get; set; }
 
-        public List<IEnumerator> ObjectCreationCoroutines { get; } = new();
+        public IEnumerator ObjectCreationCoroutine = null;
+
+        public bool IsLoaded = false;
     }
 
     public struct CellPosition
@@ -50,7 +52,7 @@ namespace Engine.Cell
         private readonly Dictionary<Vector2Int, CellInfo> _exteriorCells = new();
         private readonly List<IEnumerator> _initialLoadingCoroutines = new();
         private uint _currentWorldSpaceFormID = 0;
-        private const uint LoadRadius = 1;
+        private const int LoadRadius = 1;
         private Vector2Int _lastCellPosition = Vector2Int.one * int.MaxValue;
 
         private readonly Dictionary<Type, ICellRecordPreprocessDelegate> _preprocessDelegates;
@@ -88,11 +90,14 @@ namespace Engine.Cell
                 lightingObjectDelegate,
                 staticObjectDelegate
             };
+            var referenceDelegateManager =
+                new CellReferenceDelegateManager(referencePreprocessDelegates, referenceInstantiationDelegates,
+                    masterFileManager);
             _preprocessDelegates = new Dictionary<Type, ICellRecordPreprocessDelegate>
             {
                 {
                     typeof(REFR),
-                    new CellReferencePreprocessDelegateManager(referencePreprocessDelegates, masterFileManager)
+                    referenceDelegateManager
                 },
                 //Requires a LOT of optimization
                 /*{
@@ -104,7 +109,7 @@ namespace Engine.Cell
             {
                 {
                     typeof(REFR),
-                    new CellReferenceInstantiationDelegateManager(referenceInstantiationDelegates, masterFileManager)
+                    referenceDelegateManager
                 }
             };
             _postProcessDelegates = new List<ICellPostProcessDelegate>
@@ -116,7 +121,8 @@ namespace Engine.Cell
             _destroyDelegates = new List<ICellDestroyDelegate>
             {
                 cellLightingDelegate,
-                cocPlayerPositionDelegate
+                cocPlayerPositionDelegate,
+                referenceDelegateManager
             };
         }
 
@@ -138,17 +144,9 @@ namespace Engine.Cell
             _temporalLoadBalancer.AddTask(creationCoroutine);
         }
 
-        private List<CellPosition> GetExteriorCellPositions(Vector2Int gridPosition)
+        private static IEnumerator<CellPosition> GetExteriorCellPositions(Vector2Int gridPosition)
         {
-            if (gridPosition == _lastCellPosition)
-                return null;
-
-            var result = new List<CellPosition>();
-            var centerCell = new CellPosition(gridPosition);
-            if (!_exteriorCells.ContainsKey(centerCell.GridPosition))
-                result.Add(centerCell);
-
-            for (var radius = 1; radius <= LoadRadius; radius++)
+            for (var radius = LoadRadius; radius >= 1; radius--)
             {
                 var minCellX = gridPosition.x - radius;
                 var maxCellX = gridPosition.x + radius;
@@ -158,28 +156,19 @@ namespace Engine.Cell
                 //Horizontal sides
                 for (var x = minCellX; x <= maxCellX; x++)
                 {
-                    var firstCellCoords = new CellPosition(new Vector2Int(x, minCellY));
-                    var secondCellCoords = new CellPosition(new Vector2Int(x, maxCellY));
-                    if (!_exteriorCells.ContainsKey(firstCellCoords.GridPosition))
-                        result.Add(firstCellCoords);
-                    if (!_exteriorCells.ContainsKey(secondCellCoords.GridPosition))
-                        result.Add(secondCellCoords);
+                    yield return new CellPosition(new Vector2Int(x, minCellY));
+                    yield return new CellPosition(new Vector2Int(x, maxCellY));
                 }
 
                 //Vertical sides
                 for (var y = minCellY + 1; y <= maxCellY - 1; y++)
                 {
-                    var firstCellCoords = new CellPosition(new Vector2Int(minCellX, y));
-                    var secondCellCoords = new CellPosition(new Vector2Int(maxCellX, y));
-                    if (!_exteriorCells.ContainsKey(firstCellCoords.GridPosition))
-                        result.Add(firstCellCoords);
-                    if (!_exteriorCells.ContainsKey(secondCellCoords.GridPosition))
-                        result.Add(secondCellCoords);
+                    yield return new CellPosition(new Vector2Int(minCellX, y));
+                    yield return new CellPosition(new Vector2Int(maxCellX, y));
                 }
             }
-
-            _lastCellPosition = gridPosition;
-            return result;
+            
+            yield return new CellPosition(gridPosition);
         }
 
 
@@ -188,17 +177,29 @@ namespace Engine.Cell
         {
             if (_currentWorldSpaceFormID == 0) return;
             if (_gameEngine.GameState != GameState.InGame) return;
-            var newCells = GetExteriorCellPositions(_playerManager.WorldPlayerPosition.CellGridPosition);
-            if (newCells == null || newCells.Count == 0) return;
-            foreach (var cellPos in newCells)
+            var gridPosition = _playerManager.WorldPlayerPosition.CellGridPosition;
+            if (gridPosition == _lastCellPosition) return;
+            var enumerator = GetExteriorCellPositions(gridPosition);
+            while (enumerator.MoveNext())
             {
-                var cellInfo = new CellInfo();
-                var cellLoadingCoroutine = LoadExteriorCellAtPosition(cellPos, cellInfo);
-                cellInfo.ObjectCreationCoroutines.Add(cellLoadingCoroutine);
-                _cells.Add(cellInfo);
-                _exteriorCells.Add(cellPos.GridPosition, cellInfo);
-                _temporalLoadBalancer.AddTask(cellLoadingCoroutine);
+                var cellPos = enumerator.Current;
+                if (_exteriorCells.TryGetValue(cellPos.GridPosition, out var cellInfo))
+                {
+                    if (cellInfo.IsLoaded || cellInfo.ObjectCreationCoroutine == null) continue;
+                    _temporalLoadBalancer.Prioritize(cellInfo.ObjectCreationCoroutine);
+                }
+                else
+                {
+                    cellInfo = new CellInfo();
+                    var cellLoadingCoroutine = LoadExteriorCellAtPosition(cellPos, cellInfo);
+                    cellInfo.ObjectCreationCoroutine = cellLoadingCoroutine;
+                    _cells.Add(cellInfo);
+                    _exteriorCells.Add(cellPos.GridPosition, cellInfo);
+                    _temporalLoadBalancer.AddTaskPriority(cellLoadingCoroutine);
+                }
             }
+            
+            _lastCellPosition = gridPosition;
         }
 
         private IEnumerator LoadExteriorCellAtPosition(CellPosition cellPosition, CellInfo cellInfo)
@@ -278,8 +279,9 @@ namespace Engine.Cell
 
                 cellData = persistentCellData;
                 //Load the current exterior cells
-                foreach (var cellPosition in exteriorCellPositions)
+                while (exteriorCellPositions.MoveNext())
                 {
+                    var cellPosition = exteriorCellPositions.Current;
                     var extCellTask =
                         _masterFileManager.GetExteriorCellDataTask(_currentWorldSpaceFormID, cellPosition);
                     while (!extCellTask.IsCompleted)
@@ -290,7 +292,7 @@ namespace Engine.Cell
                     var extCellInfo = new CellInfo();
                     var extCellLoadingCoroutine =
                         LoadCellFromData(extCell, extCellInfo, () => { }, persistentOnly);
-                    extCellInfo.ObjectCreationCoroutines.Add(extCellLoadingCoroutine);
+                    extCellInfo.ObjectCreationCoroutine = extCellLoadingCoroutine;
                     _cells.Add(extCellInfo);
                     _exteriorCells.Add(cellPosition.GridPosition, extCellInfo);
                     _temporalLoadBalancer.AddTask(extCellLoadingCoroutine);
@@ -313,7 +315,7 @@ namespace Engine.Cell
 
                     onReadyCallback();
                 }, persistentOnly);
-            cellInfo.ObjectCreationCoroutines.Add(cellLoadingCoroutine);
+            cellInfo.ObjectCreationCoroutine = cellLoadingCoroutine;
             _cells.Add(cellInfo);
             _temporalLoadBalancer.AddTask(cellLoadingCoroutine);
         }
@@ -346,6 +348,7 @@ namespace Engine.Cell
             while (postProcessTask.MoveNext())
                 yield return null;
 
+            cellInfo.IsLoaded = true;
             onReadyCallback();
         }
 
@@ -412,9 +415,7 @@ namespace Engine.Cell
             {
                 if (cell.CellGameObject != null) Object.Destroy(cell.CellGameObject);
                 yield return null;
-                foreach (var task in cell.ObjectCreationCoroutines)
-                    _temporalLoadBalancer.CancelTask(task);
-
+                _temporalLoadBalancer.CancelTask(cell.ObjectCreationCoroutine);
                 yield return null;
             }
 

@@ -177,8 +177,11 @@ namespace MasterFile
             }
             else
             {
-                MasterFileEntry.ReadHeaderAndSkip(_fileReader, position);
-                return MasterFileEntry.Parse(_fileReader, _fileReader.BaseStream.Position);
+                lock (_fileReader)
+                {
+                    MasterFileEntry.ReadHeaderAndSkip(_fileReader, position);
+                    return MasterFileEntry.Parse(_fileReader, _fileReader.BaseStream.Position);
+                }
             }
         }
 
@@ -189,8 +192,11 @@ namespace MasterFile
         public Record GetFromFormID(uint formId)
         {
             if (!_formIdToPosition.TryGetValue(formId, out var position)) return null;
-            var record = (Record)MasterFileEntry.Parse(_fileReader, position);
-            return record;
+            lock (_fileReader)
+            {
+                var record = (Record)MasterFileEntry.Parse(_fileReader, position);
+                return record;
+            }
         }
 
         /// <summary>
@@ -223,8 +229,11 @@ namespace MasterFile
         {
             var records = _recordTypeDictionary[type];
             var recordPos = records.ElementAt(_random.Next(0, records.Count)).Value;
-            var record = (Record)MasterFileEntry.Parse(_fileReader, recordPos);
-            return record;
+            lock (_fileReader)
+            {
+                var record = (Record)MasterFileEntry.Parse(_fileReader, recordPos);
+                return record;
+            }
         }
 
         /// <summary>
@@ -309,9 +318,12 @@ namespace MasterFile
         {
             if (!_worldSpaceFormIDToPersistentCellPosition.TryGetValue(worldSpaceFormId, out var position))
                 return null;
-            
-            var entry = MasterFileEntry.Parse(_fileReader, position);
-            return entry as CELL;
+
+            lock (_fileReader)
+            {
+                var entry = MasterFileEntry.Parse(_fileReader, position);
+                return entry as CELL;  
+            }
         }
 
         /// <summary>
@@ -321,7 +333,10 @@ namespace MasterFile
         {
             if (!_initializationTask.IsCompleted)
                 _initializationTask.Wait();
-            _fileReader.Close();
+            lock (_fileReader)
+            {
+                _fileReader.Close();
+            }
         }
     }
 }

@@ -29,6 +29,12 @@ namespace Engine.Core
 
             return taskCoroutine;
         }
+
+        public void Prioritize(IEnumerator taskCoroutine)
+        {
+            _tasks.Remove(taskCoroutine);
+            _tasks.Insert(0, taskCoroutine);
+        }
         
         public void CancelTask(IEnumerator taskCoroutine)
         {
