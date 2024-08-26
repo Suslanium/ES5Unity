@@ -71,7 +71,7 @@ namespace Engine
             _nifManager = new NifManager(_materialManager, resourceManager);
             _loadBalancer = new TemporalLoadBalancer();
             _playerManager = new PlayerManager(player);
-            _cellManager = new CellManager(masterFileManager, _nifManager,
+            _cellManager = new CellManager(masterFileManager, _nifManager, textureManager,
                 _loadBalancer, this,
                 _playerManager);
             _loadingScreenManager = loadingScreenManager;

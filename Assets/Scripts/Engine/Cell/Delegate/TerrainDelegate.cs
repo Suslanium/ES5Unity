@@ -1,18 +1,19 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
+using System.Threading.Tasks;
 using Engine.Cell.Delegate.Interfaces;
 using Engine.Core;
 using Engine.MasterFile;
 using Engine.Textures;
 using JetBrains.Annotations;
+using MasterFile.MasterFileContents;
 using MasterFile.MasterFileContents.Records;
 using UnityEngine;
 using Convert = Engine.Core.Convert;
-using Debug = UnityEngine.Debug;
 
 namespace Engine.Cell.Delegate
 {
@@ -23,64 +24,91 @@ namespace Engine.Cell.Delegate
         TopLeft = 2,
         TopRight = 3
     }
-
-    public struct TerrainTexture
+    
+    public readonly struct TerrainMeshInfo
     {
-        public readonly Texture2D DiffuseTexture;
-        [CanBeNull] public readonly Texture2D NormalMap;
-        public readonly float[,] AlphaMap;
+        public readonly Vector3 Size;
 
-        public TerrainTexture(Texture2D diffuseTexture, [CanBeNull] Texture2D normalMap, float[,] alphaMap)
+        [CanBeNull] public readonly float[,] HeightMap;
+
+        public readonly float MinHeight;
+
+        public readonly float MaxHeight;
+
+        public TerrainMeshInfo(Vector3 size, [CanBeNull] float[,] heightMap, float minHeight, float maxHeight)
         {
+            Size = size;
+            HeightMap = heightMap;
+            MinHeight = minHeight;
+            MaxHeight = maxHeight;
+        }
+    }
+
+    public readonly struct TerrainLayerInfo
+    {
+        public readonly uint TextureFormID;
+
+        public readonly Quadrant Quadrant;
+
+        //Null alphamap = covers the entire quadrant
+        [CanBeNull] public readonly float[,] AlphaMap;
+
+        public TerrainLayerInfo(uint textureFormID, Quadrant quadrant, [CanBeNull] float[,] alphaMap)
+        {
+            TextureFormID = textureFormID;
+            Quadrant = quadrant;
             AlphaMap = alphaMap;
-            DiffuseTexture = diffuseTexture;
-            NormalMap = normalMap;
         }
     }
 
-    public struct NonLoadedTerrainLayer
+    public readonly struct MergedTerrainLayerInfo
     {
-        public readonly string DiffuseMapPath;
-        [CanBeNull] public readonly string NormalMapPath;
-        public readonly float[,] AlphaMap;
+        public readonly uint TextureFormID;
 
-        public NonLoadedTerrainLayer(string diffuseMapPath, [CanBeNull] string normalMapPath, float[,] alphaMap)
+        //Null list = covers the entire quadrant
+        public readonly Dictionary<Quadrant, List<float[,]>> QuadrantAlphaMaps;
+
+        public MergedTerrainLayerInfo(uint textureFormID, Dictionary<Quadrant, List<float[,]>> quadrantAlphaMaps)
         {
-            DiffuseMapPath = diffuseMapPath;
-            NormalMapPath = normalMapPath;
-            AlphaMap = alphaMap;
+            TextureFormID = textureFormID;
+            QuadrantAlphaMaps = quadrantAlphaMaps;
         }
     }
 
-    public readonly struct MergedLayer
+    public readonly struct LoadedTerrainLayersInfo
     {
-        public readonly string DiffuseMapPath;
-        [CanBeNull] public readonly string NormalMapPath;
-        public readonly List<int> AlphaMapIndices;
+        public readonly uint[] TextureFormIDs;
 
-        public MergedLayer(string diffuseMapPath, [CanBeNull] string normalMapPath, int alphaMapIndex)
-        {
-            DiffuseMapPath = diffuseMapPath;
-            NormalMapPath = normalMapPath;
-            AlphaMapIndices = new List<int> { alphaMapIndex };
-        }
+        public readonly float[,,] AlphaMaps;
 
-        public MergedLayer(string diffuseMapPath, [CanBeNull] string normalMapPath, List<int> alphaMapIndices)
+        public LoadedTerrainLayersInfo(uint[] textureFormIDs, float[,,] alphaMaps)
         {
-            DiffuseMapPath = diffuseMapPath;
-            NormalMapPath = normalMapPath;
-            AlphaMapIndices = alphaMapIndices;
+            TextureFormIDs = textureFormIDs;
+            AlphaMaps = alphaMaps;
         }
     }
 
-    public class TerrainDelegate : CellRecordPreprocessDelegate<LAND>
+    public class TerrainDelegate : CellRecordPreprocessDelegate<LAND>, ICellRecordInstantiationDelegate,
+        ICellDestroyDelegate
     {
-        private readonly Stopwatch _stopwatch = new();
+        private const int AlphaMapResolution = 128;
+        private const int TerrainQuadrantResolution = AlphaMapResolution / 2;
+        private const int QuadrantRawAlphaMapResolution = Convert.ExteriorCellQuadrantSideLengthInSamples;
         private const int LandSideLength = Convert.ExteriorCellSideLengthInSamples;
         private const string TexturePathPrefix = "Textures";
-        private static readonly string DefaultDiffuseTexturePath = @"Textures\Landscape\Dirt02.dds";
-        private static readonly string DefaultNormalMapPath = @"Textures\Landscape\Dirt02_n.dds";
+        private const string DefaultDiffuseTexturePath = "Textures/Landscape/Dirt02.dds";
+        private const string DefaultNormalMapPath = "Textures/Landscape/Dirt02_n.dds";
         private const string DefaultTerrainShader = "Nature/Terrain/Diffuse";
+
+        private readonly Dictionary<uint, (Texture2D, Texture2D)> _textureCache = new();
+        private readonly ConcurrentDictionary<uint, (string, string)> _texturePaths = new();
+        private readonly Dictionary<uint, Task> _textureLoadingTasks = new();
+
+        private readonly Dictionary<uint, Task<TerrainMeshInfo>> _terrainMeshInfoTasks = new();
+        private readonly Dictionary<uint, TerrainMeshInfo> _terrainMeshInfos = new();
+
+        private readonly Dictionary<uint, Task<LoadedTerrainLayersInfo>> _terrainLayerTasks = new();
+        private readonly Dictionary<uint, LoadedTerrainLayersInfo> _terrainLayers = new();
 
         private readonly MasterFileManager _masterFileManager;
         private readonly TextureManager _textureManager;
@@ -91,685 +119,522 @@ namespace Engine.Cell.Delegate
             _textureManager = textureManager;
         }
 
-        private static IEnumerator CreateTerrainData(float[,] heightMap, Action<TerrainData, float> onReadyCallback)
+        private static Task<TerrainMeshInfo> GenerateTerrainMeshInfo(float[,] heightMap)
         {
-            Utils.GetExtrema(heightMap, out var minHeight, out var maxHeight);
-            yield return null;
-
-            for (var y = 0; y < LandSideLength; y++)
+            return Task.Run(() =>
             {
-                for (var x = 0; x < LandSideLength; x++)
+                Utils.GetExtrema(heightMap, out var minHeight, out var maxHeight);
+
+                for (var y = 0; y < LandSideLength; y++)
                 {
-                    heightMap[y, x] = Utils.ChangeRange(heightMap[y, x], minHeight, maxHeight, 0, 1);
-                    yield return null;
-                }
-            }
-
-            var heightRange = maxHeight - minHeight;
-            var maxHeightInMeters = heightRange / Convert.meterInMWUnits;
-            const float heightSampleDistance = Convert.ExteriorCellSideLengthInMeters / (LandSideLength - 1);
-            yield return null;
-
-            var terrainData = new TerrainData
-            {
-                heightmapResolution = LandSideLength
-            };
-            var terrainWidth = (terrainData.heightmapResolution - 1) * heightSampleDistance;
-            yield return null;
-
-            if (!Mathf.Approximately(maxHeightInMeters, 0))
-            {
-                terrainData.size = new Vector3(terrainWidth, maxHeightInMeters, terrainWidth);
-
-                terrainData.SetHeights(0, 0, heightMap);
-            }
-            else
-            {
-                terrainData.size = new Vector3(terrainWidth, 1, terrainWidth);
-            }
-
-            yield return null;
-
-            onReadyCallback(terrainData, minHeight);
-        }
-
-        private static bool IsInQuadrant(int x, int y, int width, int height, Quadrant quadrant)
-        {
-            return quadrant switch
-            {
-                Quadrant.BottomLeft => x < width / 2 && y < height / 2,
-                Quadrant.TopLeft => x >= width / 2 && y < height / 2,
-                Quadrant.BottomRight => x < width / 2 && y >= height / 2,
-                Quadrant.TopRight => x >= width / 2 && y >= height / 2,
-                _ => false
-            };
-        }
-
-        private static IEnumerator CreateBaseTerrainLayerAlphaMap(int terrainWidth, int terrainHeight,
-            Quadrant quadrant,
-            Action<float[,]> onReadyCallback)
-        {
-            var alphaMap = new float[terrainWidth, terrainHeight];
-
-            for (var y = 0; y < terrainHeight; y++)
-            {
-                for (var x = 0; x < terrainWidth; x++)
-                {
-                    alphaMap[x, y] = IsInQuadrant(x, y, terrainWidth, terrainHeight, quadrant) ? 1 : 0;
-
-                    yield return null;
-                }
-            }
-
-            onReadyCallback(alphaMap);
-        }
-
-        private static IEnumerator ConvertAdditionalLayerAlphaMap(float[,] quadrantAlphaMap, Quadrant quadrant,
-            int terrainWidth, int terrainHeight, Action<float[,]> onReadyCallback)
-        {
-            var newAlphaMap = new float[terrainWidth, terrainHeight];
-            var quadrantWidth = quadrantAlphaMap.GetLength(0);
-            var quadrantHeight = quadrantAlphaMap.GetLength(1);
-
-            var terrainQuadrantWidth = terrainWidth / 2;
-            var terrainQuadrantHeight = terrainHeight / 2;
-
-            for (var y = 0; y < terrainHeight; y++)
-            {
-                for (var x = 0; x < terrainWidth; x++)
-                {
-                    if (!IsInQuadrant(x, y, terrainWidth, terrainHeight, quadrant)) continue;
-
-                    var qx = (int)((float)(x % terrainQuadrantWidth) / terrainQuadrantWidth * quadrantWidth);
-                    var qy = (int)((float)(y % terrainQuadrantHeight) / terrainQuadrantHeight * quadrantHeight);
-
-                    var alpha = BilinearInterpolation(quadrantAlphaMap, qx, qy, quadrantWidth, quadrantHeight);
-                    newAlphaMap[x, y] = alpha;
-
-                    yield return null;
-                }
-            }
-
-            onReadyCallback(newAlphaMap);
-        }
-
-        private static float BilinearInterpolation(float[,] map, int x, int y, int width, int height)
-        {
-            var x1 = Math.Max(0, Math.Min(x, width - 2));
-            var x2 = Math.Min(x1 + 1, width - 1);
-            var y1 = Math.Max(0, Math.Min(y, height - 2));
-            var y2 = Math.Min(y1 + 1, height - 1);
-
-            var qx = x - x1;
-            var qy = y - y1;
-
-            var f11 = map[x1, y1];
-            var f12 = map[x1, y2];
-            var f21 = map[x2, y1];
-            var f22 = map[x2, y2];
-
-            var w11 = (1 - qx) * (1 - qy);
-            var w21 = qx * (1 - qy);
-            var w12 = (1 - qx) * qy;
-            var w22 = qx * qy;
-
-            return f11 * w11 + f21 * w21 + f12 * w12 + f22 * w22;
-        }
-
-        private static IEnumerator MergeAlphaMaps(Action<float[,]> onReadyCallback, params float[][,] alphaMaps)
-        {
-            var width = alphaMaps[0].GetLength(0);
-            var height = alphaMaps[0].GetLength(1);
-
-            var mergedAlphaMap = new float[width, height];
-            for (var y = 0; y < height; y++)
-            {
-                for (var x = 0; x < width; x++)
-                {
-                    var alphaSum = alphaMaps.Sum(alphaMap => alphaMap[x, y]);
-                    mergedAlphaMap[x, y] = Mathf.Clamp01(alphaSum);
-
-                    yield return null;
-                }
-            }
-
-            onReadyCallback(mergedAlphaMap);
-        }
-
-        private static IEnumerator MinimizeTerrainLayerCount(List<List<NonLoadedTerrainLayer>> quadrantLayers,
-            Action<List<NonLoadedTerrainLayer>> onReadyCallback)
-        {
-            var alphaMaps = new List<float[,]>();
-            var mergedLayers = new List<List<MergedLayer>>();
-            foreach (var quadrantLayerList in quadrantLayers)
-            {
-                var quadrantMergedLayers = new List<MergedLayer>();
-                foreach (var layer in quadrantLayerList)
-                {
-                    var mergedLayer = new MergedLayer(layer.DiffuseMapPath, layer.NormalMapPath, alphaMaps.Count);
-                    alphaMaps.Add(layer.AlphaMap);
-                    quadrantMergedLayers.Add(mergedLayer);
-                }
-
-                mergedLayers.Add(quadrantMergedLayers);
-            }
-
-            var quadrantLayerAmount = quadrantLayers.Select(l => l.Count).ToArray();
-            var indexLimit = 10;
-            var memo = new Dictionary<(int, int, int, int), int>();
-            var stack = new Stack<(int, int, int, int, List<MergedLayer>, int)>();
-            var bestResultListSize = int.MaxValue;
-            List<MergedLayer> bestResultList = null;
-            stack.Push((0, 0, 0, 0, new List<MergedLayer>(), 0));
-
-            while (stack.Count > 0)
-            {
-                var (i0, i1, i2, i3, currentList, currentSize) = stack.Pop();
-
-                if (i0 >= indexLimit || i1 >= indexLimit || i2 >= indexLimit || i3 >= indexLimit)
-                    continue;
-
-                if (i0 >= quadrantLayerAmount[0] && i1 >= quadrantLayerAmount[1] && i2 >= quadrantLayerAmount[2] &&
-                    i3 >= quadrantLayerAmount[3])
-                {
-                    if (currentSize < bestResultListSize)
+                    for (var x = 0; x < LandSideLength; x++)
                     {
-                        bestResultListSize = currentSize;
-                        bestResultList = currentList;
-                    }
-
-                    continue;
-                }
-
-                yield return null;
-
-                if (!memo.TryGetValue((i0, i1, i2, i3), out var memoizedListSize))
-                {
-                    memo[(i0, i1, i2, i3)] = currentSize;
-                }
-                else
-                {
-                    if (memoizedListSize <= currentSize) continue;
-                    memo[(i0, i1, i2, i3)] = currentSize;
-                }
-
-                yield return null;
-
-                var layers = new Dictionary<(string, string), List<int>>();
-                if (i0 < quadrantLayerAmount[0])
-                {
-                    if (layers.ContainsKey((mergedLayers[0][i0].DiffuseMapPath, mergedLayers[0][i0].NormalMapPath)))
-                    {
-                        layers[(mergedLayers[0][i0].DiffuseMapPath, mergedLayers[0][i0].NormalMapPath)]
-                            .AddRange(mergedLayers[0][i0].AlphaMapIndices);
-                    }
-                    else
-                    {
-                        layers[(mergedLayers[0][i0].DiffuseMapPath, mergedLayers[0][i0].NormalMapPath)] =
-                            new List<int>(mergedLayers[0][i0].AlphaMapIndices);
-                    }
-
-                    yield return null;
-                }
-
-                if (i1 < quadrantLayerAmount[1])
-                {
-                    if (layers.ContainsKey((mergedLayers[1][i1].DiffuseMapPath, mergedLayers[1][i1].NormalMapPath)))
-                    {
-                        layers[(mergedLayers[1][i1].DiffuseMapPath, mergedLayers[1][i1].NormalMapPath)]
-                            .AddRange(mergedLayers[1][i1].AlphaMapIndices);
-                    }
-                    else
-                    {
-                        layers[(mergedLayers[1][i1].DiffuseMapPath, mergedLayers[1][i1].NormalMapPath)] =
-                            new List<int>(mergedLayers[1][i1].AlphaMapIndices);
-                    }
-
-                    yield return null;
-                }
-
-                if (i2 < quadrantLayerAmount[2])
-                {
-                    if (layers.ContainsKey((mergedLayers[2][i2].DiffuseMapPath, mergedLayers[2][i2].NormalMapPath)))
-                    {
-                        layers[(mergedLayers[2][i2].DiffuseMapPath, mergedLayers[2][i2].NormalMapPath)]
-                            .AddRange(mergedLayers[2][i2].AlphaMapIndices);
-                    }
-                    else
-                    {
-                        layers[(mergedLayers[2][i2].DiffuseMapPath, mergedLayers[2][i2].NormalMapPath)] =
-                            new List<int>(mergedLayers[2][i2].AlphaMapIndices);
-                    }
-
-                    yield return null;
-                }
-
-                if (i3 < quadrantLayerAmount[3])
-                {
-                    if (layers.ContainsKey((mergedLayers[3][i3].DiffuseMapPath, mergedLayers[3][i3].NormalMapPath)))
-                    {
-                        layers[(mergedLayers[3][i3].DiffuseMapPath, mergedLayers[3][i3].NormalMapPath)]
-                            .AddRange(mergedLayers[3][i3].AlphaMapIndices);
-                    }
-                    else
-                    {
-                        layers[(mergedLayers[3][i3].DiffuseMapPath, mergedLayers[3][i3].NormalMapPath)] =
-                            new List<int>(mergedLayers[3][i3].AlphaMapIndices);
-                    }
-
-                    yield return null;
-                }
-
-                var currentMergedLayers = layers.Select(layer =>
-                {
-                    var (diffuseMap, normalMap) = layer.Key;
-                    var alphaMapIndices = layer.Value;
-                    var newMergedLayer = new MergedLayer(diffuseMap, normalMap, alphaMapIndices);
-                    return newMergedLayer;
-                }).ToList();
-
-                yield return null;
-
-                var newCurrentList = new List<MergedLayer>(currentList);
-                newCurrentList.AddRange(currentMergedLayers);
-
-                for (var advance = 0; advance < 16; advance++)
-                {
-                    var ni0 = i0 + ((advance & 1) > 0 ? 1 : 0);
-                    var ni1 = i1 + ((advance & 2) > 0 ? 1 : 0);
-                    var ni2 = i2 + ((advance & 4) > 0 ? 1 : 0);
-                    var ni3 = i3 + ((advance & 8) > 0 ? 1 : 0);
-                    stack.Push((ni0, ni1, ni2, ni3, newCurrentList, newCurrentList.Count));
-
-                    yield return null;
-                }
-            }
-
-            var resultingMergedLayers = bestResultList;
-
-            List<NonLoadedTerrainLayer> result = new();
-            foreach (var mergedLayer in resultingMergedLayers)
-            {
-                var layerAlphaMaps = mergedLayer.AlphaMapIndices.Select(index => alphaMaps[index]).ToArray();
-                float[,] mergedAlphaMap = null;
-                var mergedAlphaMapCoroutine =
-                    MergeAlphaMaps(alphaMap => { mergedAlphaMap = alphaMap; }, layerAlphaMaps);
-                while (mergedAlphaMapCoroutine.MoveNext())
-                    yield return null;
-
-                result.Add(new NonLoadedTerrainLayer(mergedLayer.DiffuseMapPath, mergedLayer.NormalMapPath,
-                    mergedAlphaMap));
-                yield return null;
-            }
-
-            onReadyCallback(result);
-        }
-
-        private static IEnumerator ConvertAlphaMapListTo3DArray(List<float[,]> alphaMaps,
-            Action<float[,,]> onReadyCallback)
-        {
-            var width = alphaMaps[0].GetLength(0);
-            var height = alphaMaps[0].GetLength(1);
-            var layers = alphaMaps.Count;
-
-            var alphaMap = new float[width, height, layers];
-            for (var y = 0; y < height; y++)
-            {
-                for (var x = 0; x < width; x++)
-                {
-                    for (var layer = 0; layer < layers; layer++)
-                    {
-                        alphaMap[x, y, layer] = alphaMaps[layer][x, y];
-
-                        yield return null;
+                        heightMap[y, x] = Utils.ChangeRange(heightMap[y, x], minHeight, maxHeight, 0, 1);
                     }
                 }
-            }
 
-            onReadyCallback(alphaMap);
+                var heightRange = maxHeight - minHeight;
+                var maxHeightInMeters = heightRange / Convert.meterInMWUnits;
+
+                const float terrainWidth = (LandSideLength - 1) *
+                                           (Convert.ExteriorCellSideLengthInMeters / (LandSideLength - 1));
+
+                return !Mathf.Approximately(maxHeightInMeters, 0)
+                    ? new TerrainMeshInfo(new Vector3(terrainWidth, maxHeightInMeters, terrainWidth), heightMap,
+                        minHeight, maxHeight)
+                    : new TerrainMeshInfo(new Vector3(terrainWidth, 1, terrainWidth), null, minHeight, maxHeight);
+            });
         }
 
-        private IEnumerator GetTexturePaths(uint landTextureFormID, Action<string, string> onReadyCallback)
+        private static IEnumerator<List<List<TerrainLayerInfo>>> GetTerrainLayerInfo(LAND record)
         {
-            if (landTextureFormID == 0) yield break;
-            var landTextureRecordTask = _masterFileManager.GetFromFormIDTask(landTextureFormID);
-            while (!landTextureRecordTask.IsCompleted)
-                yield return null;
+            var terrainLayersInfo = new Dictionary<Quadrant, List<TerrainLayerInfo>>();
 
-            var landTextureRecord = landTextureRecordTask.Result;
-            if (landTextureRecord is not LTEX { TextureFormID: not null } ltex) yield break;
-            var textureRecordTask = _masterFileManager.GetFromFormIDTask(ltex.TextureFormID.Value);
-            while (!textureRecordTask.IsCompleted)
-                yield return null;
-
-            var textureRecord = textureRecordTask.Result;
-
-            if (textureRecord is not TXST texture) yield break;
-
-            var diffuseMapPath = texture.DiffuseMapPath;
-            var normalMapPath = texture.NormalMapPath;
-
-            if (diffuseMapPath == null)
-            {
-                diffuseMapPath = DefaultDiffuseTexturePath;
-                normalMapPath = DefaultNormalMapPath;
-            }
-
-            if (!diffuseMapPath.StartsWith(TexturePathPrefix, ignoreCase: true, CultureInfo.InvariantCulture))
-                diffuseMapPath = $"{TexturePathPrefix}\\{diffuseMapPath}";
-            diffuseMapPath = diffuseMapPath.Replace('/', '\\');
-
-            if (normalMapPath != null &&
-                !normalMapPath.StartsWith(TexturePathPrefix, ignoreCase: true, CultureInfo.InvariantCulture))
-                normalMapPath = $"{TexturePathPrefix}\\{normalMapPath}";
-            normalMapPath = normalMapPath?.Replace('/', '\\');
-
-            onReadyCallback(diffuseMapPath, normalMapPath);
-        }
-
-        private IEnumerator GetDiffuseAndNormalMapByPaths(string diffuseMapPath, string normalMapPath,
-            Action<Texture2D, Texture2D> onReadyCallback)
-        {
-            Texture2D diffuseTexture = null;
-            if (!string.IsNullOrEmpty(diffuseMapPath))
-            {
-                var diffuseTextureCoroutine = _textureManager.GetMap<Texture2D>(TextureType.DIFFUSE, diffuseMapPath,
-                    texture2D => { diffuseTexture = texture2D; });
-                if (diffuseTextureCoroutine != null)
-                    while (diffuseTextureCoroutine.MoveNext())
-                        yield return null;
-            }
-
-            Texture2D normalMap = null;
-            if (!string.IsNullOrEmpty(normalMapPath))
-            {
-                var normalMapCoroutine = _textureManager.GetMap<Texture2D>(TextureType.NORMAL, normalMapPath,
-                    texture2D => { normalMap = texture2D; });
-                if (normalMapCoroutine != null)
-                    while (normalMapCoroutine.MoveNext())
-                        yield return null;
-            }
-
-            onReadyCallback(diffuseTexture, normalMap);
-        }
-
-        private IEnumerator GetBaseTerrainLayerInfo(LAND record, int terrainWidth, int terrainHeight,
-            Action<Dictionary<Quadrant, List<NonLoadedTerrainLayer>>> onReadyCallback)
-        {
-            var baseTextures = new Dictionary<Quadrant, List<NonLoadedTerrainLayer>>();
-            var missingQuadrants = new List<Quadrant>
-                { Quadrant.BottomLeft, Quadrant.BottomRight, Quadrant.TopLeft, Quadrant.TopRight };
+            var missingQuadrants = new HashSet<Quadrant>
+                { Quadrant.TopLeft, Quadrant.TopRight, Quadrant.BottomRight, Quadrant.BottomLeft };
             foreach (var baseTexture in record.BaseTextures)
             {
-                string diffuseMapPath = null;
-                string normalMapPath = null;
-
-                var getTexturePathsCoroutine = GetTexturePaths(baseTexture.LandTextureFormID, (diffuse, normal) =>
+                var quadrant = (Quadrant)baseTexture.Quadrant;
+                terrainLayersInfo[quadrant] = new List<TerrainLayerInfo>
                 {
-                    diffuseMapPath = diffuse;
-                    normalMapPath = normal;
-                });
-                while (getTexturePathsCoroutine.MoveNext())
-                    yield return null;
-
-                float[,] alphaMap = null;
-                var createAlphaMapCoroutine = CreateBaseTerrainLayerAlphaMap(terrainWidth, terrainHeight,
-                    (Quadrant)baseTexture.Quadrant, createdAlphaMap => { alphaMap = createdAlphaMap; });
-                while (createAlphaMapCoroutine.MoveNext())
-                    yield return null;
-
-                baseTextures[(Quadrant)baseTexture.Quadrant] = new List<NonLoadedTerrainLayer>
-                {
-                    new(diffuseMapPath, normalMapPath, alphaMap)
+                    new(baseTexture.LandTextureFormID,
+                        quadrant, null)
                 };
-                missingQuadrants.Remove((Quadrant)baseTexture.Quadrant);
+                missingQuadrants.Remove(quadrant);
+                yield return null;
             }
 
             foreach (var missingQuadrant in missingQuadrants)
             {
-                float[,] alphaMap = null;
-                var createAlphaMapCoroutine = CreateBaseTerrainLayerAlphaMap(terrainWidth, terrainHeight,
-                    missingQuadrant, createdAlphaMap => { alphaMap = createdAlphaMap; });
-                while (createAlphaMapCoroutine.MoveNext())
-                    yield return null;
-
-                baseTextures[missingQuadrant] = new List<NonLoadedTerrainLayer>
+                terrainLayersInfo[missingQuadrant] = new List<TerrainLayerInfo>
                 {
-                    new(DefaultDiffuseTexturePath, DefaultNormalMapPath, alphaMap)
+                    new(0, missingQuadrant, null)
                 };
+                yield return null;
             }
 
-            onReadyCallback(baseTextures);
-        }
-
-        // private static Texture2D CreateTextureFromVertexColors(Color[,] vertexColors)
-        // {
-        //     var width = vertexColors.GetLength(0);
-        //     var height = vertexColors.GetLength(1);
-        //     var texture = new Texture2D(width, height);
-        //
-        //     for (var i = 0; i < width; i++)
-        //     {
-        //         for (var j = 0; j < height; j++)
-        //         {
-        //             var flippedI = width - i - 1;
-        //             var flippedJ = height - flippedI - 1;
-        //
-        //             texture.SetPixel(j, flippedJ, vertexColors[i, j]);
-        //         }
-        //     }
-        //
-        //     texture.Apply();
-        //     return texture;
-        // }
-
-        private IEnumerator GetAdditionalTerrainLayersInfo(LAND record, int terrainWidth, int terrainHeight,
-            Action<Dictionary<Quadrant, List<NonLoadedTerrainLayer>>> onReadyCallback)
-        {
-            var additionalTextures = new Dictionary<Quadrant, List<NonLoadedTerrainLayer>>();
-            record.AdditionalTextures.Sort((a, b) => a.Layer.CompareTo(b.Layer));
             foreach (var additionalTexture in record.AdditionalTextures)
             {
-                string diffuseMapPath = null;
-                string normalMapPath = null;
+                var quadrant = (Quadrant)additionalTexture.Quadrant;
 
-                var getTexturePathsCoroutine = GetTexturePaths(additionalTexture.LandTextureFormID, (diffuse, normal) =>
-                {
-                    diffuseMapPath = diffuse;
-                    normalMapPath = normal;
-                });
-                while (getTexturePathsCoroutine.MoveNext())
-                    yield return null;
-
-                float[,] convertedAlphaMap = null;
-                var convertedAlphaMapCoroutine = ConvertAdditionalLayerAlphaMap(
-                    additionalTexture.QuadrantAlphaMap,
-                    (Quadrant)additionalTexture.Quadrant, terrainWidth, terrainHeight,
-                    alphaMap => { convertedAlphaMap = alphaMap; });
-                while (convertedAlphaMapCoroutine.MoveNext())
-                    yield return null;
-
-                if (additionalTextures.TryGetValue((Quadrant)additionalTexture.Quadrant, out var quadrantLayers))
-                {
-                    quadrantLayers.Add(new NonLoadedTerrainLayer(diffuseMapPath, normalMapPath, convertedAlphaMap));
-                }
-                else
-                {
-                    additionalTextures[(Quadrant)additionalTexture.Quadrant] = new List<NonLoadedTerrainLayer>
-                    {
-                        new(diffuseMapPath, normalMapPath, convertedAlphaMap)
-                    };
-                }
-
+                terrainLayersInfo[quadrant].Add(new TerrainLayerInfo(additionalTexture.LandTextureFormID,
+                    quadrant, additionalTexture.QuadrantAlphaMap));
                 yield return null;
             }
 
-            onReadyCallback(additionalTextures);
+            yield return terrainLayersInfo.Values.ToList();
         }
 
-        private IEnumerator LoadTerrainLayers(List<NonLoadedTerrainLayer> terrainLayers,
-            Action<List<TerrainTexture>> onReadyCallback)
+        private static Task<LoadedTerrainLayersInfo> LoadTerrainLayersMinimized(
+            List<List<TerrainLayerInfo>> quadrantLayers)
         {
-            var loadedTerrainLayers = new List<TerrainTexture>();
-            foreach (var terrainLayer in terrainLayers)
+            return Task.Run(() =>
             {
-                Texture2D diffuseTexture = null;
-                Texture2D normalMap = null;
+                var quadrantLayerAmount = quadrantLayers.Select(list => list.Count).ToArray();
+                const int indexLimit = 10;
+                var memo = new Dictionary<(int, int, int, int), int>();
+                //Self-managed stack to avoid potential stack overflow
+                var stack = new Stack<(int, int, int, int, List<MergedTerrainLayerInfo>, int)>();
+                var bestResultListSize = int.MaxValue;
+                List<MergedTerrainLayerInfo> bestResultList = null;
+                stack.Push((0, 0, 0, 0, new List<MergedTerrainLayerInfo>(), 0));
 
-                var getDiffuseAndNormalMapCoroutine = GetDiffuseAndNormalMapByPaths(terrainLayer.DiffuseMapPath,
-                    terrainLayer.NormalMapPath, (diffuse, normal) =>
-                    {
-                        diffuseTexture = diffuse;
-                        normalMap = normal;
-                    });
-                while (getDiffuseAndNormalMapCoroutine.MoveNext())
-                    yield return null;
-
-                loadedTerrainLayers.Add(new TerrainTexture(diffuseTexture, normalMap, terrainLayer.AlphaMap));
-                yield return null;
-            }
-
-            onReadyCallback(loadedTerrainLayers);
-        }
-
-        private static IEnumerator PaintTextures(TerrainData terrainData, List<TerrainTexture> textures,
-            Color[,] vertexColors)
-        {
-            var terrainLayers = new List<TerrainLayer>();
-            var alphaMaps = new List<float[,]>();
-            foreach (var texture in textures)
-            {
-                var terrainLayer = new TerrainLayer
+                while (stack.Count > 0)
                 {
-                    diffuseTexture = texture.DiffuseTexture,
-                    normalMapTexture = texture.NormalMap,
-                    tileOffset = Vector2.zero,
-                    tileSize = Vector2.one * 2
-                };
-                terrainLayers.Add(terrainLayer);
-                alphaMaps.Add(texture.AlphaMap);
-                yield return null;
-            }
+                    var (i0, i1, i2, i3, currentList, currentSize) = stack.Pop();
 
-            // if (vertexColors != null && vertexColors.GetLength(0) > 0)
-            // {
-            //     Debug.Log("Painting terrain with vertex colors");
-            //     var vertexColorLayer = new TerrainLayer
-            //     {
-            //         diffuseTexture = CreateTextureFromVertexColors(vertexColors),
-            //         tileSize = new Vector2(terrainData.size.x, terrainData.size.z)
-            //     };
-            //     terrainLayers.Add(vertexColorLayer);
-            //     var alphaMap = new float[terrainData.alphamapWidth, terrainData.alphamapHeight];
-            //     for (var y = 0; y < terrainData.alphamapHeight; y++)
-            //     {
-            //         for (var x = 0; x < terrainData.alphamapWidth; x++)
-            //         {
-            //             alphaMap[x, y] = 1;
-            //             yield return null;
-            //         }
-            //     }
-            //     alphaMaps.Add(alphaMap);
-            // }
+                    if (i0 >= indexLimit || i1 >= indexLimit || i2 >= indexLimit || i3 >= indexLimit)
+                        continue;
 
-            terrainData.terrainLayers = terrainLayers.ToArray();
-            yield return null;
-
-            float[,,] newAlphaMaps = null;
-            var convertCoroutine = ConvertAlphaMapListTo3DArray(alphaMaps,
-                convertedAlphaMaps => { newAlphaMaps = convertedAlphaMaps; });
-            while (convertCoroutine.MoveNext())
-                yield return null;
-
-            terrainData.SetAlphamaps(0, 0, newAlphaMaps);
-        }
-
-        private IEnumerator CreateTerrain(CELL cell, LAND land, Action<GameObject> onReadyCallback)
-        {
-            _stopwatch.Reset();
-            _stopwatch.Start();
-            TerrainData terrainData = null;
-            float minHeight = 0;
-            var terrainDataCoroutine = CreateTerrainData(land.VertexHeightMap, (data, calculatedMinHeight) =>
-            {
-                terrainData = data;
-                minHeight = calculatedMinHeight;
-            });
-            while (terrainDataCoroutine.MoveNext())
-                yield return null;
-
-            Dictionary<Quadrant, List<NonLoadedTerrainLayer>> terrainLayers = new();
-
-            var getBaseLayerInfoCoroutine =
-                GetBaseTerrainLayerInfo(land, terrainData.alphamapWidth, terrainData.alphamapHeight,
-                    baseTerrainLayers => { terrainLayers = baseTerrainLayers; });
-            while (getBaseLayerInfoCoroutine.MoveNext())
-                yield return null;
-
-            var getAdditionalLayersInfoCoroutine = GetAdditionalTerrainLayersInfo(land, terrainData.alphamapWidth,
-                terrainData.alphamapHeight,
-                additionalTerrainLayers =>
-                {
-                    Quadrant[] quadrants =
+                    if (i0 >= quadrantLayerAmount[0] && i1 >= quadrantLayerAmount[1] && i2 >= quadrantLayerAmount[2] &&
+                        i3 >= quadrantLayerAmount[3])
                     {
-                        Quadrant.BottomLeft, Quadrant.BottomRight, Quadrant.TopLeft, Quadrant.TopRight
-                    };
-                    foreach (var quadrant in quadrants)
-                    {
-                        if (!additionalTerrainLayers.TryGetValue(quadrant, out var additionalLayers))
-                            continue;
-                        if (terrainLayers.TryGetValue(quadrant, out var layerList))
+                        if (currentSize < bestResultListSize)
                         {
-                            layerList.AddRange(additionalLayers);
+                            bestResultListSize = currentSize;
+                            bestResultList = currentList;
+                        }
+
+                        continue;
+                    }
+
+                    if (!memo.TryGetValue((i0, i1, i2, i3), out var memoizedListSize))
+                    {
+                        memo[(i0, i1, i2, i3)] = currentSize;
+                    }
+                    else
+                    {
+                        if (memoizedListSize <= currentSize) continue;
+                        memo[(i0, i1, i2, i3)] = currentSize;
+                    }
+
+                    var layers = new List<TerrainLayerInfo>();
+                    if (i0 < quadrantLayerAmount[0])
+                        layers.Add(quadrantLayers[0][i0]);
+                    if (i1 < quadrantLayerAmount[1])
+                        layers.Add(quadrantLayers[1][i1]);
+                    if (i2 < quadrantLayerAmount[2])
+                        layers.Add(quadrantLayers[2][i2]);
+                    if (i3 < quadrantLayerAmount[3])
+                        layers.Add(quadrantLayers[3][i3]);
+
+                    var mergedLayers = new Dictionary<uint, Dictionary<Quadrant, List<float[,]>>>();
+                    foreach (var layer in layers)
+                    {
+                        if (!mergedLayers.ContainsKey(layer.TextureFormID))
+                        {
+                            mergedLayers[layer.TextureFormID] = new Dictionary<Quadrant, List<float[,]>>();
+                        }
+
+                        if (!mergedLayers[layer.TextureFormID].ContainsKey(layer.Quadrant))
+                        {
+                            mergedLayers[layer.TextureFormID][layer.Quadrant] = layer.AlphaMap == null
+                                ? null
+                                : new List<float[,]>
+                                {
+                                    layer.AlphaMap
+                                };
                         }
                         else
                         {
-                            terrainLayers[quadrant] = additionalLayers;
+                            if (layer.AlphaMap == null)
+                            {
+                                mergedLayers[layer.TextureFormID][layer.Quadrant] = null;
+                            }
+                            else
+                            {
+                                mergedLayers[layer.TextureFormID][layer.Quadrant]?.Add(layer.AlphaMap);
+                            }
                         }
                     }
-                });
-            while (getAdditionalLayersInfoCoroutine.MoveNext())
+
+                    var currentMergedLayers =
+                        mergedLayers.Select(layer => new MergedTerrainLayerInfo(layer.Key, layer.Value));
+
+                    var newCurrentList = new List<MergedTerrainLayerInfo>(currentList);
+                    newCurrentList.AddRange(currentMergedLayers);
+
+                    for (var advance = 0; advance < 16; advance++)
+                    {
+                        var ni0 = i0 + ((advance & 1) > 0 ? 1 : 0);
+                        var ni1 = i1 + ((advance & 2) > 0 ? 1 : 0);
+                        var ni2 = i2 + ((advance & 4) > 0 ? 1 : 0);
+                        var ni3 = i3 + ((advance & 8) > 0 ? 1 : 0);
+                        stack.Push((ni0, ni1, ni2, ni3, newCurrentList, newCurrentList.Count));
+                    }
+                }
+
+                if (bestResultList == null)
+                    return new LoadedTerrainLayersInfo(Array.Empty<uint>(), new float[,,] { });
+
+                var mergedAlphaMaps = new float[AlphaMapResolution, AlphaMapResolution, bestResultList.Count];
+                var textureFormIDs = new uint[bestResultList.Count];
+
+                //Merge the alphamaps in the best result list
+                var tasks = new Task[bestResultList.Count - 1];
+
+                for (var i = 0; i < bestResultList.Count - 1; i++)
+                {
+                    //Start tasks for merging each resulting layer except the last one
+                    var currentLayer = bestResultList[i];
+                    var currentLayerIndex = i;
+                    tasks[i] = Task.Run(() =>
+                        WriteMergedTerrainLayer(currentLayer, textureFormIDs, mergedAlphaMaps, currentLayerIndex));
+                }
+
+                //Merge the last layer on the current thread to avoid wasting resources
+                WriteMergedTerrainLayer(bestResultList[^1], textureFormIDs, mergedAlphaMaps, bestResultList.Count - 1);
+
+                Task.WaitAll(tasks);
+
+                return new LoadedTerrainLayersInfo(textureFormIDs, mergedAlphaMaps);
+            });
+        }
+
+        private static Quadrant GetQuadrant(int x, int y)
+        {
+            if (x < AlphaMapResolution / 2 && y < AlphaMapResolution / 2)
+                return Quadrant.BottomLeft;
+            if (x >= AlphaMapResolution / 2 && y < AlphaMapResolution / 2)
+                return Quadrant.TopLeft;
+            if (x < AlphaMapResolution / 2 && y >= AlphaMapResolution / 2)
+                return Quadrant.BottomRight;
+            if (x >= AlphaMapResolution / 2 && y >= AlphaMapResolution / 2)
+                return Quadrant.TopRight;
+            throw new ArgumentException("Invalid coordinates for alpha map quadrant determination");
+        }
+
+        private static void WriteMergedTerrainLayer(MergedTerrainLayerInfo mergedTerrainLayerInfo,
+            uint[] textureFormIDs,
+            float[,,] resultingAlphaMaps, int layerIndex)
+        {
+            for (var y = 0; y < AlphaMapResolution; y++)
+            {
+                for (var x = 0; x < AlphaMapResolution; x++)
+                {
+                    //Determine the current quadrant
+                    var quadrant = GetQuadrant(x, y);
+                    //Get the alpha maps for the current quadrant
+                    if (!mergedTerrainLayerInfo.QuadrantAlphaMaps.TryGetValue(quadrant, out var alphaMaps))
+                        continue;
+
+                    if (alphaMaps == null)
+                    {
+                        //Cover the entire quadrant
+                        resultingAlphaMaps[x, y, layerIndex] = 1;
+                        continue;
+                    }
+
+                    //Get raw alpha map coordinates
+                    var qx = (float)(x % TerrainQuadrantResolution) / TerrainQuadrantResolution *
+                                   QuadrantRawAlphaMapResolution;
+                    var qy = (float)(y % TerrainQuadrantResolution) / TerrainQuadrantResolution *
+                                   QuadrantRawAlphaMapResolution;
+                    
+                    var xLess = Mathf.Max(0, Mathf.FloorToInt(qx));
+                    var xMore = Mathf.Min(QuadrantRawAlphaMapResolution - 1, Mathf.CeilToInt(qx));
+                    var xFractional = qx - xLess;
+                    
+                    var yLess = Mathf.Max(0, Mathf.FloorToInt(qy));
+                    var yMore = Mathf.Min(QuadrantRawAlphaMapResolution - 1, Mathf.CeilToInt(qy));
+                    var yFractional = qy - yLess;
+                    
+                    var topLeftWeight = (1 - xFractional) * (1 - yFractional);
+                    var topRightWeight = xFractional * (1 - yFractional);
+                    var bottomLeftWeight = (1 - xFractional) * yFractional;
+                    var bottomRightWeight = xFractional * yFractional;
+
+                    float valueSum = 0;
+                    foreach (var alphaMap in alphaMaps)
+                    {
+                        var topLeft = alphaMap[xLess, yLess];
+                        var topRight = alphaMap[xMore, yLess];
+                        var bottomLeft = alphaMap[xLess, yMore];
+                        var bottomRight = alphaMap[xMore, yMore];
+                        valueSum += topLeft * topLeftWeight + topRight * topRightWeight +
+                                    bottomLeft * bottomLeftWeight + bottomRight * bottomRightWeight;
+                    }
+                    resultingAlphaMaps[x, y, layerIndex] = Mathf.Clamp01(valueSum);
+                }
+            }
+
+            textureFormIDs[layerIndex] = mergedTerrainLayerInfo.TextureFormID;
+        }
+
+        private (string, string) GetTexturePaths(uint landTextureFormID)
+        {
+            if (landTextureFormID == 0)
+                return (DefaultDiffuseTexturePath, DefaultNormalMapPath);
+
+            var landTextureRecord = _masterFileManager.GetFromFormID(landTextureFormID);
+
+            if (landTextureRecord is not LTEX { TextureFormID: not null } ltex)
+                return (DefaultDiffuseTexturePath, DefaultNormalMapPath);
+
+            var textureRecord = _masterFileManager.GetFromFormID(ltex.TextureFormID.Value);
+
+            if (textureRecord is not TXST texture)
+                return (DefaultDiffuseTexturePath, DefaultNormalMapPath);
+
+            var diffuseMapPath = texture.DiffuseMapPath;
+            var normalMapPath = texture.NormalMapPath;
+
+            if (string.IsNullOrEmpty(diffuseMapPath))
+                return (DefaultDiffuseTexturePath, DefaultNormalMapPath);
+
+            if (!diffuseMapPath.StartsWith(TexturePathPrefix, ignoreCase: true, CultureInfo.InvariantCulture))
+                diffuseMapPath = $"{TexturePathPrefix}/{diffuseMapPath}";
+            diffuseMapPath = diffuseMapPath.Replace('\\', '/');
+
+            if (normalMapPath != null &&
+                !normalMapPath.StartsWith(TexturePathPrefix, ignoreCase: true, CultureInfo.InvariantCulture))
+                normalMapPath = $"{TexturePathPrefix}/{normalMapPath}";
+            normalMapPath = normalMapPath?.Replace('\\', '/');
+
+            return (diffuseMapPath, normalMapPath);
+        }
+
+        private Task PreloadTexturesAndSavePaths(uint landTextureFormID)
+        {
+            return Task.Run(() =>
+            {
+                var (diffuseMapPath, normalMapPath) = GetTexturePaths(landTextureFormID);
+                _texturePaths[landTextureFormID] = (diffuseMapPath, normalMapPath);
+
+                if (diffuseMapPath != null)
+                    _textureManager.PreloadMap(TextureType.DIFFUSE, diffuseMapPath);
+                if (normalMapPath != null)
+                    _textureManager.PreloadMap(TextureType.NORMAL, normalMapPath);
+            });
+        }
+
+        //Start preloading the terrain stuff
+        protected override IEnumerator PreprocessRecord(CELL cell, LAND record, GameObject parent)
+        {
+            yield return null;
+            var layersCoroutine = GetTerrainLayerInfo(record);
+            while (layersCoroutine.MoveNext())
+                yield return null;
+            var layers = layersCoroutine.Current;
+            if (layers == null)
+            {
+                Debug.LogError($"Failed to get terrain layer info for record {record.FormID}");
+                yield break;
+            }
+
+            foreach (var layerList in layers)
+            {
+                foreach (var layer in layerList)
+                {
+                    if (!_textureLoadingTasks.ContainsKey(layer.TextureFormID))
+                    {
+                        _textureLoadingTasks[layer.TextureFormID] =
+                            PreloadTexturesAndSavePaths(layer.TextureFormID);
+                    }
+
+                    yield return null;
+                }
+            }
+
+            if (!_terrainMeshInfoTasks.ContainsKey(record.FormID))
+            {
+                _terrainMeshInfoTasks[record.FormID] =
+                    GenerateTerrainMeshInfo(record.VertexHeightMap);
+                yield return null;
+            }
+
+            if (!_terrainLayerTasks.ContainsKey(record.FormID))
+            {
+                _terrainLayerTasks[record.FormID] = LoadTerrainLayersMinimized(layers);
+                yield return null;
+            }
+        }
+
+        //Build the terrain from the preloaded stuff
+        public IEnumerator InstantiateRecord(CELL cell, Record record, GameObject parent)
+        {
+            if (record is not LAND land)
+                yield break;
+
+            if (!_terrainMeshInfos.TryGetValue(land.FormID, out var meshInfo))
+            {
+                yield return null;
+                if (!_terrainMeshInfoTasks.TryGetValue(land.FormID, out var meshInfoTask))
+                {
+                    Debug.LogError($"Terrain mesh info task not found for record {land.FormID}");
+                    yield break;
+                }
+
                 yield return null;
 
-            List<NonLoadedTerrainLayer> mergedLayers = null;
-            var minimizeLayerCountCoroutine = MinimizeTerrainLayerCount(terrainLayers.Values.ToList(),
-                minimizedLayers => { mergedLayers = minimizedLayers; });
-            while (minimizeLayerCountCoroutine.MoveNext())
+                while (!meshInfoTask.IsCompleted)
+                    yield return null;
+
+                meshInfo = meshInfoTask.Result;
                 yield return null;
 
-            List<TerrainTexture> loadedTerrainLayers = null;
-            var loadTerrainLayersCoroutine = LoadTerrainLayers(mergedLayers,
-                terrainTextures => { loadedTerrainLayers = terrainTextures; });
-            while (loadTerrainLayersCoroutine.MoveNext())
+                _terrainMeshInfos[land.FormID] = meshInfo;
+            }
+
+            var terrainData = new TerrainData
+            {
+                heightmapResolution = LandSideLength,
+                alphamapResolution = AlphaMapResolution,
+                size = meshInfo.Size
+            };
+            yield return null;
+
+            if (meshInfo.HeightMap != null)
+                terrainData.SetHeights(0, 0, meshInfo.HeightMap);
+            yield return null;
+
+            if (!_terrainLayers.TryGetValue(land.FormID, out var layersInfo))
+            {
+                yield return null;
+                if (!_terrainLayerTasks.TryGetValue(land.FormID, out var layersInfoTask))
+                {
+                    Debug.LogError($"Terrain layers info task not found for record {land.FormID}");
+                    yield break;
+                }
+
                 yield return null;
 
-            var paintCoroutine = PaintTextures(terrainData, loadedTerrainLayers, land.VertexColors);
-            while (paintCoroutine.MoveNext())
+                while (!layersInfoTask.IsCompleted)
+                    yield return null;
+
+                layersInfo = layersInfoTask.Result;
                 yield return null;
+
+                _terrainLayers[land.FormID] = layersInfo;
+            }
+
+            var terrainLayers = new TerrainLayer[layersInfo.TextureFormIDs.Length];
+            yield return null;
+            for (var i = 0; i < layersInfo.TextureFormIDs.Length; i++)
+            {
+                var textureFormID = layersInfo.TextureFormIDs[i];
+                if (!_textureCache.TryGetValue(textureFormID, out var textures))
+                {
+                    yield return null;
+                    if (!_textureLoadingTasks.TryGetValue(textureFormID, out var task))
+                    {
+                        Debug.LogError($"Texture loading task not found for texture form ID {textureFormID}");
+                        continue;
+                    }
+
+                    yield return null;
+
+                    while (!task.IsCompleted)
+                        yield return null;
+
+                    if (!_texturePaths.TryGetValue(textureFormID, out var texturePaths))
+                    {
+                        Debug.LogError($"Texture paths not found for texture form ID {textureFormID}");
+                        continue;
+                    }
+
+                    yield return null;
+
+                    var diffuseMapPath = texturePaths.Item1;
+                    var normalMapPath = texturePaths.Item2;
+
+                    Texture2D diffuseMap = null;
+                    Texture2D normalMap = null;
+
+                    var diffuseMapCoroutine = _textureManager.GetMap<Texture2D>(TextureType.DIFFUSE, diffuseMapPath,
+                        t => { diffuseMap = t; });
+                    while (diffuseMapCoroutine.MoveNext())
+                        yield return null;
+
+                    var normalMapCoroutine =
+                        _textureManager.GetMap<Texture2D>(TextureType.NORMAL, normalMapPath, t => { normalMap = t; });
+                    while (normalMapCoroutine.MoveNext())
+                        yield return null;
+
+                    textures = (diffuseMap, normalMap);
+                    yield return null;
+                    _textureCache[textureFormID] = textures;
+                    yield return null;
+                }
+
+                var layer = new TerrainLayer
+                {
+                    diffuseTexture = textures.Item1,
+                    normalMapTexture = textures.Item2,
+                    tileOffset = Vector2.zero,
+                    tileSize = Vector2.one * 2
+                };
+                yield return null;
+                terrainLayers[i] = layer;
+            }
+
+            yield return null;
+            terrainData.terrainLayers = terrainLayers;
+            yield return null;
+            terrainData.SetAlphamaps(0, 0, layersInfo.AlphaMaps);
+            yield return null;
 
             var gameObject = new GameObject("terrain");
+            yield return null;
 
             var terrain = gameObject.AddComponent<Terrain>();
+            yield return null;
             terrain.terrainData = terrainData;
+            yield return null;
             terrain.materialTemplate = new Material(Shader.Find(DefaultTerrainShader));
             yield return null;
 
             gameObject.AddComponent<TerrainCollider>().terrainData = terrainData;
+            yield return null;
 
             var terrainPosition = new Vector3(Convert.ExteriorCellSideLengthInMeters * cell.XGridPosition,
-                minHeight / Convert.meterInMWUnits, Convert.ExteriorCellSideLengthInMeters * cell.YGridPosition);
+                meshInfo.MinHeight / Convert.meterInMWUnits,
+                Convert.ExteriorCellSideLengthInMeters * cell.YGridPosition);
+            yield return null;
 
             gameObject.transform.position = terrainPosition;
             yield return null;
 
-            Debug.Log($"Terrain instantiation took {_stopwatch.Elapsed.TotalSeconds} seconds.");
-            _stopwatch.Stop();
-            onReadyCallback(gameObject);
+            gameObject.transform.parent = parent.transform;
+            yield return null;
         }
 
-        protected override IEnumerator PreprocessRecord(CELL cell, LAND record, GameObject parent)
+        public IEnumerator OnDestroy()
         {
-            return CreateTerrain(cell, record, terrain => { terrain.transform.parent = parent.transform; });
+            _textureCache.Clear();
+            yield return null;
+            _texturePaths.Clear();
+            yield return null;
+            _textureLoadingTasks.Clear();
+            yield return null;
+            _terrainMeshInfoTasks.Clear();
+            yield return null;
+            _terrainMeshInfos.Clear();
+            yield return null;
+            _terrainLayerTasks.Clear();
+            yield return null;
+            _terrainLayers.Clear();
+            yield return null;
         }
     }
 }

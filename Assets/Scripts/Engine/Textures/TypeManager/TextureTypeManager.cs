@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using Engine.Resource;
 using Textures;
@@ -11,8 +11,8 @@ namespace Engine.Textures.TypeManager
 {
     public abstract class TextureTypeManager<T> : ITextureTypeManager<T> where T : Texture
     {
-        protected readonly Dictionary<string, T> TextureStore = new();
-        protected readonly Dictionary<string, Task<Texture2DInfo>> TaskStore = new();
+        protected readonly ConcurrentDictionary<string, T> TextureStore = new();
+        protected readonly ConcurrentDictionary<string, Task<Texture2DInfo>> TaskStore = new();
         
         protected readonly ResourceManager ResourceManager;
         

@@ -21,6 +21,8 @@ Shader "SkyrimAlphaTestShader"
     {
         Offset -1, -1
         Tags {"Queue"="AlphaTest" "IgnoreProjector"="True" "RenderType"="TransparentCutout"}
+        //Temporary pseudo-fix for trees/plants
+        Cull Off
         LOD 200
 
         CGPROGRAM
@@ -65,7 +67,11 @@ Shader "SkyrimAlphaTestShader"
         {
             // Calculate albedo using diffuse map and vertex color as a tint(if needed)
             fixed4 c = tex2D(_MainTex, IN.uv_MainTex);
-            if (_UsesVertexColors > 0) c *= IN.color;
+            if (_UsesVertexColors > 0)
+            {
+                //Temporary pseudo-fix for trees/plants
+                c *= float4(IN.color.r, IN.color.g, IN.color.b, 1);
+            }
             o.Albedo = c.rgb;
             float4 packedNormal = tex2D(_NormalMap, IN.uv_NormalMap);
             //Calculate glossiness and specularity using specular map (normal map alpha)

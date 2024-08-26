@@ -25,7 +25,7 @@ namespace Engine.Textures.TypeManager
             if (!TaskStore.TryGetValue(texturePath, out var newTask))
             {
                 newTask = StartLoadTextureTask(texturePath);
-                TaskStore.Add(texturePath, newTask);
+                TaskStore.TryAdd(texturePath, newTask);
             }
 
             while (!newTask.IsCompleted)
@@ -49,8 +49,8 @@ namespace Engine.Textures.TypeManager
                 texture = new Texture2D(1, 1);
             }
 
-            TextureStore.Add(texturePath, texture);
-            TaskStore.Remove(texturePath);
+            TextureStore.TryAdd(texturePath, texture);
+            TaskStore.TryRemove(texturePath, out _);
             onReadyCallback(texture);
         }
     }

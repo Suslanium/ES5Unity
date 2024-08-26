@@ -39,6 +39,9 @@ namespace Tests
 
         public void Load()
         {
+#if !(DEVELOPMENT_BUILD || UNITY_EDITOR)
+    Debug.unityLogger.logEnabled = false;
+#endif
             var path = pathText.text;
             var cell = cellText.text;
             loadUIPanel.SetActive(false);

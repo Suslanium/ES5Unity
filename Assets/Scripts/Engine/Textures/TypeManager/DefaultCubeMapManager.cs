@@ -22,7 +22,7 @@ namespace Engine.Textures.TypeManager
             if (!TaskStore.TryGetValue(texturePath, out var newTask))
             {
                 newTask = StartLoadTextureTask(texturePath);
-                TaskStore.Add(texturePath, newTask);
+                TaskStore.TryAdd(texturePath, newTask);
             }
 
             while (!newTask.IsCompleted)
@@ -46,8 +46,8 @@ namespace Engine.Textures.TypeManager
                 texture = new Cubemap(1, TextureFormat.RGBA32, false);
             }
 
-            TextureStore.Add(texturePath, texture);
-            TaskStore.Remove(texturePath);
+            TextureStore.TryAdd(texturePath, texture);
+            TaskStore.TryRemove(texturePath, out _);
             onReadyCallback(texture);
         }
     }

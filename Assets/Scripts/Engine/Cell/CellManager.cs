@@ -7,6 +7,7 @@ using Engine.Cell.Delegate.Reference;
 using Engine.Core;
 using Engine.MasterFile;
 using Engine.MasterFile.Structures;
+using Engine.Textures;
 using MasterFile.MasterFileContents;
 using MasterFile.MasterFileContents.Records;
 using NIF.Builder;
@@ -60,7 +61,7 @@ namespace Engine.Cell
         private readonly List<ICellPostProcessDelegate> _postProcessDelegates;
         private readonly List<ICellDestroyDelegate> _destroyDelegates;
 
-        public CellManager(MasterFileManager masterFileManager, NifManager nifManager,
+        public CellManager(MasterFileManager masterFileManager, NifManager nifManager, TextureManager textureManager,
             TemporalLoadBalancer temporalLoadBalancer,
             GameEngine gameEngine, PlayerManager playerManager)
         {
@@ -93,23 +94,27 @@ namespace Engine.Cell
             var referenceDelegateManager =
                 new CellReferenceDelegateManager(referencePreprocessDelegates, referenceInstantiationDelegates,
                     masterFileManager);
+            var terrainDelegate = new TerrainDelegate(masterFileManager, textureManager);
             _preprocessDelegates = new Dictionary<Type, ICellRecordPreprocessDelegate>
             {
                 {
                     typeof(REFR),
                     referenceDelegateManager
                 },
-                //Requires a LOT of optimization
-                /*{
+                {
                     typeof(LAND),
-                    new TerrainDelegate(masterFileManager, textureManager)
-                }*/
+                    terrainDelegate
+                }
             };
             _instantiationDelegates = new Dictionary<Type, ICellRecordInstantiationDelegate>
             {
                 {
                     typeof(REFR),
                     referenceDelegateManager
+                },
+                {
+                    typeof(LAND),
+                    terrainDelegate
                 }
             };
             _postProcessDelegates = new List<ICellPostProcessDelegate>
@@ -122,7 +127,8 @@ namespace Engine.Cell
             {
                 cellLightingDelegate,
                 cocPlayerPositionDelegate,
-                referenceDelegateManager
+                referenceDelegateManager,
+                terrainDelegate
             };
         }
 
@@ -167,7 +173,7 @@ namespace Engine.Cell
                     yield return new CellPosition(new Vector2Int(maxCellX, y));
                 }
             }
-            
+
             yield return new CellPosition(gridPosition);
         }
 
@@ -198,7 +204,7 @@ namespace Engine.Cell
                     _temporalLoadBalancer.AddTaskPriority(cellLoadingCoroutine);
                 }
             }
-            
+
             _lastCellPosition = gridPosition;
         }
 

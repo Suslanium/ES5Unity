@@ -233,21 +233,31 @@ namespace Engine.MasterFile
         /// </summary>
         public Task<Record> GetFromFormIDTask(uint formId)
         {
-            return Task.Run(async () =>
+            return Task.Run(() => Task.FromResult(GetFromFormID(formId)));
+        }
+
+        /// <summary>
+        /// BLOCKING FUNCTION, DO NOT CALL FROM MAIN THREAD
+        /// Finds a record by its form ID.
+        /// If records with the same IDs are present
+        /// in multiple master files,
+        /// this function picks the record from a master file
+        /// with the lowest place in the load order.
+        /// </summary>
+        public Record GetFromFormID(uint formId)
+        {
+            if (!_masterFilesAreInitialized)
             {
-                if (!_masterFilesAreInitialized)
-                {
-                    await AwaitInitialization();
-                    _masterFilesAreInitialized = true;
-                }
+                AwaitInitialization().Wait();
+                _masterFilesAreInitialized = true;
+            }
 
-                var masterFile =
-                    _reverseLoadOrder.FirstOrDefault(fileName => _masterFiles[fileName].RecordExists(formId));
-                if (masterFile == null) return null;
+            var masterFile =
+                _reverseLoadOrder.FirstOrDefault(fileName => _masterFiles[fileName].RecordExists(formId));
+            if (masterFile == null) return null;
 
-                var record = _masterFiles[masterFile].GetFromFormID(formId);
-                return record;
-            });
+            var record = _masterFiles[masterFile].GetFromFormID(formId);
+            return record;
         }
 
         /// <summary>
