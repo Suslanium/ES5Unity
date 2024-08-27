@@ -68,7 +68,7 @@ namespace Engine
         {
             var textureManager = new TextureManager(resourceManager);
             _materialManager = new MaterialManager(textureManager);
-            _nifManager = new NifManager(_materialManager, resourceManager);
+            _nifManager = new NifManager(_materialManager, textureManager, resourceManager);
             _loadBalancer = new TemporalLoadBalancer();
             _playerManager = new PlayerManager(player);
             _cellManager = new CellManager(masterFileManager, _nifManager, textureManager,

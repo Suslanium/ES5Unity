@@ -24,7 +24,7 @@ namespace Engine.Cell.Delegate
         TopLeft = 2,
         TopRight = 3
     }
-    
+
     public readonly struct TerrainMeshInfo
     {
         public readonly Vector3 Size;
@@ -347,18 +347,18 @@ namespace Engine.Cell.Delegate
 
                     //Get raw alpha map coordinates
                     var qx = (float)(x % TerrainQuadrantResolution) / TerrainQuadrantResolution *
-                                   QuadrantRawAlphaMapResolution;
+                             QuadrantRawAlphaMapResolution;
                     var qy = (float)(y % TerrainQuadrantResolution) / TerrainQuadrantResolution *
-                                   QuadrantRawAlphaMapResolution;
-                    
+                             QuadrantRawAlphaMapResolution;
+
                     var xLess = Mathf.Max(0, Mathf.FloorToInt(qx));
                     var xMore = Mathf.Min(QuadrantRawAlphaMapResolution - 1, Mathf.CeilToInt(qx));
                     var xFractional = qx - xLess;
-                    
+
                     var yLess = Mathf.Max(0, Mathf.FloorToInt(qy));
                     var yMore = Mathf.Min(QuadrantRawAlphaMapResolution - 1, Mathf.CeilToInt(qy));
                     var yFractional = qy - yLess;
-                    
+
                     var topLeftWeight = (1 - xFractional) * (1 - yFractional);
                     var topRightWeight = xFractional * (1 - yFractional);
                     var bottomLeftWeight = (1 - xFractional) * yFractional;
@@ -374,6 +374,7 @@ namespace Engine.Cell.Delegate
                         valueSum += topLeft * topLeftWeight + topRight * topRightWeight +
                                     bottomLeft * bottomLeftWeight + bottomRight * bottomRightWeight;
                     }
+
                     resultingAlphaMaps[x, y, layerIndex] = Mathf.Clamp01(valueSum);
                 }
             }
@@ -561,15 +562,24 @@ namespace Engine.Cell.Delegate
                     Texture2D diffuseMap = null;
                     Texture2D normalMap = null;
 
-                    var diffuseMapCoroutine = _textureManager.GetMap<Texture2D>(TextureType.DIFFUSE, diffuseMapPath,
-                        t => { diffuseMap = t; });
-                    while (diffuseMapCoroutine.MoveNext())
+                    var diffuseMapCoroutine = _textureManager.GetMap<Texture2D>(TextureType.DIFFUSE, diffuseMapPath);
+                    if (diffuseMapCoroutine != null)
+                    {
+                        while (diffuseMapCoroutine.MoveNext())
+                            yield return null;
+                        diffuseMap = diffuseMapCoroutine.Current;
                         yield return null;
+                    }
 
                     var normalMapCoroutine =
-                        _textureManager.GetMap<Texture2D>(TextureType.NORMAL, normalMapPath, t => { normalMap = t; });
-                    while (normalMapCoroutine.MoveNext())
+                        _textureManager.GetMap<Texture2D>(TextureType.NORMAL, normalMapPath);
+                    if (normalMapCoroutine != null)
+                    {
+                        while (normalMapCoroutine.MoveNext())
+                            yield return null;
+                        normalMap = normalMapCoroutine.Current;
                         yield return null;
+                    }
 
                     textures = (diffuseMap, normalMap);
                     yield return null;

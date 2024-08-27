@@ -12,12 +12,10 @@ namespace Tests
         private void Start()
         {
             var textureInfo = TextureReader.LoadTexture(texturePath);
-            var textureCoroutine = textureInfo.ToTexture2D(texture =>
-            {
-                rawImage.texture = texture;
-            });
+            var textureCoroutine = textureInfo.ToTexture2D();
             while (textureCoroutine.MoveNext())
             {}
+            rawImage.texture = textureCoroutine.Current;
         }
     }
 }

@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -35,22 +34,14 @@ namespace Engine.Textures
             _textureManager = textureManager;
         }
 
-        public IEnumerator GetMaterialFromProperties(MaterialProperties materialProperties,
-            Action<Material> onReadyCallback)
+        public IEnumerator<Material> GetMaterialFromProperties(MaterialProperties materialProperties)
         {
             if (_materialCache.TryGetValue(materialProperties, out var cachedMaterial))
             {
-                onReadyCallback(cachedMaterial);
+                yield return cachedMaterial;
                 yield break;
             }
 
-            _textureManager.PreloadMap(TextureType.DIFFUSE, materialProperties.DiffuseMapPath);
-            if (!string.IsNullOrEmpty(materialProperties.NormalMapPath))
-                _textureManager.PreloadMap(TextureType.NORMAL, materialProperties.NormalMapPath);
-            if (!string.IsNullOrEmpty(materialProperties.MetallicMaskPath))
-                _textureManager.PreloadMap(TextureType.METALLIC, materialProperties.MetallicMaskPath);
-            if (!string.IsNullOrEmpty(materialProperties.GlowMapPath))
-                _textureManager.PreloadMap(TextureType.GLOW, materialProperties.GlowMapPath);
             yield return null;
 
             var material = materialProperties.AlphaInfo.AlphaBlend == false
@@ -66,19 +57,34 @@ namespace Engine.Textures
                 material.SetInt(BlendDst, (int)materialProperties.AlphaInfo.DestinationBlendMode);
             }
 
+            yield return null;
+
             if (materialProperties.AlphaInfo.AlphaTest)
             {
                 material.SetFloat(Cutoff, materialProperties.AlphaInfo.AlphaTestThreshold / 256f);
             }
 
+            yield return null;
+
             var diffuseMapCoroutine = _textureManager.GetMap<Texture2D>(TextureType.DIFFUSE,
-                materialProperties.DiffuseMapPath,
-                texture2D => { material.SetTexture(MainTex, texture2D); });
+                materialProperties.DiffuseMapPath);
             if (diffuseMapCoroutine != null)
+            {
                 while (diffuseMapCoroutine.MoveNext())
                 {
                     yield return null;
                 }
+
+                var diffuseMap = diffuseMapCoroutine.Current;
+                yield return null;
+
+                if (diffuseMap != null)
+                {
+                    material.SetTexture(MainTex, diffuseMap);
+                }
+            }
+
+            yield return null;
 
             material.SetInt(UsesVertexColors, materialProperties.UseVertexColors ? 1 : 0);
             material.SetFloat(Alpha, materialProperties.Alpha);
@@ -86,72 +92,111 @@ namespace Engine.Textures
             material.SetFloat(SpecularStrength,
                 materialProperties.IsSpecular ? materialProperties.SpecularStrength : 0);
             material.SetColor(SpecularColor, materialProperties.SpecularColor);
+            yield return null;
 
             if (!string.IsNullOrEmpty(materialProperties.NormalMapPath))
             {
                 var normalMapCoroutine = _textureManager.GetMap<Texture2D>(TextureType.NORMAL,
-                    materialProperties.NormalMapPath,
-                    texture2D =>
-                    {
-                        material.EnableKeyword("_NORMALMAP");
-                        material.SetTexture(NormalMap, texture2D);
-                    });
+                    materialProperties.NormalMapPath);
                 if (normalMapCoroutine != null)
+                {
                     while (normalMapCoroutine.MoveNext())
                     {
                         yield return null;
                     }
+
+                    var normalMap = normalMapCoroutine.Current;
+                    yield return null;
+
+                    if (normalMap != null)
+                    {
+                        material.EnableKeyword("_NORMALMAP");
+                        material.SetTexture(NormalMap, normalMap);
+                    }
+                }
             }
+
+            yield return null;
 
             if (!string.IsNullOrEmpty(materialProperties.MetallicMaskPath))
             {
                 var metallicMapCoroutine = _textureManager.GetMap<Texture2D>(TextureType.METALLIC,
-                    materialProperties.MetallicMaskPath,
-                    texture2D => { material.SetTexture(MetallicMap, texture2D); });
+                    materialProperties.MetallicMaskPath);
                 if (metallicMapCoroutine != null)
+                {
                     while (metallicMapCoroutine.MoveNext())
                     {
                         yield return null;
                     }
+
+                    var metallicMap = metallicMapCoroutine.Current;
+                    yield return null;
+
+                    if (metallicMap != null)
+                    {
+                        material.SetTexture(MetallicMap, metallicMap);
+                    }
+                }
             }
+
+            yield return null;
 
             if (materialProperties.EmissiveColor != Color.black ||
                 !string.IsNullOrEmpty(materialProperties.GlowMapPath))
             {
                 material.SetInt(EnableEmission, 1);
                 material.SetColor(EmissionColor, materialProperties.EmissiveColor);
+                yield return null;
                 if (!string.IsNullOrEmpty(materialProperties.GlowMapPath))
                 {
                     var glowMapCoroutine = _textureManager.GetMap<Texture2D>(TextureType.GLOW,
-                        materialProperties.GlowMapPath,
-                        texture2D => { material.SetTexture(EmissionMap, texture2D); });
+                        materialProperties.GlowMapPath);
                     if (glowMapCoroutine != null)
+                    {
                         while (glowMapCoroutine.MoveNext())
                         {
                             yield return null;
                         }
+
+                        var glowMap = glowMapCoroutine.Current;
+                        yield return null;
+
+                        if (glowMap != null)
+                        {
+                            material.SetTexture(EmissionMap, glowMap);
+                        }
+                    }
                 }
             }
+
+            yield return null;
 
             if (!string.IsNullOrEmpty(materialProperties.EnvironmentalMapPath))
             {
                 var envMapCoroutine = _textureManager.GetMap<Cubemap>(TextureType.ENVIRONMENTAL,
-                    materialProperties.EnvironmentalMapPath,
-                    cubeMap =>
-                    {
-                        material.SetTexture(Cube, cubeMap);
-                        material.SetFloat(CubeScale, materialProperties.EnvironmentalMapScale);
-                    });
+                    materialProperties.EnvironmentalMapPath);
                 if (envMapCoroutine != null)
+                {
                     while (envMapCoroutine.MoveNext())
                     {
                         yield return null;
                     }
+
+                    var cubeMap = envMapCoroutine.Current;
+                    yield return null;
+
+                    if (cubeMap != null)
+                    {
+                        material.SetTexture(Cube, cubeMap);
+                        material.SetFloat(CubeScale, materialProperties.EnvironmentalMapScale);
+                    }
+                }
             }
 
             _materialCache.Add(materialProperties, material);
+            yield return null;
 
-            onReadyCallback(material);
+            yield return material;
         }
 
         /// <summary>

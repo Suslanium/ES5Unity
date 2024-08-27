@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using Engine.Textures;
 using NIF.Builder.Delegate;
@@ -9,6 +7,7 @@ using NIF.Parser;
 using NIF.Parser.NiObjects;
 using UnityEngine;
 using Vector3 = UnityEngine.Vector3;
+using GameObject = NIF.Builder.Components.GameObject;
 
 namespace NIF.Builder
 {
@@ -21,14 +20,13 @@ namespace NIF.Builder
         private static List<INiObjectDelegate> _modelDelegates;
         private static List<INiObjectDelegate> _collisionDelegates;
 
-        public NifObjectBuilder(NiFile file, MaterialManager materialManager)
+        public static void Initialize(MaterialManager materialManager, TextureManager textureManager)
         {
-            _file = file;
             //TODO replace this with DI or something
             _modelDelegates ??= new List<INiObjectDelegate>
             {
                 new NiNodeDelegate(),
-                new NiTriShapeDelegate(materialManager)
+                new NiTriShapeDelegate(materialManager, textureManager)
             };
             _collisionDelegates ??= new List<INiObjectDelegate>
             {
@@ -42,48 +40,40 @@ namespace NIF.Builder
             };
         }
 
-        public IEnumerator BuildObject(Action<GameObject> onReadyCallback)
+        public NifObjectBuilder(NiFile file)
+        {
+            _file = file;
+        }
+
+        public GameObject BuildObject()
         {
             if (_file == null)
             {
-                onReadyCallback(null);
-                yield break;
+                return null;
             }
 
-            Debug.Assert((_file.Name != null) && (_file.Footer.RootReferences.Length > 0));
+            Debug.Assert(_file.Name != null && _file.Footer.RootReferences.Length > 0);
 
             if (_file.Footer.RootReferences.Length == 1)
             {
                 var rootNiObject = _file.NiObjects[_file.Footer.RootReferences[0]];
 
-                var gameObjectCoroutine = InstantiateNiObject(rootNiObject,
-                    gameObject =>
-                    {
-                        if (gameObject == null)
-                        {
-                            Debug.Log(_file.Name + " resulted in a null GameObject when instantiated.");
+                var gameObject = InstantiateNiObject(rootNiObject);
 
-                            gameObject = new GameObject(_file.Name);
-                        }
-                        else if (rootNiObject is NiNode)
-                        {
-                            gameObject.transform.position = Vector3.zero;
-                            gameObject.transform.rotation = Quaternion.identity;
-                            gameObject.transform.localScale = Vector3.one;
-                        }
-
-                        onReadyCallback(gameObject);
-                    });
-                if (gameObjectCoroutine == null)
+                if (gameObject == null)
                 {
-                    onReadyCallback(null);
-                    yield break;
+                    Debug.Log(_file.Name + " resulted in a null GameObject when instantiated.");
+
+                    gameObject = new GameObject(_file.Name);
+                }
+                else if (rootNiObject is NiNode)
+                {
+                    gameObject.Position = Vector3.zero;
+                    gameObject.Rotation = Quaternion.identity;
+                    gameObject.Scale = Vector3.one;
                 }
 
-                while (gameObjectCoroutine.MoveNext())
-                {
-                    yield return null;
-                }
+                return gameObject;
             }
             else
             {
@@ -92,91 +82,53 @@ namespace NIF.Builder
                 foreach (var rootRef in _file.Footer.RootReferences)
                 {
                     var rootBlock = _file.NiObjects[rootRef];
-                    var childCoroutine = InstantiateNiObject(rootBlock, child =>
+                    var child = InstantiateNiObject(rootBlock);
+                    if (child != null)
                     {
-                        if (child != null)
-                        {
-                            child.transform.SetParent(gameObject.transform, false);
-                        }
-                    });
-
-                    if (childCoroutine == null) continue;
-                    while (childCoroutine.MoveNext())
-                    {
-                        yield return null;
+                        child.Parent = gameObject;
                     }
                 }
 
-                onReadyCallback(gameObject);
+                return gameObject;
             }
         }
 
-        private IEnumerator InstantiateNiObject(NiObject niObject, Action<GameObject> onReadyCallback)
+        private GameObject InstantiateNiObject(NiObject niObject)
         {
-            GameObject gameObject = null;
             var objectDelegate = _modelDelegates.FirstOrDefault(modelDelegate => modelDelegate.IsApplicable(niObject));
             if (objectDelegate == null)
             {
                 Debug.LogWarning($"No delegate found for {niObject.GetType().Name}");
-                onReadyCallback(null);
-                yield break;
+                return null;
             }
 
-            var enumerator = objectDelegate.Instantiate(_file, niObject, InstantiateNiObject,
-                gameObj => { gameObject = gameObj; });
-            if (enumerator == null)
-            {
-                onReadyCallback(null);
-                yield break;
-            }
-
-            while (enumerator.MoveNext())
-            {
-                yield return null;
-            }
-
+            var gameObject = objectDelegate.Instantiate(_file, niObject, InstantiateNiObject);
             if (gameObject == null)
             {
-                onReadyCallback(null);
-                yield break;
+                return null;
             }
 
             if (niObject is not NiAvObject { CollisionObjectReference: > 0 } anNiAvObject)
             {
-                onReadyCallback(gameObject);
-                yield break;
+                return gameObject;
             }
 
             var collisionInfo = _file.NiObjects[anNiAvObject.CollisionObjectReference];
-            var collisionObjectEnumerator = InstantiateCollisionObject(
-                collisionInfo,
-                collisionObject =>
-                {
-                    if (collisionObject != null)
-                    {
-                        collisionObject.transform.SetParent(gameObject.transform, false);
-                    }
-                });
-            if (collisionObjectEnumerator == null)
+            var collisionObject = InstantiateCollisionObject(collisionInfo);
+            if (collisionObject != null)
             {
-                onReadyCallback(gameObject);
-                yield break;
+                collisionObject.Parent = gameObject;
             }
 
-            while (collisionObjectEnumerator.MoveNext())
-            {
-                yield return null;
-            }
-
-            onReadyCallback(gameObject);
+            return gameObject;
         }
 
-        private IEnumerator InstantiateCollisionObject(NiObject collisionObj, Action<GameObject> onReadyCallback)
+        private GameObject InstantiateCollisionObject(NiObject collisionObj)
         {
             var collisionDelegate =
                 _collisionDelegates.FirstOrDefault(collisionDelegate => collisionDelegate.IsApplicable(collisionObj));
             if (collisionDelegate != null)
-                return collisionDelegate.Instantiate(_file, collisionObj, InstantiateCollisionObject, onReadyCallback);
+                return collisionDelegate.Instantiate(_file, collisionObj, InstantiateCollisionObject);
             Debug.LogWarning($"No delegate found for {collisionObj.GetType().Name}");
             return null;
         }

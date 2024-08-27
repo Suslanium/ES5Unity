@@ -61,11 +61,14 @@ namespace Engine.Cell.Delegate
             if (!string.IsNullOrEmpty(lightRecord.NifModelFilename))
             {
                 var modelObjectCoroutine =
-                    _nifManager.InstantiateNif(lightRecord.NifModelFilename, o => { modelObject = o; });
+                    _nifManager.InstantiateNif(lightRecord.NifModelFilename);
                 while (modelObjectCoroutine.MoveNext())
                 {
                     yield return null;
                 }
+                
+                modelObject = modelObjectCoroutine.Current;
+                yield return null;
             }
 
             if (modelObject == null)

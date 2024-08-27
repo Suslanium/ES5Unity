@@ -54,10 +54,13 @@ namespace Engine
 
             var staticModelInfo = (STAT)staticModelTask.Result;
 
-            var modelObjectCoroutine = _nifManager.InstantiateNif(staticModelInfo.NifModelFilename,
-                modelObject => { _currentLoadingScreenModel = modelObject; });
+            var modelObjectCoroutine = _nifManager.InstantiateNif(staticModelInfo.NifModelFilename);
             while (modelObjectCoroutine.MoveNext())
                 yield return null;
+            
+            var modelObject = modelObjectCoroutine.Current;
+            yield return null;
+            _currentLoadingScreenModel = modelObject;
 
             if (_currentLoadingScreenModel == null) yield break;
             _currentLoadingScreenModel.layer = _loadScreenLayer;

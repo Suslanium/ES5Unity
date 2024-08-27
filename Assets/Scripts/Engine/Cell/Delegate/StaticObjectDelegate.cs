@@ -74,12 +74,16 @@ namespace Engine.Cell.Delegate
         private IEnumerator InstantiateModelAtPositionAndRotation(string modelPath, float[] position, float[] rotation,
             float scale, GameObject parent)
         {
-            var modelObjectCoroutine = _nifManager.InstantiateNif(modelPath,
-                modelObject => { CellUtils.ApplyPositionAndRotation(position, rotation, scale, parent, modelObject); });
+            var modelObjectCoroutine = _nifManager.InstantiateNif(modelPath);
             while (modelObjectCoroutine.MoveNext())
             {
                 yield return null;
             }
+
+            var modelObject = modelObjectCoroutine.Current;
+            yield return null;
+            CellUtils.ApplyPositionAndRotation(position, rotation, scale, parent, modelObject);
+            yield return null;
         }
     }
 }

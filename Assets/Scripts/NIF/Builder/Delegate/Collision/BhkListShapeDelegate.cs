@@ -1,34 +1,27 @@
-﻿using System;
-using System.Collections;
-using System.Linq;
+﻿using System.Linq;
 using NIF.Parser;
 using NIF.Parser.NiObjects;
-using UnityEngine;
+using GameObject = NIF.Builder.Components.GameObject;
 
 namespace NIF.Builder.Delegate.Collision
 {
     public class BhkListShapeDelegate : NiObjectDelegate<BhkListShape>
     {
-        protected override IEnumerator Instantiate(NiFile niFile, BhkListShape niObject,
-            InstantiateChildNiObjectDelegate instantiateChildDelegate,
-            Action<GameObject> onReadyCallback)
+        protected override GameObject Instantiate(NiFile niFile, BhkListShape niObject,
+            InstantiateChildNiObjectDelegate instantiateChildDelegate)
         {
             var shapeRefs = niObject.SubShapeReferences.Select(subShapeRef => niFile.NiObjects[subShapeRef]);
             var rootGameObject = new GameObject("bhkListShape");
-            yield return null;
             foreach (var subShape in shapeRefs)
             {
-                var shapeObjectCoroutine = instantiateChildDelegate(subShape,
-                    shapeObject => { shapeObject.transform.SetParent(rootGameObject.transform, false); });
-                if (shapeObjectCoroutine == null) continue;
+                var shapeObject = instantiateChildDelegate(subShape);
+                if (shapeObject == null)
+                    continue;
 
-                while (shapeObjectCoroutine.MoveNext())
-                {
-                    yield return null;
-                }
+                shapeObject.Parent = rootGameObject;
             }
 
-            onReadyCallback(rootGameObject);
+            return rootGameObject;
         }
     }
 }

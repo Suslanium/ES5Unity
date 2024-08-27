@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using Engine.Resource;
 using Engine.Textures.TypeManager;
@@ -40,7 +39,7 @@ namespace Engine.Textures
         /// <summary>
         /// WARNING: This method should only be called from the main thread
         /// </summary>
-        public IEnumerator GetMap<T>(TextureType type, string texturePath, Action<T> onReadyCallback) where T : Texture
+        public IEnumerator<T> GetMap<T>(TextureType type, string texturePath) where T : Texture
         {
             var handler = _textureTypeHandlers[type];
             if (handler == null)
@@ -50,7 +49,7 @@ namespace Engine.Textures
             }
 
             if (handler is ITextureTypeManager<T> typedHandler)
-                return typedHandler.GetMap(texturePath, onReadyCallback);
+                return typedHandler.GetMap(texturePath);
 
             Debug.LogError($"Handler for texture type {type} does not return textures of type {typeof(T)}");
             return null;

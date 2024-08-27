@@ -1,6 +1,7 @@
 ﻿using Engine.Core;
 using NIF.Parser.NiObjects;
 using UnityEngine;
+using GameObject = NIF.Builder.Components.GameObject;
 
 namespace NIF.Builder
 {
@@ -80,9 +81,9 @@ namespace NIF.Builder
 
         public static void ApplyNiAvObjectTransform(NiAvObject anNiAvObject, GameObject obj)
         {
-            obj.transform.position = NifPointToUnityPoint(anNiAvObject.Translation.ToUnityVector());
-            obj.transform.rotation = NifRotationMatrixToUnityQuaternion(anNiAvObject.Rotation.ToMatrix4X4());
-            obj.transform.localScale = anNiAvObject.Scale * Vector3.one;
+            obj.Position = NifPointToUnityPoint(anNiAvObject.Translation.ToUnityVector());
+            obj.Rotation = NifRotationMatrixToUnityQuaternion(anNiAvObject.Rotation.ToMatrix4X4());
+            obj.Scale = anNiAvObject.Scale * Vector3.one;
         }
     }
 }
