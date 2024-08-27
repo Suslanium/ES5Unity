@@ -1,7 +1,7 @@
 using System.IO;
 using Ionic.Zlib;
 using MasterFile.MasterFileContents.Records;
-using UnityEngine;
+using Logger = Engine.Core.Logger;
 
 namespace MasterFile.MasterFileContents
 {
@@ -193,7 +193,7 @@ namespace MasterFile.MasterFileContents
             var readAmount = decompressStream.Read(decompressedData, 0, checked((int)decompressedSize));
             if (readAmount != decompressedSize)
             {
-                Debug.LogError("Decompressed record data size doesn't match with the original decompressed size");
+                Logger.LogError("Decompressed record data size doesn't match with the original decompressed size");
             }
 
             return decompressedData;

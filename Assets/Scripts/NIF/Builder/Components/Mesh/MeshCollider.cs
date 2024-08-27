@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+
 namespace NIF.Builder.Components.Mesh
 {
     public class MeshCollider : IComponent

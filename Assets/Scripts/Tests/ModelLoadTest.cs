@@ -3,7 +3,7 @@ using Engine;
 using Engine.Resource;
 using Engine.Textures;
 using UnityEngine;
-using Debug = UnityEngine.Debug;
+using Logger = Engine.Core.Logger;
 
 namespace Tests
 {
@@ -36,7 +36,7 @@ namespace Tests
                 while (iterator.MoveNext())
                 {
                 }
-                Debug.Log($"{path} loaded in {_stopwatch.ElapsedMilliseconds} ms");
+                Logger.Log($"{path} loaded in {_stopwatch.ElapsedMilliseconds} ms");
                 _stopwatch.Stop();
             }
             _resourceManager.Close();

@@ -1,7 +1,7 @@
 ﻿using NIF.Parser;
 using NIF.Parser.NiObjects;
-using UnityEngine;
 using GameObject = NIF.Builder.Components.GameObject;
+using Logger = Engine.Core.Logger;
 
 namespace NIF.Builder.Delegate
 {
@@ -17,7 +17,7 @@ namespace NIF.Builder.Delegate
         {
             if (niObject is T niTypeObj)
                 return Instantiate(niFile, niTypeObj, instantiateChildDelegate);
-            Debug.LogError($"Expected {typeof(T).Name} but got {niObject.GetType().Name}");
+            Logger.LogError($"Expected {typeof(T).Name} but got {niObject.GetType().Name}");
             return null;
         }
 

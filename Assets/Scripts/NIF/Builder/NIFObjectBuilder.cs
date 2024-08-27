@@ -8,6 +8,7 @@ using NIF.Parser.NiObjects;
 using UnityEngine;
 using Vector3 = UnityEngine.Vector3;
 using GameObject = NIF.Builder.Components.GameObject;
+using Logger = Engine.Core.Logger;
 
 namespace NIF.Builder
 {
@@ -62,7 +63,7 @@ namespace NIF.Builder
 
                 if (gameObject == null)
                 {
-                    Debug.Log(_file.Name + " resulted in a null GameObject when instantiated.");
+                    Logger.Log(_file.Name + " resulted in a null GameObject when instantiated.");
 
                     gameObject = new GameObject(_file.Name);
                 }
@@ -98,7 +99,7 @@ namespace NIF.Builder
             var objectDelegate = _modelDelegates.FirstOrDefault(modelDelegate => modelDelegate.IsApplicable(niObject));
             if (objectDelegate == null)
             {
-                Debug.LogWarning($"No delegate found for {niObject.GetType().Name}");
+                Logger.LogWarning($"No delegate found for {niObject.GetType().Name}");
                 return null;
             }
 
@@ -129,7 +130,7 @@ namespace NIF.Builder
                 _collisionDelegates.FirstOrDefault(collisionDelegate => collisionDelegate.IsApplicable(collisionObj));
             if (collisionDelegate != null)
                 return collisionDelegate.Instantiate(_file, collisionObj, InstantiateCollisionObject);
-            Debug.LogWarning($"No delegate found for {collisionObj.GetType().Name}");
+            Logger.LogWarning($"No delegate found for {collisionObj.GetType().Name}");
             return null;
         }
     }

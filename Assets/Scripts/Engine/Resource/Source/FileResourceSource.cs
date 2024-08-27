@@ -1,6 +1,6 @@
 ﻿using System;
 using System.IO;
-using UnityEngine;
+using Logger = Engine.Core.Logger;
 
 namespace Engine.Resource.Source
 {
@@ -21,7 +21,7 @@ namespace Engine.Resource.Source
             }
             catch (Exception e)
             {
-                Debug.LogError($"{resourcePath.Replace('\\', '/').TrimEnd('\0')} : {e.StackTrace}");
+                Logger.LogError($"{resourcePath.Replace('\\', '/').TrimEnd('\0')} : {e.StackTrace}");
                 return null;
             }
         }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Engine.Resource;
 using Engine.Textures.TypeManager;
 using UnityEngine;
+using Logger = Engine.Core.Logger;
 
 namespace Engine.Textures
 {
@@ -29,7 +30,7 @@ namespace Engine.Textures
             var handler = _textureTypeHandlers[type];
             if (handler == null)
             {
-                Debug.LogError($"Handler for texture type {type} not found");
+                Logger.LogError($"Handler for texture type {type} not found");
                 return;
             }
 
@@ -44,14 +45,14 @@ namespace Engine.Textures
             var handler = _textureTypeHandlers[type];
             if (handler == null)
             {
-                Debug.LogError($"Handler for texture type {type} not found");
+                Logger.LogError($"Handler for texture type {type} not found");
                 return null;
             }
 
             if (handler is ITextureTypeManager<T> typedHandler)
                 return typedHandler.GetMap(texturePath);
 
-            Debug.LogError($"Handler for texture type {type} does not return textures of type {typeof(T)}");
+            Logger.LogError($"Handler for texture type {type} does not return textures of type {typeof(T)}");
             return null;
         }
 

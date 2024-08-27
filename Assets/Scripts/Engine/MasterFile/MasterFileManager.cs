@@ -8,8 +8,8 @@ using MasterFile;
 using MasterFile.MasterFileContents;
 using MasterFile.MasterFileContents.Records;
 using Unity.VisualScripting;
-using UnityEngine;
 using Random = System.Random;
+using Logger = Engine.Core.Logger;
 
 namespace Engine.MasterFile
 {
@@ -91,7 +91,7 @@ namespace Engine.MasterFile
 
                     if (fileData is not Group { GroupType: 6 } childrenGroup)
                     {
-                        Debug.LogWarning("Cell children group not found");
+                        Logger.LogWarning("Cell children group not found");
                         continue;
                     }
 
@@ -150,7 +150,7 @@ namespace Engine.MasterFile
 
                     if (fileData is not Group { GroupType: 6 } childrenGroup)
                     {
-                        Debug.LogWarning("Cell children group not found");
+                        Logger.LogWarning("Cell children group not found");
                         continue;
                     }
 
@@ -199,7 +199,7 @@ namespace Engine.MasterFile
 
                     if (fileData is not Group { GroupType: 6 } childrenGroup)
                     {
-                        Debug.LogWarning("Cell children group not found");
+                        Logger.LogWarning("Cell children group not found");
                         continue;
                     }
 

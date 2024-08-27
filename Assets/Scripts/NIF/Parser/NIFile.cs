@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 using NIF.Parser.NiObjects;
-using UnityEngine;
+using Logger = Engine.Core.Logger;
 
 namespace NIF.Parser
 {
@@ -67,7 +67,7 @@ namespace NIF.Parser
                 }
                 else
                 {
-                    Debug.LogWarning(
+                    Logger.LogWarning(
                         $"NIF Reader({fileName}): Unsupported NiObject type: {header.BlockTypes[header.BlockTypeIndex[i]]}");
                     if (header.BlockSizes != null)
                     {

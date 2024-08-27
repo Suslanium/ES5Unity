@@ -2,6 +2,7 @@
 using MasterFile.MasterFileContents;
 using MasterFile.MasterFileContents.Records;
 using UnityEngine;
+using Logger = Engine.Core.Logger;
 
 namespace Engine.Cell.Delegate.Interfaces
 {
@@ -18,7 +19,7 @@ namespace Engine.Cell.Delegate.Interfaces
         {
             if (record is T recordType)
                 return PreprocessRecord(cell, recordType, parent);
-            Debug.LogError($"Expected record {typeof(T).Name} but got {record.GetType().Name}");
+            Logger.LogError($"Expected record {typeof(T).Name} but got {record.GetType().Name}");
             return null;
         }
     }

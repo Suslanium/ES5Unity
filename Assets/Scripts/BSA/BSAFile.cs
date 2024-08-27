@@ -5,7 +5,7 @@ using System.Text;
 using BSA.Structures;
 using BSA.Structures.Enums;
 using Ionic.Zlib;
-using UnityEngine;
+using Logger = Engine.Core.Logger;
 
 namespace BSA
 {
@@ -156,7 +156,7 @@ namespace BSA
                             var readAmount = decompressStream.Read(decompressedData, 0, checked((int)originalSize));
                             if (readAmount != originalSize)
                             {
-                                Debug.LogError(
+                                Logger.LogError(
                                     "Decompressed file size doesn't match with the original decompressed size");
                             }
 

@@ -14,6 +14,7 @@ using MasterFile.MasterFileContents;
 using MasterFile.MasterFileContents.Records;
 using UnityEngine;
 using Convert = Engine.Core.Convert;
+using Logger = Engine.Core.Logger;
 
 namespace Engine.Cell.Delegate
 {
@@ -439,7 +440,7 @@ namespace Engine.Cell.Delegate
             var layers = layersCoroutine.Current;
             if (layers == null)
             {
-                Debug.LogError($"Failed to get terrain layer info for record {record.FormID}");
+                Logger.LogError($"Failed to get terrain layer info for record {record.FormID}");
                 yield break;
             }
 
@@ -482,7 +483,7 @@ namespace Engine.Cell.Delegate
                 yield return null;
                 if (!_terrainMeshInfoTasks.TryGetValue(land.FormID, out var meshInfoTask))
                 {
-                    Debug.LogError($"Terrain mesh info task not found for record {land.FormID}");
+                    Logger.LogError($"Terrain mesh info task not found for record {land.FormID}");
                     yield break;
                 }
 
@@ -514,7 +515,7 @@ namespace Engine.Cell.Delegate
                 yield return null;
                 if (!_terrainLayerTasks.TryGetValue(land.FormID, out var layersInfoTask))
                 {
-                    Debug.LogError($"Terrain layers info task not found for record {land.FormID}");
+                    Logger.LogError($"Terrain layers info task not found for record {land.FormID}");
                     yield break;
                 }
 
@@ -539,7 +540,7 @@ namespace Engine.Cell.Delegate
                     yield return null;
                     if (!_textureLoadingTasks.TryGetValue(textureFormID, out var task))
                     {
-                        Debug.LogError($"Texture loading task not found for texture form ID {textureFormID}");
+                        Logger.LogError($"Texture loading task not found for texture form ID {textureFormID}");
                         continue;
                     }
 
@@ -550,7 +551,7 @@ namespace Engine.Cell.Delegate
 
                     if (!_texturePaths.TryGetValue(textureFormID, out var texturePaths))
                     {
-                        Debug.LogError($"Texture paths not found for texture form ID {textureFormID}");
+                        Logger.LogError($"Texture paths not found for texture form ID {textureFormID}");
                         continue;
                     }
 

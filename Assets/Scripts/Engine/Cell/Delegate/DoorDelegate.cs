@@ -7,6 +7,7 @@ using MasterFile.MasterFileContents;
 using MasterFile.MasterFileContents.Records;
 using NIF.Builder;
 using UnityEngine;
+using Logger = Engine.Core.Logger;
 
 namespace Engine.Cell.Delegate
 {
@@ -108,7 +109,7 @@ namespace Engine.Cell.Delegate
             if (destinationTask.Result is not CELL destinationCell)
             {
                 Object.Destroy(modelObject);
-                Debug.LogError($"Destination cell not found for door {doorBase.EditorID}");
+                Logger.LogError($"Destination cell not found for door {doorBase.EditorID}");
                 yield break;
             }
 
@@ -123,7 +124,7 @@ namespace Engine.Cell.Delegate
 
                 if (worldSpaceTask.Result is not WRLD worldSpace)
                 {
-                    Debug.LogError(worldSpaceTask.Result == null
+                    Logger.LogError(worldSpaceTask.Result == null
                         ? $"Worldspace not found for door {doorBase.EditorID}"
                         : $"Worldspace record is not WRLD for door {doorBase.EditorID} ({worldSpaceTask.Result.Type})");
                 }

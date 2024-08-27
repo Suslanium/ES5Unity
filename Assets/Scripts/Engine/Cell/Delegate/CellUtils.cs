@@ -1,5 +1,6 @@
 ﻿using NIF.Builder;
 using UnityEngine;
+using Logger = Engine.Core.Logger;
 
 namespace Engine.Cell.Delegate
 {
@@ -12,7 +13,7 @@ namespace Engine.Cell.Delegate
             if (position is not { Length: 3 } || rotation is not { Length: 3 })
             {
                 modelObject.SetActive(false);
-                Debug.LogWarning(
+                Logger.LogWarning(
                     $"Position and/or rotation array is invalid, deactivating GameObject {modelObject.name}");
                 modelObject.transform.parent = parent.transform;
                 return;

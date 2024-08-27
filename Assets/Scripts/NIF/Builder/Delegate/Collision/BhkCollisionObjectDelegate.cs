@@ -1,7 +1,7 @@
 ﻿using NIF.Parser;
 using NIF.Parser.NiObjects;
-using UnityEngine;
 using GameObject = NIF.Builder.Components.GameObject;
+using Logger = Engine.Core.Logger;
 
 namespace NIF.Builder.Delegate.Collision
 {
@@ -29,7 +29,7 @@ namespace NIF.Builder.Delegate.Collision
                 case BhkRigidBody bhkRigidBody:
                     return instantiateChildDelegate(bhkRigidBody);
                 default:
-                    Debug.LogWarning($"Unsupported collision object body type: {body.GetType().Name}");
+                    Logger.LogWarning($"Unsupported collision object body type: {body.GetType().Name}");
                     return null;
             }
         }

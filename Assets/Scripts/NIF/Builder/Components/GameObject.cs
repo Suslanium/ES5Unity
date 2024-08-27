@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using Logger = Engine.Core.Logger;
 
 namespace NIF.Builder.Components
 {
@@ -29,16 +30,16 @@ namespace NIF.Builder.Components
                 }
                 else
                 {
-                    Debug.LogError("Parent can only be set once.");
+                    Logger.LogError("Parent can only be set once.");
                 }
             }
         }
 
-        public Vector3 Position;
+        public Vector3 Position = Vector3.zero;
 
-        public Quaternion Rotation;
+        public Quaternion Rotation = Quaternion.identity;
 
-        public Vector3 Scale;
+        public Vector3 Scale = Vector3.one;
 
         private readonly List<GameObject> _children = new();
 
