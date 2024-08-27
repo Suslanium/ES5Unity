@@ -106,7 +106,7 @@ namespace Engine
                 yield break;
             }
 
-            var prefabCoroutine = gameObject.Create(_prefabContainerObject);
+            var prefabCoroutine = gameObject.Create(_prefabContainerObject, true);
             while (prefabCoroutine.MoveNext())
             {
                 yield return null;

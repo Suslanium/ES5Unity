@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace NIF.Builder.Components
@@ -13,7 +14,7 @@ namespace NIF.Builder.Components
     public class GameObject
     {
         private string _name;
-        
+
         private GameObject _parent;
 
         public GameObject Parent
@@ -39,28 +40,31 @@ namespace NIF.Builder.Components
 
         public Vector3 Scale;
 
-        private readonly List<GameObject> Children = new();
-        
+        private readonly List<GameObject> _children = new();
+
         private void AddChild(GameObject child)
         {
-            Children.Add(child);
+            _children.Add(child);
         }
 
-        private readonly List<IComponent> Components = new();
-        
+        private readonly List<IComponent> _components = new();
+
         public void AddComponent(IComponent component)
         {
-            Components.Add(component);
+            _components.Add(component);
         }
-        
+
         public GameObject(string name)
         {
             _name = name;
         }
 
-        public IEnumerator<UnityEngine.GameObject> Create(UnityEngine.GameObject parent)
+        public IEnumerator<UnityEngine.GameObject> Create(UnityEngine.GameObject parent, bool isStatic = false)
         {
-            var gameObject = new UnityEngine.GameObject(_name);
+            var gameObject = new UnityEngine.GameObject(_name)
+            {
+                isStatic = isStatic
+            };
             yield return null;
             gameObject.transform.position = Position;
             yield return null;
@@ -70,17 +74,15 @@ namespace NIF.Builder.Components
             yield return null;
             gameObject.transform.SetParent(parent.transform, false);
             yield return null;
-            
-            foreach (var component in Components)
+
+            foreach (var applyCoroutine in _components.Select(component => component.Apply(gameObject)))
             {
-                var applyCoroutine = component.Apply(gameObject);
                 while (applyCoroutine.MoveNext())
                     yield return null;
             }
 
-            foreach (var child in Children)
+            foreach (var childCoroutine in _children.Select(child => child.Create(gameObject, isStatic)))
             {
-                var childCoroutine = child.Create(gameObject);
                 while (childCoroutine.MoveNext())
                     yield return null;
             }

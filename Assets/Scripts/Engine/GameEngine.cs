@@ -81,7 +81,6 @@ namespace Engine
             _loadingScreenManager.Initialize(masterFileManager, _nifManager, _loadBalancer);
         }
 
-        // ReSharper disable Unity.PerformanceAnalysis
         public void LoadCell(string editorId, Vector3? startPosition, Quaternion? startRotation)
         {
             var loadCoroutine = LoadCellCoroutine(editorId, startPosition, startRotation);
@@ -101,7 +100,6 @@ namespace Engine
                 () => { GameState = GameState.InGame; });
         }
 
-        // ReSharper disable Unity.PerformanceAnalysis
         public void LoadCell(uint formID, Vector3? startPosition, Quaternion? startRotation)
         {
             var loadCoroutine = LoadCellCoroutine(formID, startPosition, startRotation);
