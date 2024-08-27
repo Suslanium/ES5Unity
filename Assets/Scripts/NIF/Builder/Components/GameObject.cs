@@ -70,6 +70,7 @@ namespace NIF.Builder.Components
             yield return null;
             gameObject.transform.SetParent(parent.transform, false);
             yield return null;
+            
             foreach (var component in Components)
             {
                 var applyCoroutine = component.Apply(gameObject);

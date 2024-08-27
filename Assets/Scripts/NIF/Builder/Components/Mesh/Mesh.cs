@@ -17,18 +17,24 @@ namespace NIF.Builder.Components.Mesh
         public IEnumerator<UnityEngine.Mesh> Create()
         {
             var mesh = new UnityEngine.Mesh();
-            
-            mesh.vertices = Vertices;
+
+            if (Vertices != null)
+                mesh.vertices = Vertices;
             yield return null;
-            mesh.triangles = Triangles;
+            if (Triangles != null)
+                mesh.triangles = Triangles;
             yield return null;
-            mesh.normals = Normals;
+            if (Normals != null)
+                mesh.normals = Normals;
             yield return null;
-            mesh.tangents = Tangents;
+            if (Tangents != null)
+                mesh.tangents = Tangents;
             yield return null;
-            mesh.uv = UVs;
+            if (UVs != null)
+                mesh.uv = UVs;
             yield return null;
-            mesh.colors = Colors;
+            if (Colors != null)
+                mesh.colors = Colors;
             yield return null;
 
             if (HasNormals.HasValue && !HasNormals.Value)

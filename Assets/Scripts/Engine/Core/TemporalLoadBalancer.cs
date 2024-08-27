@@ -64,11 +64,6 @@ namespace Engine.Core
 
             } while((_tasks.Count > 0) && (_stopwatch.Elapsed.TotalSeconds < desiredWorkTime));
 
-            if (_stopwatch.ElapsedMilliseconds > 10)
-            {
-                UnityEngine.Debug.Log($"Whoopsies! {_stopwatch.ElapsedMilliseconds} ms");
-            }
-
             _stopwatch.Stop();
         }
 

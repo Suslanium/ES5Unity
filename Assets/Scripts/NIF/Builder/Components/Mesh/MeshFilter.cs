@@ -8,11 +8,12 @@ namespace NIF.Builder.Components.Mesh
         
         public IEnumerator Apply(UnityEngine.GameObject gameObject)
         {
+            var component = gameObject.AddComponent<UnityEngine.MeshFilter>();
+            yield return null;
+            
             if (Mesh == null)
                 yield break;
             
-            var component = gameObject.AddComponent<UnityEngine.MeshFilter>();
-            yield return null;
             var meshCoroutine = Mesh.Create();
             while (meshCoroutine.MoveNext())
                 yield return null;

@@ -1,5 +1,4 @@
 ﻿using System.Collections;
-
 namespace NIF.Builder.Components.Mesh
 {
     public class MeshCollider : IComponent
@@ -10,17 +9,18 @@ namespace NIF.Builder.Components.Mesh
 
         public IEnumerator Apply(UnityEngine.GameObject gameObject)
         {
+            var component = gameObject.AddComponent<UnityEngine.MeshCollider>();
+            yield return null;
+            
             if (Mesh == null)
                 yield break;
             
-            var component = gameObject.AddComponent<UnityEngine.MeshCollider>();
+            component.convex = Convex;
             yield return null;
             var meshCoroutine = Mesh.Create();
             while (meshCoroutine.MoveNext())
                 yield return null;
             component.sharedMesh = meshCoroutine.Current;
-            yield return null;
-            component.convex = Convex;
             yield return null;
         }
     }

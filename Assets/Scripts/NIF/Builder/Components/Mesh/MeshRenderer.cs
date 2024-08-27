@@ -15,6 +15,9 @@ namespace NIF.Builder.Components.Mesh
 
         public IEnumerator Apply(UnityEngine.GameObject gameObject)
         {
+            var renderer = gameObject.AddComponent<UnityEngine.MeshRenderer>();
+            yield return null;
+            
             if (MaterialProperties == null)
                 yield break;
 
@@ -25,8 +28,6 @@ namespace NIF.Builder.Components.Mesh
             var material = materialCoroutine.Current;
             yield return null;
             
-            var renderer = gameObject.AddComponent<UnityEngine.MeshRenderer>();
-            yield return null;
             renderer.sharedMaterial = material;
             yield return null;
         }
