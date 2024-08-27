@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections.Generic;
 using Engine.Resource;
 using UnityEngine;
 
@@ -14,11 +13,11 @@ namespace Engine.Textures.TypeManager
             _linearTextures = linearTextures;
         }
 
-        public override IEnumerator GetMap(string texturePath, Action<Texture2D> onReadyCallback)
+        public override IEnumerator<Texture2D> GetMap(string texturePath)
         {
             if (TextureStore.TryGetValue(texturePath, out var map))
             {
-                onReadyCallback(map);
+                yield return map;
                 yield break;
             }
 
@@ -26,6 +25,7 @@ namespace Engine.Textures.TypeManager
             {
                 newTask = StartLoadTextureTask(texturePath);
                 TaskStore.TryAdd(texturePath, newTask);
+                yield return null;
             }
 
             while (!newTask.IsCompleted)
@@ -34,24 +34,30 @@ namespace Engine.Textures.TypeManager
             }
 
             var result = newTask.Result;
+            yield return null;
 
-            Texture2D texture = null;
+            Texture2D texture;
             if (result != null)
             {
-                var textureCoroutine = result.ToTexture2D(texture2D => { texture = texture2D; }, _linearTextures);
+                var textureCoroutine = result.ToTexture2D(_linearTextures);
                 while (textureCoroutine.MoveNext())
                 {
                     yield return null;
                 }
+                
+                texture = textureCoroutine.Current;
             }
             else
             {
                 texture = new Texture2D(1, 1);
             }
+            yield return null;
 
             TextureStore.TryAdd(texturePath, texture);
+            yield return null;
             TaskStore.TryRemove(texturePath, out _);
-            onReadyCallback(texture);
+            yield return null;
+            yield return texture;
         }
     }
 }

@@ -1,34 +1,25 @@
-﻿using System;
-using System.Collections;
-using NIF.Parser;
+﻿using NIF.Parser;
 using NIF.Parser.NiObjects;
-using UnityEngine;
+using GameObject = NIF.Builder.Components.GameObject;
 
 namespace NIF.Builder.Delegate.Collision
 {
     public class BhkCompressedMeshShapeDelegate : NiObjectDelegate<BhkCompressedMeshShape>
     {
-        protected override IEnumerator Instantiate(NiFile niFile, BhkCompressedMeshShape niObject,
-            InstantiateChildNiObjectDelegate instantiateChildDelegate, Action<GameObject> onReadyCallback)
+        protected override GameObject Instantiate(NiFile niFile, BhkCompressedMeshShape niObject,
+            InstantiateChildNiObjectDelegate instantiateChildDelegate)
         {
             var shapeData = niFile.NiObjects[niObject.DataRef];
-            GameObject shapeObject = null;
-            var shapeObjectCoroutine = instantiateChildDelegate(shapeData,
-                o => { shapeObject = o; });
-            if (shapeObjectCoroutine == null)
+            var shapeObject = instantiateChildDelegate(shapeData);
+
+            if (shapeObject == null)
             {
-                onReadyCallback(null);
-                yield break;
+                return null;
             }
 
-            while (shapeObjectCoroutine.MoveNext())
-            {
-                yield return null;
-            }
-
-            shapeObject.transform.localScale =
+            shapeObject.Scale =
                 NifUtils.NifVectorToUnityVector(niObject.Scale.ToUnityVector());
-            onReadyCallback(shapeObject);
+            return shapeObject;
         }
     }
 }

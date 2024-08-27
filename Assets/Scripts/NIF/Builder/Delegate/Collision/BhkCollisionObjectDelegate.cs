@@ -1,64 +1,36 @@
-﻿using System;
-using System.Collections;
-using NIF.Parser;
+﻿using NIF.Parser;
 using NIF.Parser.NiObjects;
 using UnityEngine;
+using GameObject = NIF.Builder.Components.GameObject;
 
 namespace NIF.Builder.Delegate.Collision
 {
     public class BhkCollisionObjectDelegate : NiObjectDelegate<BhkCollisionObject>
     {
-        protected override IEnumerator Instantiate(NiFile niFile, BhkCollisionObject niObject,
-            InstantiateChildNiObjectDelegate instantiateChildDelegate, Action<GameObject> onReadyCallback)
+        protected override GameObject Instantiate(NiFile niFile, BhkCollisionObject niObject,
+            InstantiateChildNiObjectDelegate instantiateChildDelegate)
         {
             var body = niFile.NiObjects[niObject.BodyReference];
             switch (body)
             {
                 case BhkRigidBodyT bhkRigidBodyT:
-                    GameObject gameObject = null;
-                    var gameObjectCoroutine = instantiateChildDelegate(bhkRigidBodyT,
-                        o => { gameObject = o; });
-                    if (gameObjectCoroutine == null)
-                    {
-                        onReadyCallback(null);
-                        yield break;
-                    }
-
-                    while (gameObjectCoroutine.MoveNext())
-                    {
-                        yield return null;
-                    }
+                    var gameObject = instantiateChildDelegate(bhkRigidBodyT);
 
                     if (gameObject == null)
                     {
-                        onReadyCallback(null);
-                        yield break;
+                        return null;
                     }
 
-                    gameObject.transform.position =
+                    gameObject.Position =
                         NifUtils.NifVectorToUnityVector(bhkRigidBodyT.Translation.ToUnityVector());
-                    gameObject.transform.rotation =
+                    gameObject.Rotation =
                         NifUtils.HavokQuaternionToUnityQuaternion(bhkRigidBodyT.Rotation.ToUnityQuaternion());
-                    onReadyCallback(gameObject);
-                    break;
+                    return gameObject;
                 case BhkRigidBody bhkRigidBody:
-                    var rigidBodyCoroutine = instantiateChildDelegate(bhkRigidBody, onReadyCallback);
-                    if (rigidBodyCoroutine == null)
-                    {
-                        onReadyCallback(null);
-                        yield break;
-                    }
-
-                    while (rigidBodyCoroutine.MoveNext())
-                    {
-                        yield return null;
-                    }
-
-                    break;
+                    return instantiateChildDelegate(bhkRigidBody);
                 default:
                     Debug.LogWarning($"Unsupported collision object body type: {body.GetType().Name}");
-                    onReadyCallback(null);
-                    break;
+                    return null;
             }
         }
     }

@@ -20,7 +20,7 @@ namespace Tests
             var resourceManager = new ResourceManager(dataFolderPath);
             var textureManager = new TextureManager(resourceManager);
             var materialManager = new MaterialManager(textureManager);
-            var nifManager = new NifManager(materialManager, resourceManager);
+            var nifManager = new NifManager(materialManager, textureManager, resourceManager);
             _nifManager = nifManager;
             _resourceManager = resourceManager;
             Invoke(nameof(InstantiateMeshes), 1f);
@@ -32,7 +32,7 @@ namespace Tests
             {
                 _stopwatch.Reset();
                 _stopwatch.Start();
-                var iterator = _nifManager.InstantiateNif(path, o => { });
+                var iterator = _nifManager.InstantiateNif(path);
                 while (iterator.MoveNext())
                 {
                 }

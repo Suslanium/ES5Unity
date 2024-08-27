@@ -46,11 +46,14 @@ namespace Engine.Cell.Delegate
                     layer = PortalLayer
                 };
                 var collider = gameObject.AddComponent<BoxCollider>();
+                yield return null;
                 collider.isTrigger = true;
                 collider.size = NifUtils.NifPointToUnityPoint(reference.Primitive.Bounds) * 2;
+                yield return null;
                 CellUtils.ApplyPositionAndRotation(reference.Position, reference.Rotation, reference.Scale,
                     cellGameObject,
                     gameObject);
+                yield return null;
                 if (reference.PortalDestinations != null)
                 {
                     _tempPortals.Add((gameObject, reference.PortalDestinations.OriginReference,
@@ -72,11 +75,14 @@ namespace Engine.Cell.Delegate
                     layer = RoomLayer
                 };
                 var collider = gameObject.AddComponent<BoxCollider>();
+                yield return null;
                 collider.isTrigger = true;
                 collider.size = NifUtils.NifPointToUnityPoint(reference.Primitive.Bounds) * 2;
+                yield return null;
                 CellUtils.ApplyPositionAndRotation(reference.Position, reference.Rotation, reference.Scale,
                     cellGameObject,
                     gameObject);
+                yield return null;
                 _tempRooms.Add(reference.FormID, gameObject);
                 yield return null;
 
@@ -85,6 +91,7 @@ namespace Engine.Cell.Delegate
                     foreach (var linkedRoomFormID in reference.LinkedRoomFormIDs)
                     {
                         _tempLinkedRooms.Add((reference.FormID, linkedRoomFormID));
+                        yield return null;
                     }
                 }
             }

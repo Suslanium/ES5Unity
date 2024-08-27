@@ -1,21 +1,24 @@
-﻿using System;
-using System.Collections;
-using Engine;
-using Engine.Textures;
+﻿using Engine.Textures;
 using NIF.Parser;
 using NIF.Parser.NiObjects;
 using UnityEngine;
 using UnityEngine.Rendering;
+using GameObject = NIF.Builder.Components.GameObject;
+using Mesh = NIF.Builder.Components.Mesh.Mesh;
+using MeshFilter = NIF.Builder.Components.Mesh.MeshFilter;
+using MeshRenderer = NIF.Builder.Components.Mesh.MeshRenderer;
 
 namespace NIF.Builder.Delegate
 {
     public class NiTriShapeDelegate : NiObjectDelegate<NiTriBasedGeom>
     {
         private readonly MaterialManager _materialManager;
+        private readonly TextureManager _textureManager;
 
-        public NiTriShapeDelegate(MaterialManager materialManager)
+        public NiTriShapeDelegate(MaterialManager materialManager, TextureManager textureManager)
         {
             _materialManager = materialManager;
+            _textureManager = textureManager;
         }
 
         public override bool IsApplicable(NiObject niObject)
@@ -23,14 +26,12 @@ namespace NIF.Builder.Delegate
             return niObject.GetType() == typeof(NiTriShape) || niObject.GetType() == typeof(BsLodTriShape);
         }
 
-        protected override IEnumerator Instantiate(NiFile niFile, NiTriBasedGeom niObject,
-            InstantiateChildNiObjectDelegate instantiateChildDelegate,
-            Action<GameObject> onReadyCallback)
+        protected override GameObject Instantiate(NiFile niFile, NiTriBasedGeom niObject,
+            InstantiateChildNiObjectDelegate instantiateChildDelegate)
         {
             if (niObject.ShaderPropertyReference == -1)
             {
-                onReadyCallback(null);
-                yield break;
+                return null;
             }
 
             var shaderInfo = niFile.NiObjects[niObject.ShaderPropertyReference];
@@ -39,43 +40,44 @@ namespace NIF.Builder.Delegate
             {
                 if (info.TextureSetReference == -1)
                 {
-                    onReadyCallback(null);
-                    yield break;
+                    return null;
                 }
 
                 materialProperties = CreateMaterialProps(info,
                     niObject.AlphaPropertyReference >= 0
                         ? (NiAlphaProperty)niFile.NiObjects[niObject.AlphaPropertyReference]
                         : null, niFile);
+                
+                _textureManager.PreloadMap(TextureType.DIFFUSE, materialProperties.DiffuseMapPath);
+                if (!string.IsNullOrEmpty(materialProperties.NormalMapPath))
+                    _textureManager.PreloadMap(TextureType.NORMAL, materialProperties.NormalMapPath);
+                if (!string.IsNullOrEmpty(materialProperties.MetallicMaskPath))
+                    _textureManager.PreloadMap(TextureType.METALLIC, materialProperties.MetallicMaskPath);
+                if (!string.IsNullOrEmpty(materialProperties.GlowMapPath))
+                    _textureManager.PreloadMap(TextureType.GLOW, materialProperties.GlowMapPath);
             }
             else
             {
-                onReadyCallback(null);
-                yield break;
+                return null;
             }
 
             var gameObject = new GameObject(niObject.Name);
-            var meshCoroutine = NiTriShapeDataToMesh((NiTriShapeData)niFile.NiObjects[niObject.DataReference],
-                mesh => { gameObject.AddComponent<MeshFilter>().mesh = mesh; });
-            while (meshCoroutine.MoveNext())
+            var mesh = NiTriShapeDataToMesh((NiTriShapeData)niFile.NiObjects[niObject.DataReference]);
+            var meshFilter = new MeshFilter
             {
-                yield return null;
-            }
+                Mesh = mesh
+            };
+            gameObject.AddComponent(meshFilter);
 
-            var materialCoroutine = _materialManager.GetMaterialFromProperties(materialProperties,
-                material =>
-                {
-                    var meshRenderer = gameObject.AddComponent<MeshRenderer>();
-                    meshRenderer.sharedMaterial = material;
-                });
-            while (materialCoroutine.MoveNext())
+            var meshRenderer = new MeshRenderer(_materialManager)
             {
-                yield return null;
-            }
+                MaterialProperties = materialProperties
+            };
+            gameObject.AddComponent(meshRenderer);
 
             NifUtils.ApplyNiAvObjectTransform(niObject, gameObject);
 
-            onReadyCallback(gameObject);
+            return gameObject;
         }
 
         private MaterialProperties CreateMaterialProps(BsLightingShaderProperty shaderInfo,
@@ -112,7 +114,7 @@ namespace NIF.Builder.Delegate
                     alphaBlend, srcFunction, destFunction, alphaTest, alphaTestThreshold));
         }
 
-        private static IEnumerator NiTriShapeDataToMesh(NiTriShapeData data, Action<Mesh> onReadyCallback)
+        private static Mesh NiTriShapeDataToMesh(NiTriShapeData data)
         {
             Vector3[] vertices = null;
             if (data.HasVertices)
@@ -124,8 +126,6 @@ namespace NIF.Builder.Delegate
                 }
             }
 
-            yield return null;
-
             Vector3[] normals = null;
             if (data.HasNormals)
             {
@@ -135,8 +135,6 @@ namespace NIF.Builder.Delegate
                     normals[i] = NifUtils.NifPointToUnityPoint(data.Normals[i].ToUnityVector());
                 }
             }
-
-            yield return null;
 
             Vector4[] tangents = null;
             if (data.Tangents != null)
@@ -148,8 +146,6 @@ namespace NIF.Builder.Delegate
                     tangents[i] = new Vector4(convertedTangent.x, convertedTangent.y, convertedTangent.z, 1);
                 }
             }
-
-            yield return null;
 
             Vector2[] UVs = null;
             if (data.UVSets != null && vertices != null)
@@ -163,8 +159,6 @@ namespace NIF.Builder.Delegate
                     UVs[i] = new Vector2(texCoord.U, texCoord.V);
                 }
             }
-
-            yield return null;
 
             int[] triangles = null;
             if (data.HasTriangles)
@@ -180,8 +174,6 @@ namespace NIF.Builder.Delegate
                 }
             }
 
-            yield return null;
-
             Color[] vertexColors = null;
             if (data.HasVertexColors)
             {
@@ -193,28 +185,19 @@ namespace NIF.Builder.Delegate
                 }
             }
 
-            yield return null;
-
             var mesh = new Mesh
             {
-                vertices = vertices,
-                triangles = triangles,
-                normals = normals,
-                tangents = tangents,
-                uv = UVs,
-                colors = vertexColors
+                Vertices = vertices,
+                Triangles = triangles,
+                Normals = normals,
+                Tangents = tangents,
+                UVs = UVs,
+                Colors = vertexColors,
+                HasNormals = data.HasNormals,
+                ShouldRecalculateBounds = true
             };
 
-            yield return null;
-
-            if (!data.HasNormals)
-            {
-                mesh.RecalculateNormals();
-            }
-
-            mesh.RecalculateBounds();
-
-            onReadyCallback(mesh);
+            return mesh;
         }
     }
 }

@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -30,14 +29,14 @@ namespace Textures
         /// <summary>
         /// Creates a Unity Texture2D from this Texture2DInfo.
         /// </summary>
-        public IEnumerator ToTexture2D(Action<Texture2D> onReadyCallback, bool linear = false)
+        public IEnumerator<Texture2D> ToTexture2D(bool linear = false)
         {
             var texture = new Texture2D(Width, Height, Format, HasMipmaps, linear);
             yield return null;
 
             if (RawData == null)
             {
-                onReadyCallback(texture);
+                yield return texture;
                 yield break;
             }
             
@@ -46,10 +45,10 @@ namespace Textures
             texture.Apply();
             yield return null;
 
-            onReadyCallback(texture);
+            yield return texture;
         }
 
-        public IEnumerator ToCubeMap(Action<Cubemap> onReadyCallback)
+        public IEnumerator<Cubemap> ToCubeMap()
         {
             if (Width != Height)
                 throw new InvalidDataException(
@@ -58,11 +57,19 @@ namespace Textures
             var cubeMap = new Cubemap(Width, Format, HasMipmaps);
             yield return null;
 
-            Texture2D texture = null;
-            var textureCoroutine = ToTexture2D(texture2D => { texture = texture2D; });
+            var textureCoroutine = ToTexture2D();
             while (textureCoroutine.MoveNext())
             {
                 yield return null;
+            }
+            
+            var texture = textureCoroutine.Current;
+            yield return null;
+            
+            if (texture == null)
+            {
+                yield return cubeMap;
+                yield break;
             }
 
             for (var i = 0; i < texture.mipmapCount; i++)
@@ -85,7 +92,7 @@ namespace Textures
             yield return null;
             Object.Destroy(texture);
             yield return null;
-            onReadyCallback(cubeMap);
+            yield return cubeMap;
         }
     }
 }

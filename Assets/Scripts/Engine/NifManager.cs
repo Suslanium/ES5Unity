@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -16,18 +15,17 @@ namespace Engine
     public class NifManager
     {
         private readonly Dictionary<string, GameObject> _nifPrefabs = new();
-        private readonly Dictionary<string, Task<NiFile>> _niFileTasks = new();
-        private readonly MaterialManager _materialManager;
+        private readonly Dictionary<string, Task<NIF.Builder.Components.GameObject>> _niFileTasks = new();
         private readonly ResourceManager _resourceManager;
         private GameObject _prefabContainerObject;
 
-        public NifManager(MaterialManager materialManager, ResourceManager resourceManager)
+        public NifManager(MaterialManager materialManager, TextureManager textureManager, ResourceManager resourceManager)
         {
-            _materialManager = materialManager;
             _resourceManager = resourceManager;
+            NifObjectBuilder.Initialize(materialManager, textureManager);
         }
 
-        private Task<NiFile> StartNiFileLoadingTask(string filePath)
+        private Task<NIF.Builder.Components.GameObject> StartNiFileLoadingTask(string filePath)
         {
             return Task.Run(() =>
             {
@@ -37,7 +35,9 @@ namespace Engine
                 var niFile = NiFile.ReadNif(filePath, fileReader, 0);
                 fileReader.Close();
                 fileStream.Close();
-                return niFile;
+                var objectBuilder = new NifObjectBuilder(niFile);
+                var gameObject = objectBuilder.BuildObject();
+                return gameObject;
             });
         }
 
@@ -59,11 +59,11 @@ namespace Engine
             _prefabContainerObject.SetActive(false);
         }
 
-        public IEnumerator InstantiateNif(string filePath, Action<GameObject> onReadyCallback)
+        public IEnumerator<GameObject> InstantiateNif(string filePath)
         {
             if (string.IsNullOrEmpty(filePath))
             {
-                onReadyCallback(null);
+                yield return null;
                 yield break;
             }
 
@@ -72,19 +72,21 @@ namespace Engine
 
             if (!_nifPrefabs.TryGetValue(filePath, out var prefab))
             {
-                var prefabCoroutine = LoadNifPrefab(filePath, loadedPrefab => { prefab = loadedPrefab; });
+                var prefabCoroutine = LoadNifPrefab(filePath);
                 while (prefabCoroutine.MoveNext())
                 {
                     yield return null;
                 }
-
+                
+                prefab = prefabCoroutine.Current;
+                yield return null;
                 _nifPrefabs[filePath] = prefab;
             }
 
-            onReadyCallback(prefab != null ? Object.Instantiate(prefab) : null);
+            yield return prefab != null ? Object.Instantiate(prefab) : null;
         }
 
-        private IEnumerator LoadNifPrefab(string filePath, Action<GameObject> onReadyCallback)
+        private IEnumerator<GameObject> LoadNifPrefab(string filePath)
         {
             PreloadNifFile(filePath);
             var task = _niFileTasks[filePath];
@@ -94,24 +96,23 @@ namespace Engine
                 yield return null;
             }
 
-            var file = task.Result;
+            var gameObject = task.Result;
             _niFileTasks.Remove(filePath);
-            var objectBuilder = new NifObjectBuilder(file, _materialManager);
             yield return null;
 
-            var prefabCoroutine = objectBuilder.BuildObject(prefab =>
+            if (gameObject == null)
             {
-                if (prefab != null)
-                {
-                    prefab.transform.parent = _prefabContainerObject.transform;
-                }
+                yield return null;
+                yield break;
+            }
 
-                onReadyCallback(prefab);
-            });
+            var prefabCoroutine = gameObject.Create(_prefabContainerObject, true);
             while (prefabCoroutine.MoveNext())
             {
                 yield return null;
             }
+            var prefab = prefabCoroutine.Current;
+            yield return prefab;
         }
 
         /// <summary>

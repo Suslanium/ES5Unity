@@ -1,31 +1,31 @@
-﻿using System;
-using System.Collections;
-using System.Linq;
+﻿using System.Linq;
 using NIF.Parser;
 using NIF.Parser.NiObjects;
-using UnityEngine;
+using GameObject = NIF.Builder.Components.GameObject;
+using Mesh = NIF.Builder.Components.Mesh.Mesh;
+using MeshCollider = NIF.Builder.Components.Mesh.MeshCollider;
 
 namespace NIF.Builder.Delegate.Collision
 {
     public class BhkConvexVerticesShapeDelegate : NiObjectDelegate<BhkConvexVerticesShape>
     {
-        protected override IEnumerator Instantiate(NiFile niFile, BhkConvexVerticesShape niObject,
-            InstantiateChildNiObjectDelegate instantiateChildDelegate, Action<GameObject> onReadyCallback)
+        protected override GameObject Instantiate(NiFile niFile, BhkConvexVerticesShape niObject,
+            InstantiateChildNiObjectDelegate instantiateChildDelegate)
         {
             var gameObject = new GameObject("bhkConvexVerticesShape");
             var vertices = niObject.Vertices
                 .Select(vertex => NifUtils.NifVectorToUnityVector(vertex.ToUnityVector())).ToArray();
-            yield return null;
             var mesh = new Mesh
             {
-                vertices = vertices
+                Vertices = vertices
             };
-            yield return null;
-            var collider = gameObject.AddComponent<MeshCollider>();
-            collider.convex = true;
-            collider.sharedMesh = mesh;
-            yield return null;
-            onReadyCallback(gameObject);
+            var collider = new MeshCollider
+            {
+                Convex = true,
+                Mesh = mesh
+            };
+            gameObject.AddComponent(collider);
+            return gameObject;
         }
     }
 }

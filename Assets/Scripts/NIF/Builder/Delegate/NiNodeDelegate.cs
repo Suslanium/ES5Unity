@@ -1,40 +1,30 @@
-﻿using System;
-using System.Collections;
-using NIF.Parser;
+﻿using NIF.Parser;
 using NIF.Parser.NiObjects;
-using UnityEngine;
+using GameObject = NIF.Builder.Components.GameObject;
 
 namespace NIF.Builder.Delegate
 {
     public class NiNodeDelegate : NiObjectDelegate<NiNode>
     {
-        protected override IEnumerator Instantiate(NiFile niFile, NiNode niObject,
-            InstantiateChildNiObjectDelegate instantiateChildDelegate,
-            Action<GameObject> onReadyCallback)
+        protected override GameObject Instantiate(NiFile niFile, NiNode niObject,
+            InstantiateChildNiObjectDelegate instantiateChildDelegate)
         {
             var gameObject = new GameObject(niObject.Name);
 
             foreach (var childRef in niObject.ChildrenReferences)
             {
                 if (childRef < 0) continue;
-                var childCoroutine = instantiateChildDelegate(niFile.NiObjects[childRef], child =>
-                {
-                    if (child != null)
-                    {
-                        child.transform.SetParent(gameObject.transform, false);
-                    }
-                });
+                var child = instantiateChildDelegate(niFile.NiObjects[childRef]);
 
-                if (childCoroutine == null) continue;
-                while (childCoroutine.MoveNext())
+                if (child != null)
                 {
-                    yield return null;
+                    child.Parent = gameObject;
                 }
             }
 
             NifUtils.ApplyNiAvObjectTransform(niObject, gameObject);
 
-            onReadyCallback(gameObject);
+            return gameObject;
         }
     }
 }
