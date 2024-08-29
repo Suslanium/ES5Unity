@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections;
 using UnityEngine;
 
 namespace NIF.Builder.Components.Mesh
@@ -14,7 +15,7 @@ namespace NIF.Builder.Components.Mesh
         public bool? HasNormals = null;
         public bool ShouldRecalculateBounds = false;
 
-        public IEnumerator<UnityEngine.Mesh> Create()
+        public IEnumerator Create(Action<UnityEngine.Mesh> onReadyCallback)
         {
             var mesh = new UnityEngine.Mesh();
 
@@ -49,7 +50,7 @@ namespace NIF.Builder.Components.Mesh
                 yield return null;
             }
 
-            yield return mesh;
+            onReadyCallback(mesh);
         }
     }
 }

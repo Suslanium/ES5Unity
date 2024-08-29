@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -35,11 +36,12 @@ namespace Engine.Textures
             _textureManager = textureManager;
         }
 
-        public IEnumerator<Material> GetMaterialFromProperties(MaterialProperties materialProperties)
+        public IEnumerator GetMaterialFromProperties(MaterialProperties materialProperties,
+            Action<Material> onReadyCallback)
         {
             if (_materialCache.TryGetValue(materialProperties, out var cachedMaterial))
             {
-                yield return cachedMaterial;
+                onReadyCallback(cachedMaterial);
                 yield break;
             }
 
@@ -67,8 +69,10 @@ namespace Engine.Textures
 
             yield return null;
 
+            //---------
+            Texture2D diffuseMap = null;
             var diffuseMapCoroutine = Coroutine.Get(_textureManager.GetMap<Texture2D>(TextureType.DIFFUSE,
-                materialProperties.DiffuseMapPath), nameof(_textureManager.GetMap));
+                materialProperties.DiffuseMapPath, map => { diffuseMap = map; }), nameof(_textureManager.GetMap));
             yield return null;
             if (diffuseMapCoroutine != null)
             {
@@ -76,9 +80,6 @@ namespace Engine.Textures
                 {
                     yield return null;
                 }
-
-                var diffuseMap = diffuseMapCoroutine.Current;
-                yield return null;
 
                 if (diffuseMap is not null)
                 {
@@ -99,8 +100,9 @@ namespace Engine.Textures
 
             if (!string.IsNullOrEmpty(materialProperties.NormalMapPath))
             {
+                Texture2D normalMap = null;
                 var normalMapCoroutine = Coroutine.Get(_textureManager.GetMap<Texture2D>(TextureType.NORMAL,
-                    materialProperties.NormalMapPath), nameof(_textureManager.GetMap));
+                    materialProperties.NormalMapPath, map => { normalMap = map; }), nameof(_textureManager.GetMap));
                 yield return null;
                 if (normalMapCoroutine != null)
                 {
@@ -108,9 +110,6 @@ namespace Engine.Textures
                     {
                         yield return null;
                     }
-
-                    var normalMap = normalMapCoroutine.Current;
-                    yield return null;
 
                     if (normalMap is not null)
                     {
@@ -124,8 +123,10 @@ namespace Engine.Textures
 
             if (!string.IsNullOrEmpty(materialProperties.MetallicMaskPath))
             {
+                Texture2D metallicMap = null;
                 var metallicMapCoroutine = Coroutine.Get(_textureManager.GetMap<Texture2D>(TextureType.METALLIC,
-                    materialProperties.MetallicMaskPath), nameof(_textureManager.GetMap));
+                        materialProperties.MetallicMaskPath, map => { metallicMap = map; }),
+                    nameof(_textureManager.GetMap));
                 yield return null;
                 if (metallicMapCoroutine != null)
                 {
@@ -133,9 +134,6 @@ namespace Engine.Textures
                     {
                         yield return null;
                     }
-
-                    var metallicMap = metallicMapCoroutine.Current;
-                    yield return null;
 
                     if (metallicMap is not null)
                     {
@@ -154,8 +152,9 @@ namespace Engine.Textures
                 yield return null;
                 if (!string.IsNullOrEmpty(materialProperties.GlowMapPath))
                 {
+                    Texture2D glowMap = null;
                     var glowMapCoroutine = Coroutine.Get(_textureManager.GetMap<Texture2D>(TextureType.GLOW,
-                        materialProperties.GlowMapPath), nameof(_textureManager.GetMap));
+                        materialProperties.GlowMapPath, map => { glowMap = map; }), nameof(_textureManager.GetMap));
                     yield return null;
                     if (glowMapCoroutine != null)
                     {
@@ -163,9 +162,6 @@ namespace Engine.Textures
                         {
                             yield return null;
                         }
-
-                        var glowMap = glowMapCoroutine.Current;
-                        yield return null;
 
                         if (glowMap is not null)
                         {
@@ -179,17 +175,16 @@ namespace Engine.Textures
 
             if (!string.IsNullOrEmpty(materialProperties.EnvironmentalMapPath))
             {
+                Cubemap cubeMap = null;
                 var envMapCoroutine = Coroutine.Get(_textureManager.GetMap<Cubemap>(TextureType.ENVIRONMENTAL,
-                    materialProperties.EnvironmentalMapPath), nameof(_textureManager.GetMap));
+                        materialProperties.EnvironmentalMapPath, map => { cubeMap = map; }),
+                    nameof(_textureManager.GetMap));
                 if (envMapCoroutine != null)
                 {
                     while (envMapCoroutine.MoveNext())
                     {
                         yield return null;
                     }
-
-                    var cubeMap = envMapCoroutine.Current;
-                    yield return null;
 
                     if (cubeMap is not null)
                     {
@@ -202,7 +197,7 @@ namespace Engine.Textures
             _materialCache.Add(materialProperties, material);
             yield return null;
 
-            yield return material;
+            onReadyCallback(material);
         }
 
         /// <summary>

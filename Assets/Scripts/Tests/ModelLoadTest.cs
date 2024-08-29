@@ -32,7 +32,7 @@ namespace Tests
             {
                 _stopwatch.Reset();
                 _stopwatch.Start();
-                var iterator = _nifManager.InstantiateNif(path);
+                var iterator = _nifManager.InstantiateNif(path, _ => {});
                 while (iterator.MoveNext())
                 {
                 }

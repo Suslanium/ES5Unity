@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections;
 using Engine.Resource;
 using UnityEngine;
 using Coroutine = Engine.Core.Coroutine;
@@ -11,11 +12,11 @@ namespace Engine.Textures.TypeManager
         {
         }
 
-        public override IEnumerator<Cubemap> GetMap(string texturePath)
+        public override IEnumerator GetMap(string texturePath, Action<Cubemap> onReadyCallback)
         {
             if (TextureStore.TryGetValue(texturePath, out var envMap))
             {
-                yield return envMap;
+                onReadyCallback(envMap);
                 yield break;
             }
 
@@ -34,16 +35,15 @@ namespace Engine.Textures.TypeManager
             var result = newTask.Result;
             yield return null;
 
-            Cubemap texture;
+            Cubemap texture = null;
             if (result != null)
             {
-                var textureCoroutine = Coroutine.Get(result.ToCubeMap(), nameof(result.ToCubeMap));
+                var textureCoroutine = Coroutine.Get(result.ToCubeMap(cubeMap => { texture = cubeMap; }),
+                    nameof(result.ToCubeMap));
                 while (textureCoroutine.MoveNext())
                 {
                     yield return null;
                 }
-
-                texture = textureCoroutine.Current;
             }
             else
             {
@@ -56,7 +56,7 @@ namespace Engine.Textures.TypeManager
             yield return null;
             TaskStore.TryRemove(texturePath, out _);
             yield return null;
-            yield return texture;
+            onReadyCallback(texture);
         }
     }
 }

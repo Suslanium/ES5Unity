@@ -62,21 +62,20 @@ namespace Engine.Cell.Delegate
             if (!string.IsNullOrEmpty(lightRecord.NifModelFilename))
             {
                 var modelObjectCoroutine =
-                    Coroutine.Get(_nifManager.InstantiateNif(lightRecord.NifModelFilename),
+                    Coroutine.Get(
+                        _nifManager.InstantiateNif(lightRecord.NifModelFilename, obj => { modelObject = obj; }),
                         nameof(_nifManager.InstantiateNif));
                 while (modelObjectCoroutine.MoveNext())
                 {
                     yield return null;
                 }
-
-                modelObject = modelObjectCoroutine.Current;
-                yield return null;
             }
 
             if (modelObject == null)
                 modelObject = new GameObject(lightRecord.EditorID);
 
             CellUtils.ApplyPositionAndRotation(position, rotation, scale, parent, modelObject);
+            //-----------
             InstantiateLightOnGameObject(lightReference, lightRecord, modelObject);
         }
 

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections;
 using UnityEngine;
 
 namespace Engine.Textures.TypeManager
@@ -7,7 +8,7 @@ namespace Engine.Textures.TypeManager
     {
         void PreloadMap(string texturePath);
 
-        IEnumerator<T> GetMap(string texturePath);
+        IEnumerator GetMap(string texturePath, Action<T> onReadyCallback);
         
         void Clear();
     }

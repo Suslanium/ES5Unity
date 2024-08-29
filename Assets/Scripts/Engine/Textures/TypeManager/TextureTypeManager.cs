@@ -1,5 +1,6 @@
-﻿using System.Collections.Concurrent;
-using System.Collections.Generic;
+﻿using System;
+using System.Collections.Concurrent;
+using System.Collections;
 using System.Threading.Tasks;
 using Engine.Resource;
 using Textures;
@@ -41,7 +42,7 @@ namespace Engine.Textures.TypeManager
             TaskStore[texturePath] = StartLoadTextureTask(texturePath);
         }
 
-        public abstract IEnumerator<T> GetMap(string texturePath);
+        public abstract IEnumerator GetMap(string texturePath, Action<T> onReadyCallback);
         
         public void Clear()
         {

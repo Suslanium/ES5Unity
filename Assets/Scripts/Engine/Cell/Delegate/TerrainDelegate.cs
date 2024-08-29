@@ -565,25 +565,25 @@ namespace Engine.Cell.Delegate
                     Texture2D normalMap = null;
 
                     var diffuseMapCoroutine =
-                        Coroutine.Get(_textureManager.GetMap<Texture2D>(TextureType.DIFFUSE, diffuseMapPath),
+                        Coroutine.Get(
+                            _textureManager.GetMap<Texture2D>(TextureType.DIFFUSE, diffuseMapPath,
+                                map => { diffuseMap = map; }),
                             nameof(_textureManager.GetMap));
                     if (diffuseMapCoroutine != null)
                     {
                         while (diffuseMapCoroutine.MoveNext())
                             yield return null;
-                        diffuseMap = diffuseMapCoroutine.Current;
-                        yield return null;
                     }
 
                     var normalMapCoroutine =
-                        Coroutine.Get(_textureManager.GetMap<Texture2D>(TextureType.NORMAL, normalMapPath),
+                        Coroutine.Get(
+                            _textureManager.GetMap<Texture2D>(TextureType.NORMAL, normalMapPath,
+                                map => { normalMap = map; }),
                             nameof(_textureManager.GetMap));
                     if (normalMapCoroutine != null)
                     {
                         while (normalMapCoroutine.MoveNext())
                             yield return null;
-                        normalMap = normalMapCoroutine.Current;
-                        yield return null;
                     }
 
                     textures = (diffuseMap, normalMap);

@@ -71,13 +71,10 @@ namespace Engine.Cell.Delegate
             if (!string.IsNullOrEmpty(doorBase.NifModelFilename))
             {
                 var modelObjectCoroutine =
-                    Coroutine.Get(_nifManager.InstantiateNif(doorBase.NifModelFilename),
+                    Coroutine.Get(_nifManager.InstantiateNif(doorBase.NifModelFilename, obj => { modelObject = obj; }),
                         nameof(_nifManager.InstantiateNif));
                 while (modelObjectCoroutine.MoveNext())
                     yield return null;
-
-                modelObject = modelObjectCoroutine.Current;
-                yield return null;
             }
 
             if (modelObject == null)

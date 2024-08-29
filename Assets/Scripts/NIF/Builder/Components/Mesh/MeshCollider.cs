@@ -19,10 +19,12 @@ namespace NIF.Builder.Components.Mesh
 
             component.convex = Convex;
             yield return null;
-            var meshCoroutine = Coroutine.Get(Mesh.Create(), nameof(Mesh.Create));
+            UnityEngine.Mesh mesh = null;
+            yield return null;
+            var meshCoroutine = Coroutine.Get(Mesh.Create(createdMesh => { mesh = createdMesh; }), nameof(Mesh.Create));
             while (meshCoroutine.MoveNext())
                 yield return null;
-            component.sharedMesh = meshCoroutine.Current;
+            component.sharedMesh = mesh;
             yield return null;
         }
     }

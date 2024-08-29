@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using Logger = Engine.Core.Logger;
@@ -61,14 +63,16 @@ namespace NIF.Builder.Components
             _name = name;
         }
 
-        public IEnumerator<UnityEngine.GameObject> Create(UnityEngine.GameObject parent, bool isStatic = false)
+        public IEnumerator Create(UnityEngine.GameObject parent, Action<UnityEngine.GameObject> onReadyCallback,
+            bool isStatic = false)
         {
             if (_children.Count == 0 && _components.Count == 0)
             {
                 // No need to create an empty game object
-                yield return null;
+                onReadyCallback(null);
                 yield break;
             }
+
             var gameObject = new UnityEngine.GameObject(_name)
             {
                 isStatic = isStatic
@@ -91,13 +95,15 @@ namespace NIF.Builder.Components
             }
 
             foreach (var childCoroutine in _children.Select(child =>
-                         Coroutine.Get(child.Create(gameObject, isStatic), nameof(child.Create))))
+                         Coroutine.Get(child.Create(gameObject, _ => { }, isStatic), nameof(child.Create))
+                     ))
+
             {
                 while (childCoroutine.MoveNext())
                     yield return null;
             }
 
-            yield return gameObject;
+            onReadyCallback(gameObject);
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using Engine.Textures;
+using UnityEngine;
 using Coroutine = Engine.Core.Coroutine;
 
 namespace NIF.Builder.Components.Mesh
@@ -22,13 +23,14 @@ namespace NIF.Builder.Components.Mesh
             if (MaterialProperties == null)
                 yield break;
 
-            var materialCoroutine = Coroutine.Get(_materialManager.GetMaterialFromProperties(MaterialProperties.Value),
+            Material material = null;
+            yield return null;
+
+            var materialCoroutine = Coroutine.Get(_materialManager.GetMaterialFromProperties(MaterialProperties.Value,
+                    createdMaterial => { material = createdMaterial; }),
                 nameof(_materialManager.GetMaterialFromProperties));
             while (materialCoroutine.MoveNext())
                 yield return null;
-
-            var material = materialCoroutine.Current;
-            yield return null;
 
             renderer.sharedMaterial = material;
             yield return null;

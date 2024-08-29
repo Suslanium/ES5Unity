@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -61,11 +62,11 @@ namespace Engine
             _prefabContainerObject.SetActive(false);
         }
 
-        public IEnumerator<GameObject> InstantiateNif(string filePath)
+        public IEnumerator InstantiateNif(string filePath, Action<GameObject> onReadyCallback)
         {
             if (string.IsNullOrEmpty(filePath))
             {
-                yield return null;
+                onReadyCallback(null);
                 yield break;
             }
 
@@ -74,21 +75,21 @@ namespace Engine
 
             if (!_nifPrefabs.TryGetValue(filePath, out var prefab))
             {
-                var prefabCoroutine = Coroutine.Get(LoadNifPrefab(filePath), nameof(LoadNifPrefab));
+                var prefabCoroutine = Coroutine.Get(LoadNifPrefab(filePath, gameObj => { prefab = gameObj; }),
+                    nameof(LoadNifPrefab));
                 while (prefabCoroutine.MoveNext())
                 {
                     yield return null;
                 }
 
-                prefab = prefabCoroutine.Current;
                 yield return null;
                 _nifPrefabs[filePath] = prefab;
             }
 
-            yield return prefab != null ? Object.Instantiate(prefab) : null;
+            onReadyCallback(prefab != null ? Object.Instantiate(prefab) : null);
         }
 
-        private IEnumerator<GameObject> LoadNifPrefab(string filePath)
+        private IEnumerator LoadNifPrefab(string filePath, Action<GameObject> onReadyCallback)
         {
             PreloadNifFile(filePath);
             var task = _niFileTasks[filePath];
@@ -104,19 +105,20 @@ namespace Engine
 
             if (gameObject == null)
             {
-                yield return null;
+                onReadyCallback(null);
                 yield break;
             }
 
+            GameObject prefab = null;
             var prefabCoroutine =
-                Coroutine.Get(gameObject.Create(_prefabContainerObject, true), nameof(gameObject.Create));
+                Coroutine.Get(gameObject.Create(_prefabContainerObject, gameObj => { prefab = gameObj; }, true),
+                    nameof(gameObject.Create));
             while (prefabCoroutine.MoveNext())
             {
                 yield return null;
             }
 
-            var prefab = prefabCoroutine.Current;
-            yield return prefab;
+            onReadyCallback(prefab);
         }
 
         /// <summary>

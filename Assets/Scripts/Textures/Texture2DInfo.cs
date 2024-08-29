@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections;
 using System.IO;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -29,14 +30,14 @@ namespace Textures
         /// <summary>
         /// Creates a Unity Texture2D from this Texture2DInfo.
         /// </summary>
-        public IEnumerator<Texture2D> ToTexture2D(bool linear = false)
+        public IEnumerator ToTexture2D(Action<Texture2D> onReadyCallback, bool linear = false)
         {
             var texture = new Texture2D(Width, Height, Format, HasMipmaps, linear);
             yield return null;
 
             if (RawData == null)
             {
-                yield return texture;
+                onReadyCallback(texture);
                 yield break;
             }
             
@@ -45,10 +46,10 @@ namespace Textures
             texture.Apply();
             yield return null;
 
-            yield return texture;
+            onReadyCallback(texture);
         }
 
-        public IEnumerator<Cubemap> ToCubeMap()
+        public IEnumerator ToCubeMap(Action<Cubemap> onReadyCallback)
         {
             if (Width != Height)
                 throw new InvalidDataException(
@@ -57,18 +58,21 @@ namespace Textures
             var cubeMap = new Cubemap(Width, Format, HasMipmaps);
             yield return null;
 
-            var textureCoroutine = ToTexture2D();
+            Texture2D texture = null;
+            var textureCoroutine = ToTexture2D(loadedTexture =>
+            {
+                texture = loadedTexture;
+            });
             while (textureCoroutine.MoveNext())
             {
                 yield return null;
             }
             
-            var texture = textureCoroutine.Current;
             yield return null;
             
             if (texture == null)
             {
-                yield return cubeMap;
+                onReadyCallback(cubeMap);
                 yield break;
             }
 
@@ -92,7 +96,7 @@ namespace Textures
             yield return null;
             Object.Destroy(texture);
             yield return null;
-            yield return cubeMap;
+            onReadyCallback(cubeMap);
         }
     }
 }
