@@ -7,6 +7,7 @@ using Engine.MasterFile;
 using Engine.Resource;
 using Engine.Textures;
 using UnityEngine;
+using Coroutine = Engine.Core.Coroutine;
 
 namespace Engine
 {
@@ -19,7 +20,7 @@ namespace Engine
 
     public class GameEngine
     {
-        private const float DesiredWorkTimePerFrame = 1.0f / 200;
+        private const float DesiredWorkTimePerFrame = 1.0f / 500;
         private readonly MaterialManager _materialManager;
         private readonly NifManager _nifManager;
         private readonly CellManager _cellManager;
@@ -90,7 +91,7 @@ namespace Engine
         private IEnumerator LoadCellCoroutine(string editorId, Vector3? startPosition,
             Quaternion? startRotation)
         {
-            var clearCoroutine = DestroyAndClearEverything();
+            var clearCoroutine = Coroutine.Get(DestroyAndClearEverything(), nameof(DestroyAndClearEverything));
             while (clearCoroutine.MoveNext())
                 yield return null;
 
@@ -109,7 +110,7 @@ namespace Engine
         private IEnumerator LoadCellCoroutine(uint formID, Vector3? startPosition,
             Quaternion? startRotation)
         {
-            var clearCoroutine = DestroyAndClearEverything();
+            var clearCoroutine = Coroutine.Get(DestroyAndClearEverything(), nameof(DestroyAndClearEverything));
             while (clearCoroutine.MoveNext())
                 yield return null;
 
@@ -128,19 +129,20 @@ namespace Engine
 
         private IEnumerator DestroyAndClearEverything()
         {
-            var cellCoroutine = _cellManager.DestroyAllCells();
+            var cellCoroutine = Coroutine.Get(_cellManager.DestroyAllCells(), nameof(_cellManager.DestroyAllCells));
             while (cellCoroutine.MoveNext())
             {
                 yield return null;
             }
 
-            var nifCoroutine = _nifManager.ClearModelCache();
+            var nifCoroutine = Coroutine.Get(_nifManager.ClearModelCache(), nameof(_nifManager.ClearModelCache));
             while (nifCoroutine.MoveNext())
             {
                 yield return null;
             }
 
-            var materialCoroutine = _materialManager.ClearCachedMaterialsAndTextures();
+            var materialCoroutine = Coroutine.Get(_materialManager.ClearCachedMaterialsAndTextures(),
+                nameof(_materialManager.ClearCachedMaterialsAndTextures));
             while (materialCoroutine.MoveNext())
             {
                 yield return null;

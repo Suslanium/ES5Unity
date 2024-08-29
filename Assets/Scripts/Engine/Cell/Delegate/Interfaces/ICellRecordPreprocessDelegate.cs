@@ -3,6 +3,7 @@ using MasterFile.MasterFileContents;
 using MasterFile.MasterFileContents.Records;
 using UnityEngine;
 using Logger = Engine.Core.Logger;
+using Coroutine = Engine.Core.Coroutine;
 
 namespace Engine.Cell.Delegate.Interfaces
 {
@@ -18,7 +19,7 @@ namespace Engine.Cell.Delegate.Interfaces
         public IEnumerator PreprocessRecord(CELL cell, Record record, GameObject parent)
         {
             if (record is T recordType)
-                return PreprocessRecord(cell, recordType, parent);
+                return Coroutine.Get(PreprocessRecord(cell, recordType, parent), nameof(PreprocessRecord));
             Logger.LogError($"Expected record {typeof(T).Name} but got {record.GetType().Name}");
             return null;
         }

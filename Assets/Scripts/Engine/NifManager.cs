@@ -9,6 +9,7 @@ using NIF.Builder;
 using NIF.Parser;
 using UnityEngine;
 using Object = UnityEngine.Object;
+using Coroutine = Engine.Core.Coroutine;
 
 namespace Engine
 {
@@ -19,7 +20,8 @@ namespace Engine
         private readonly ResourceManager _resourceManager;
         private GameObject _prefabContainerObject;
 
-        public NifManager(MaterialManager materialManager, TextureManager textureManager, ResourceManager resourceManager)
+        public NifManager(MaterialManager materialManager, TextureManager textureManager,
+            ResourceManager resourceManager)
         {
             _resourceManager = resourceManager;
             NifObjectBuilder.Initialize(materialManager, textureManager);
@@ -72,12 +74,12 @@ namespace Engine
 
             if (!_nifPrefabs.TryGetValue(filePath, out var prefab))
             {
-                var prefabCoroutine = LoadNifPrefab(filePath);
+                var prefabCoroutine = Coroutine.Get(LoadNifPrefab(filePath), nameof(LoadNifPrefab));
                 while (prefabCoroutine.MoveNext())
                 {
                     yield return null;
                 }
-                
+
                 prefab = prefabCoroutine.Current;
                 yield return null;
                 _nifPrefabs[filePath] = prefab;
@@ -90,7 +92,7 @@ namespace Engine
         {
             PreloadNifFile(filePath);
             var task = _niFileTasks[filePath];
-            
+
             while (!task.IsCompleted)
             {
                 yield return null;
@@ -106,11 +108,13 @@ namespace Engine
                 yield break;
             }
 
-            var prefabCoroutine = gameObject.Create(_prefabContainerObject, true);
+            var prefabCoroutine =
+                Coroutine.Get(gameObject.Create(_prefabContainerObject, true), nameof(gameObject.Create));
             while (prefabCoroutine.MoveNext())
             {
                 yield return null;
             }
+
             var prefab = prefabCoroutine.Current;
             yield return prefab;
         }

@@ -19,7 +19,7 @@ namespace Engine.Core
 
             return taskCoroutine;
         }
-        
+
         /// <summary>
         /// Adds a task coroutine to be run next and returns it.
         /// </summary>
@@ -35,9 +35,12 @@ namespace Engine.Core
             _tasks.Remove(taskCoroutine);
             _tasks.Insert(0, taskCoroutine);
         }
-        
+
         public void CancelTask(IEnumerator taskCoroutine)
         {
+#if (DEVELOPMENT_BUILD || UNITY_EDITOR) && COROUTINE_PERFORMANCE_LOGGING
+            Coroutine.RemoveTask(taskCoroutine);
+#endif
             _tasks.Remove(taskCoroutine);
         }
 
@@ -45,8 +48,11 @@ namespace Engine.Core
         {
             Debug.Assert(desiredWorkTime >= 0);
 
-            if(_tasks.Count == 0)
+            if (_tasks.Count == 0)
             {
+#if (DEVELOPMENT_BUILD || UNITY_EDITOR) && COROUTINE_PERFORMANCE_LOGGING
+                Coroutine.CurrentTask = null;
+#endif
                 return;
             }
 
@@ -56,13 +62,27 @@ namespace Engine.Core
             // Run the tasks.
             do
             {
+#if (DEVELOPMENT_BUILD || UNITY_EDITOR) && COROUTINE_PERFORMANCE_LOGGING
+                Coroutine.CurrentTask = _tasks[0];
+#endif
                 // Try to execute an iteration of a task. Remove the task if it's execution has completed.
-                if(!_tasks[0].MoveNext())
+                if (!_tasks[0].MoveNext())
                 {
+#if (DEVELOPMENT_BUILD || UNITY_EDITOR) && COROUTINE_PERFORMANCE_LOGGING
+                    Coroutine.RemoveTask(_tasks[0]);
+#endif
                     _tasks.RemoveAt(0);
                 }
+            } while (_tasks.Count > 0 && _stopwatch.Elapsed.TotalSeconds < desiredWorkTime);
 
-            } while((_tasks.Count > 0) && (_stopwatch.Elapsed.TotalSeconds < desiredWorkTime));
+#if (DEVELOPMENT_BUILD || UNITY_EDITOR) && COROUTINE_PERFORMANCE_LOGGING
+            if (_stopwatch.Elapsed.TotalSeconds >= desiredWorkTime * 2)
+            {
+                Logger.Log(
+                    $"Too much work per frame, took {_stopwatch.Elapsed.TotalMilliseconds} ms. Coroutine call stack:\n" +
+                    $"{Coroutine.GetCurrentTaskCallStack()}");
+            }
+#endif
 
             _stopwatch.Stop();
         }
@@ -71,17 +91,20 @@ namespace Engine.Core
         {
             Debug.Assert(_tasks.Contains(taskCoroutine));
 
-            while(taskCoroutine.MoveNext())
-            { }
+            while (taskCoroutine.MoveNext())
+            {
+            }
 
             _tasks.Remove(taskCoroutine);
         }
+
         public void WaitForAllTasks()
         {
-            foreach(var task in _tasks)
+            foreach (var task in _tasks)
             {
-                while(task.MoveNext())
-                { }
+                while (task.MoveNext())
+                {
+                }
             }
 
             _tasks.Clear();

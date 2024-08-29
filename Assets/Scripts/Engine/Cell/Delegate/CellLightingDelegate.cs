@@ -7,6 +7,7 @@ using MasterFile.MasterFileContents.Records;
 using NIF.Builder;
 using UnityEngine;
 using UnityEngine.Rendering;
+using Coroutine = Engine.Core.Coroutine;
 
 namespace Engine.Cell.Delegate
 {
@@ -31,7 +32,7 @@ namespace Engine.Cell.Delegate
             if (cell.CellLightingInfo == null) yield break;
             //Don't process lighting for exterior cells
             if ((cell.CellFlag & 0x0001) == 0) yield break;
-            var lightingCoroutine = ConfigureCellLighting(cell);
+            var lightingCoroutine = Coroutine.Get(ConfigureCellLighting(cell), nameof(ConfigureCellLighting));
             while (lightingCoroutine.MoveNext())
             {
                 yield return null;
@@ -40,7 +41,7 @@ namespace Engine.Cell.Delegate
 
         public IEnumerator OnDestroy()
         {
-            return ResetLighting();
+            return Coroutine.Get(ResetLighting(), nameof(ResetLighting));
         }
 
         private IEnumerator ResetLighting()

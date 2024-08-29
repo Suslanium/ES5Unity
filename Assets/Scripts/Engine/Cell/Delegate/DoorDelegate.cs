@@ -8,6 +8,7 @@ using MasterFile.MasterFileContents.Records;
 using NIF.Builder;
 using UnityEngine;
 using Logger = Engine.Core.Logger;
+using Coroutine = Engine.Core.Coroutine;
 
 namespace Engine.Cell.Delegate
 {
@@ -54,9 +55,10 @@ namespace Engine.Cell.Delegate
             if (referencedRecord is not DOOR door)
                 yield break;
 
-            var doorInstantiationCoroutine = InstantiateDoorTeleportAtPositionAndRotation(reference, door,
-                reference.Position,
-                reference.Rotation, reference.Scale, cellGameObject);
+            var doorInstantiationCoroutine = Coroutine.Get(InstantiateDoorTeleportAtPositionAndRotation(reference, door,
+                    reference.Position,
+                    reference.Rotation, reference.Scale, cellGameObject),
+                nameof(InstantiateDoorTeleportAtPositionAndRotation));
             while (doorInstantiationCoroutine.MoveNext())
                 yield return null;
         }
@@ -69,10 +71,11 @@ namespace Engine.Cell.Delegate
             if (!string.IsNullOrEmpty(doorBase.NifModelFilename))
             {
                 var modelObjectCoroutine =
-                    _nifManager.InstantiateNif(doorBase.NifModelFilename);
+                    Coroutine.Get(_nifManager.InstantiateNif(doorBase.NifModelFilename),
+                        nameof(_nifManager.InstantiateNif));
                 while (modelObjectCoroutine.MoveNext())
                     yield return null;
-                
+
                 modelObject = modelObjectCoroutine.Current;
                 yield return null;
             }

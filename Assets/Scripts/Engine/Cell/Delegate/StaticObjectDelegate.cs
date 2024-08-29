@@ -3,6 +3,7 @@ using Engine.Cell.Delegate.Reference;
 using MasterFile.MasterFileContents;
 using MasterFile.MasterFileContents.Records;
 using UnityEngine;
+using Coroutine = Engine.Core.Coroutine;
 
 namespace Engine.Cell.Delegate
 {
@@ -52,14 +53,22 @@ namespace Engine.Cell.Delegate
         {
             var instantiationCoroutine = referencedRecord switch
             {
-                STAT stat => InstantiateModelAtPositionAndRotation(stat.NifModelFilename, reference.Position,
-                    reference.Rotation, reference.Scale, cellGameObject),
-                MSTT mstt => InstantiateModelAtPositionAndRotation(mstt.NifModelFilename, reference.Position,
-                    reference.Rotation, reference.Scale, cellGameObject),
-                FURN furn => InstantiateModelAtPositionAndRotation(furn.NifModelFilename, reference.Position,
-                    reference.Rotation, reference.Scale, cellGameObject),
-                TREE tree => InstantiateModelAtPositionAndRotation(tree.NifModelFilename, reference.Position,
-                    reference.Rotation, reference.Scale, cellGameObject),
+                STAT stat => Coroutine.Get(InstantiateModelAtPositionAndRotation(stat.NifModelFilename,
+                        reference.Position,
+                        reference.Rotation, reference.Scale, cellGameObject),
+                    nameof(InstantiateModelAtPositionAndRotation)),
+                MSTT mstt => Coroutine.Get(InstantiateModelAtPositionAndRotation(mstt.NifModelFilename,
+                        reference.Position,
+                        reference.Rotation, reference.Scale, cellGameObject),
+                    nameof(InstantiateModelAtPositionAndRotation)),
+                FURN furn => Coroutine.Get(InstantiateModelAtPositionAndRotation(furn.NifModelFilename,
+                        reference.Position,
+                        reference.Rotation, reference.Scale, cellGameObject),
+                    nameof(InstantiateModelAtPositionAndRotation)),
+                TREE tree => Coroutine.Get(InstantiateModelAtPositionAndRotation(tree.NifModelFilename,
+                        reference.Position,
+                        reference.Rotation, reference.Scale, cellGameObject),
+                    nameof(InstantiateModelAtPositionAndRotation)),
                 _ => null
             };
 
@@ -74,7 +83,8 @@ namespace Engine.Cell.Delegate
         private IEnumerator InstantiateModelAtPositionAndRotation(string modelPath, float[] position, float[] rotation,
             float scale, GameObject parent)
         {
-            var modelObjectCoroutine = _nifManager.InstantiateNif(modelPath);
+            var modelObjectCoroutine =
+                Coroutine.Get(_nifManager.InstantiateNif(modelPath), nameof(_nifManager.InstantiateNif));
             while (modelObjectCoroutine.MoveNext())
             {
                 yield return null;

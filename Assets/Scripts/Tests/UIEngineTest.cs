@@ -32,6 +32,12 @@ namespace Tests
         private BinaryReader _masterFileReader;
         private MasterFileManager _masterFileManager;
 
+        private void Start()
+        {
+            Screen.SetResolution(Screen.currentResolution.width / 2, Screen.currentResolution.height / 2, true);
+            Application.targetFrameRate = 60;
+        }
+
         private void Update()
         {
             _gameEngine?.Update();

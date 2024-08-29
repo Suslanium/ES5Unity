@@ -14,6 +14,7 @@ using NIF.Builder;
 using UnityEngine;
 using Convert = Engine.Core.Convert;
 using Object = UnityEngine.Object;
+using Coroutine = Engine.Core.Coroutine;
 
 namespace Engine.Cell
 {
@@ -216,7 +217,8 @@ namespace Engine.Cell
 
             var extCell = extCellTask.Result;
             if (extCell == null) yield break;
-            var extCellLoadingCoroutine = LoadCellFromData(extCell, cellInfo, () => { });
+            var extCellLoadingCoroutine =
+                Coroutine.Get(LoadCellFromData(extCell, cellInfo, () => { }), nameof(LoadCellFromData));
             while (extCellLoadingCoroutine.MoveNext())
                 yield return null;
         }
@@ -238,9 +240,9 @@ namespace Engine.Cell
             var cellData = cellDataTask.Result;
             if (cellData == null) yield break;
 
-            var initializationCoroutine = InitializeCellLoading(cellData, startPos, startRot,
+            var initializationCoroutine = Coroutine.Get(InitializeCellLoading(cellData, startPos, startRot,
                 onReadyCallback,
-                persistentOnly);
+                persistentOnly), nameof(InitializeCellLoading));
             while (initializationCoroutine.MoveNext())
                 yield return null;
         }
@@ -255,9 +257,9 @@ namespace Engine.Cell
             var cellData = cellTask.Result;
             if (cellData == null) yield break;
 
-            var initializationCoroutine = InitializeCellLoading(cellData, startPos, startRot,
+            var initializationCoroutine = Coroutine.Get(InitializeCellLoading(cellData, startPos, startRot,
                 onReadyCallback,
-                persistentOnly);
+                persistentOnly), nameof(InitializeCellLoading));
             while (initializationCoroutine.MoveNext())
                 yield return null;
         }
@@ -338,19 +340,23 @@ namespace Engine.Cell
             cellGameObject.SetActive(false);
 
             var persistentObjectsInstantiationTask =
-                InstantiateCellRecords(cellData.CellRecord, cellData.PersistentChildren, cellGameObject);
+                Coroutine.Get(InstantiateCellRecords(cellData.CellRecord, cellData.PersistentChildren, cellGameObject),
+                    nameof(InstantiateCellRecords));
             while (persistentObjectsInstantiationTask.MoveNext())
                 yield return null;
 
             if (!persistentOnly)
             {
                 var temporaryObjectsInstantiationTask =
-                    InstantiateCellRecords(cellData.CellRecord, cellData.TemporaryChildren, cellGameObject);
+                    Coroutine.Get(
+                        InstantiateCellRecords(cellData.CellRecord, cellData.TemporaryChildren, cellGameObject),
+                        nameof(InstantiateCellRecords));
                 while (temporaryObjectsInstantiationTask.MoveNext())
                     yield return null;
             }
 
-            var postProcessTask = PostProcessCell(cellData.CellRecord, cellGameObject);
+            var postProcessTask = Coroutine.Get(PostProcessCell(cellData.CellRecord, cellGameObject),
+                nameof(PostProcessCell));
             while (postProcessTask.MoveNext())
                 yield return null;
 
@@ -369,7 +375,8 @@ namespace Engine.Cell
 
             foreach (var delegateInstance in _postProcessDelegates)
             {
-                var postProcessCoroutine = delegateInstance.PostProcessCell(cell, cellGameObject);
+                var postProcessCoroutine = Coroutine.Get(delegateInstance.PostProcessCell(cell, cellGameObject),
+                    nameof(delegateInstance.PostProcessCell));
                 if (postProcessCoroutine == null) continue;
                 while (postProcessCoroutine.MoveNext())
                     yield return null;
@@ -381,7 +388,8 @@ namespace Engine.Cell
             foreach (var record in children)
             {
                 _preprocessDelegates.TryGetValue(record.GetType(), out var preprocessDelegate);
-                var preprocessCoroutine = preprocessDelegate?.PreprocessRecord(cell, record, parent);
+                var preprocessCoroutine = Coroutine.Get(preprocessDelegate?.PreprocessRecord(cell, record, parent),
+                    nameof(ICellRecordPreprocessDelegate.PreprocessRecord));
                 if (preprocessCoroutine == null) continue;
                 while (preprocessCoroutine.MoveNext())
                     yield return null;
@@ -392,7 +400,9 @@ namespace Engine.Cell
             foreach (var record in children)
             {
                 _instantiationDelegates.TryGetValue(record.GetType(), out var instantiationDelegate);
-                var instantiationCoroutine = instantiationDelegate?.InstantiateRecord(cell, record, parent);
+                var instantiationCoroutine =
+                    Coroutine.Get(instantiationDelegate?.InstantiateRecord(cell, record, parent),
+                        nameof(ICellRecordInstantiationDelegate.InstantiateRecord));
                 if (instantiationCoroutine == null) continue;
                 while (instantiationCoroutine.MoveNext())
                     yield return null;
@@ -403,7 +413,7 @@ namespace Engine.Cell
         {
             foreach (var destroyDelegate in _destroyDelegates)
             {
-                var destroyCoroutine = destroyDelegate.OnDestroy();
+                var destroyCoroutine = Coroutine.Get(destroyDelegate.OnDestroy(), nameof(destroyDelegate.OnDestroy));
                 if (destroyCoroutine == null) continue;
                 while (destroyCoroutine.MoveNext())
                     yield return null;

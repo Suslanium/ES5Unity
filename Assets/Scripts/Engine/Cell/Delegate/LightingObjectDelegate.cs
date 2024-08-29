@@ -4,6 +4,7 @@ using Engine.Core;
 using MasterFile.MasterFileContents;
 using MasterFile.MasterFileContents.Records;
 using UnityEngine;
+using Coroutine = Engine.Core.Coroutine;
 
 namespace Engine.Cell.Delegate
 {
@@ -43,9 +44,9 @@ namespace Engine.Cell.Delegate
             if (referencedRecord is not LIGH light)
                 yield break;
 
-            var lightInstantiationCoroutine = InstantiateLightAtPositionAndRotation(reference, light,
+            var lightInstantiationCoroutine = Coroutine.Get(InstantiateLightAtPositionAndRotation(reference, light,
                 reference.Position,
-                reference.Rotation, reference.Scale, cellGameObject);
+                reference.Rotation, reference.Scale, cellGameObject), nameof(InstantiateLightAtPositionAndRotation));
             while (lightInstantiationCoroutine.MoveNext())
             {
                 yield return null;
@@ -61,12 +62,13 @@ namespace Engine.Cell.Delegate
             if (!string.IsNullOrEmpty(lightRecord.NifModelFilename))
             {
                 var modelObjectCoroutine =
-                    _nifManager.InstantiateNif(lightRecord.NifModelFilename);
+                    Coroutine.Get(_nifManager.InstantiateNif(lightRecord.NifModelFilename),
+                        nameof(_nifManager.InstantiateNif));
                 while (modelObjectCoroutine.MoveNext())
                 {
                     yield return null;
                 }
-                
+
                 modelObject = modelObjectCoroutine.Current;
                 yield return null;
             }

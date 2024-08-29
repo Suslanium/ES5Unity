@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using Engine.Resource;
 using UnityEngine;
+using Coroutine = Engine.Core.Coroutine;
 
 namespace Engine.Textures.TypeManager
 {
@@ -36,18 +37,19 @@ namespace Engine.Textures.TypeManager
             Cubemap texture;
             if (result != null)
             {
-                var textureCoroutine = result.ToCubeMap();
+                var textureCoroutine = Coroutine.Get(result.ToCubeMap(), nameof(result.ToCubeMap));
                 while (textureCoroutine.MoveNext())
                 {
                     yield return null;
                 }
-                
+
                 texture = textureCoroutine.Current;
             }
             else
             {
                 texture = new Cubemap(1, TextureFormat.RGBA32, false);
             }
+
             yield return null;
 
             TextureStore.TryAdd(texturePath, texture);

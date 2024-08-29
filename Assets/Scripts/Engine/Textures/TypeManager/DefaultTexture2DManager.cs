@@ -1,14 +1,16 @@
 ﻿using System.Collections.Generic;
 using Engine.Resource;
 using UnityEngine;
+using Coroutine = Engine.Core.Coroutine;
 
 namespace Engine.Textures.TypeManager
 {
     public class DefaultTexture2DManager : TextureTypeManager<Texture2D>
     {
         private readonly bool _linearTextures;
-        
-        public DefaultTexture2DManager(ResourceManager resourceManager, bool linearTextures = false) : base(resourceManager)
+
+        public DefaultTexture2DManager(ResourceManager resourceManager, bool linearTextures = false) : base(
+            resourceManager)
         {
             _linearTextures = linearTextures;
         }
@@ -39,18 +41,19 @@ namespace Engine.Textures.TypeManager
             Texture2D texture;
             if (result != null)
             {
-                var textureCoroutine = result.ToTexture2D(_linearTextures);
+                var textureCoroutine = Coroutine.Get(result.ToTexture2D(_linearTextures), nameof(result.ToTexture2D));
                 while (textureCoroutine.MoveNext())
                 {
                     yield return null;
                 }
-                
+
                 texture = textureCoroutine.Current;
             }
             else
             {
                 texture = new Texture2D(1, 1);
             }
+
             yield return null;
 
             TextureStore.TryAdd(texturePath, texture);

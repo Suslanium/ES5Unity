@@ -5,6 +5,7 @@ using Engine.MasterFile;
 using MasterFile.MasterFileContents;
 using MasterFile.MasterFileContents.Records;
 using UnityEngine;
+using Coroutine = Engine.Core.Coroutine;
 
 namespace Engine.Cell.Delegate.Reference
 {
@@ -45,7 +46,8 @@ namespace Engine.Cell.Delegate.Reference
                     continue;
 
                 var preprocessCoroutine =
-                    preprocessDelegate.PreprocessObject(cell, parent, reference, referencedRecord);
+                    Coroutine.Get(preprocessDelegate.PreprocessObject(cell, parent, reference, referencedRecord),
+                        nameof(preprocessDelegate.PreprocessObject));
                 if (preprocessCoroutine == null) continue;
 
                 while (preprocessCoroutine.MoveNext())
@@ -70,7 +72,8 @@ namespace Engine.Cell.Delegate.Reference
             }
 
             var objectInstantiationCoroutine =
-                InstantiateCellReference(cell, parent, reference, referencedRecord);
+                Coroutine.Get(InstantiateCellReference(cell, parent, reference, referencedRecord),
+                    nameof(InstantiateCellReference));
             if (objectInstantiationCoroutine == null) yield break;
             while (objectInstantiationCoroutine.MoveNext())
                 yield return null;
@@ -88,7 +91,8 @@ namespace Engine.Cell.Delegate.Reference
                     continue;
 
                 var instantiationCoroutine =
-                    delegateInstance.InstantiateObject(cell, parent, referenceRecord, referencedRecord);
+                    Coroutine.Get(delegateInstance.InstantiateObject(cell, parent, referenceRecord, referencedRecord),
+                        nameof(delegateInstance.InstantiateObject));
                 if (instantiationCoroutine == null) continue;
 
                 while (instantiationCoroutine.MoveNext())

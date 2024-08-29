@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using Object = UnityEngine.Object;
+using Coroutine = Engine.Core.Coroutine;
 
 namespace Engine.Textures
 {
@@ -66,8 +67,9 @@ namespace Engine.Textures
 
             yield return null;
 
-            var diffuseMapCoroutine = _textureManager.GetMap<Texture2D>(TextureType.DIFFUSE,
-                materialProperties.DiffuseMapPath);
+            var diffuseMapCoroutine = Coroutine.Get(_textureManager.GetMap<Texture2D>(TextureType.DIFFUSE,
+                materialProperties.DiffuseMapPath), nameof(_textureManager.GetMap));
+            yield return null;
             if (diffuseMapCoroutine != null)
             {
                 while (diffuseMapCoroutine.MoveNext())
@@ -78,7 +80,7 @@ namespace Engine.Textures
                 var diffuseMap = diffuseMapCoroutine.Current;
                 yield return null;
 
-                if (diffuseMap != null)
+                if (diffuseMap is not null)
                 {
                     material.SetTexture(MainTex, diffuseMap);
                 }
@@ -89,6 +91,7 @@ namespace Engine.Textures
             material.SetInt(UsesVertexColors, materialProperties.UseVertexColors ? 1 : 0);
             material.SetFloat(Alpha, materialProperties.Alpha);
             material.SetFloat(Glossiness, materialProperties.Glossiness);
+            yield return null;
             material.SetFloat(SpecularStrength,
                 materialProperties.IsSpecular ? materialProperties.SpecularStrength : 0);
             material.SetColor(SpecularColor, materialProperties.SpecularColor);
@@ -96,8 +99,9 @@ namespace Engine.Textures
 
             if (!string.IsNullOrEmpty(materialProperties.NormalMapPath))
             {
-                var normalMapCoroutine = _textureManager.GetMap<Texture2D>(TextureType.NORMAL,
-                    materialProperties.NormalMapPath);
+                var normalMapCoroutine = Coroutine.Get(_textureManager.GetMap<Texture2D>(TextureType.NORMAL,
+                    materialProperties.NormalMapPath), nameof(_textureManager.GetMap));
+                yield return null;
                 if (normalMapCoroutine != null)
                 {
                     while (normalMapCoroutine.MoveNext())
@@ -108,7 +112,7 @@ namespace Engine.Textures
                     var normalMap = normalMapCoroutine.Current;
                     yield return null;
 
-                    if (normalMap != null)
+                    if (normalMap is not null)
                     {
                         material.EnableKeyword("_NORMALMAP");
                         material.SetTexture(NormalMap, normalMap);
@@ -120,8 +124,9 @@ namespace Engine.Textures
 
             if (!string.IsNullOrEmpty(materialProperties.MetallicMaskPath))
             {
-                var metallicMapCoroutine = _textureManager.GetMap<Texture2D>(TextureType.METALLIC,
-                    materialProperties.MetallicMaskPath);
+                var metallicMapCoroutine = Coroutine.Get(_textureManager.GetMap<Texture2D>(TextureType.METALLIC,
+                    materialProperties.MetallicMaskPath), nameof(_textureManager.GetMap));
+                yield return null;
                 if (metallicMapCoroutine != null)
                 {
                     while (metallicMapCoroutine.MoveNext())
@@ -132,7 +137,7 @@ namespace Engine.Textures
                     var metallicMap = metallicMapCoroutine.Current;
                     yield return null;
 
-                    if (metallicMap != null)
+                    if (metallicMap is not null)
                     {
                         material.SetTexture(MetallicMap, metallicMap);
                     }
@@ -149,8 +154,9 @@ namespace Engine.Textures
                 yield return null;
                 if (!string.IsNullOrEmpty(materialProperties.GlowMapPath))
                 {
-                    var glowMapCoroutine = _textureManager.GetMap<Texture2D>(TextureType.GLOW,
-                        materialProperties.GlowMapPath);
+                    var glowMapCoroutine = Coroutine.Get(_textureManager.GetMap<Texture2D>(TextureType.GLOW,
+                        materialProperties.GlowMapPath), nameof(_textureManager.GetMap));
+                    yield return null;
                     if (glowMapCoroutine != null)
                     {
                         while (glowMapCoroutine.MoveNext())
@@ -161,7 +167,7 @@ namespace Engine.Textures
                         var glowMap = glowMapCoroutine.Current;
                         yield return null;
 
-                        if (glowMap != null)
+                        if (glowMap is not null)
                         {
                             material.SetTexture(EmissionMap, glowMap);
                         }
@@ -173,8 +179,8 @@ namespace Engine.Textures
 
             if (!string.IsNullOrEmpty(materialProperties.EnvironmentalMapPath))
             {
-                var envMapCoroutine = _textureManager.GetMap<Cubemap>(TextureType.ENVIRONMENTAL,
-                    materialProperties.EnvironmentalMapPath);
+                var envMapCoroutine = Coroutine.Get(_textureManager.GetMap<Cubemap>(TextureType.ENVIRONMENTAL,
+                    materialProperties.EnvironmentalMapPath), nameof(_textureManager.GetMap));
                 if (envMapCoroutine != null)
                 {
                     while (envMapCoroutine.MoveNext())
@@ -185,7 +191,7 @@ namespace Engine.Textures
                     var cubeMap = envMapCoroutine.Current;
                     yield return null;
 
-                    if (cubeMap != null)
+                    if (cubeMap is not null)
                     {
                         material.SetTexture(Cube, cubeMap);
                         material.SetFloat(CubeScale, materialProperties.EnvironmentalMapScale);
@@ -212,7 +218,8 @@ namespace Engine.Textures
 
             _materialCache.Clear();
             yield return null;
-            var clearTexturesCoroutine = _textureManager.ClearCachedTextures();
+            var clearTexturesCoroutine = Coroutine.Get(_textureManager.ClearCachedTextures(),
+                nameof(_textureManager.ClearCachedTextures));
             while (clearTexturesCoroutine.MoveNext())
             {
                 yield return null;

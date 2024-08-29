@@ -4,6 +4,7 @@ using Engine.MasterFile;
 using MasterFile.MasterFileContents.Records;
 using NIF.Builder;
 using UnityEngine;
+using Coroutine = Engine.Core.Coroutine;
 
 namespace Engine
 {
@@ -54,10 +55,11 @@ namespace Engine
 
             var staticModelInfo = (STAT)staticModelTask.Result;
 
-            var modelObjectCoroutine = _nifManager.InstantiateNif(staticModelInfo.NifModelFilename);
+            var modelObjectCoroutine = Coroutine.Get(_nifManager.InstantiateNif(staticModelInfo.NifModelFilename),
+                nameof(_nifManager.InstantiateNif));
             while (modelObjectCoroutine.MoveNext())
                 yield return null;
-            
+
             var modelObject = modelObjectCoroutine.Current;
             yield return null;
             _currentLoadingScreenModel = modelObject;
@@ -67,7 +69,7 @@ namespace Engine
             var children = _currentLoadingScreenModel.GetComponentsInChildren<Transform>(includeInactive: true);
             foreach (var child in children)
                 child.gameObject.layer = _loadScreenLayer;
-            
+
             if (loadingScreenInfo.InitialScale != 0f)
                 _currentLoadingScreenModel.transform.localScale = Vector3.one * loadingScreenInfo.InitialScale;
 
@@ -79,7 +81,8 @@ namespace Engine
                     loadingScreenInfo.InitialRotation[1], loadingScreenInfo.InitialRotation[2]));
         }
 
-        public void Initialize(MasterFileManager masterFileManager, NifManager nifManager, TemporalLoadBalancer loadBalancer)
+        public void Initialize(MasterFileManager masterFileManager, NifManager nifManager,
+            TemporalLoadBalancer loadBalancer)
         {
             _masterFileManager = masterFileManager;
             _nifManager = nifManager;

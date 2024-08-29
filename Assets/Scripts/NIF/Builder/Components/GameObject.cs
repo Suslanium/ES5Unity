@@ -2,6 +2,7 @@
 using System.Linq;
 using UnityEngine;
 using Logger = Engine.Core.Logger;
+using Coroutine = Engine.Core.Coroutine;
 
 namespace NIF.Builder.Components
 {
@@ -62,6 +63,12 @@ namespace NIF.Builder.Components
 
         public IEnumerator<UnityEngine.GameObject> Create(UnityEngine.GameObject parent, bool isStatic = false)
         {
+            if (_children.Count == 0 && _components.Count == 0)
+            {
+                // No need to create an empty game object
+                yield return null;
+                yield break;
+            }
             var gameObject = new UnityEngine.GameObject(_name)
             {
                 isStatic = isStatic
@@ -76,13 +83,15 @@ namespace NIF.Builder.Components
             gameObject.transform.SetParent(parent.transform, false);
             yield return null;
 
-            foreach (var applyCoroutine in _components.Select(component => component.Apply(gameObject)))
+            foreach (var applyCoroutine in _components.Select(component =>
+                         Coroutine.Get(component.Apply(gameObject), nameof(component.Apply))))
             {
                 while (applyCoroutine.MoveNext())
                     yield return null;
             }
 
-            foreach (var childCoroutine in _children.Select(child => child.Create(gameObject, isStatic)))
+            foreach (var childCoroutine in _children.Select(child =>
+                         Coroutine.Get(child.Create(gameObject, isStatic), nameof(child.Create))))
             {
                 while (childCoroutine.MoveNext())
                     yield return null;

@@ -15,6 +15,7 @@ using MasterFile.MasterFileContents.Records;
 using UnityEngine;
 using Convert = Engine.Core.Convert;
 using Logger = Engine.Core.Logger;
+using Coroutine = Engine.Core.Coroutine;
 
 namespace Engine.Cell.Delegate
 {
@@ -434,7 +435,7 @@ namespace Engine.Cell.Delegate
         protected override IEnumerator PreprocessRecord(CELL cell, LAND record, GameObject parent)
         {
             yield return null;
-            var layersCoroutine = GetTerrainLayerInfo(record);
+            var layersCoroutine = Coroutine.Get(GetTerrainLayerInfo(record), nameof(GetTerrainLayerInfo));
             while (layersCoroutine.MoveNext())
                 yield return null;
             var layers = layersCoroutine.Current;
@@ -563,7 +564,9 @@ namespace Engine.Cell.Delegate
                     Texture2D diffuseMap = null;
                     Texture2D normalMap = null;
 
-                    var diffuseMapCoroutine = _textureManager.GetMap<Texture2D>(TextureType.DIFFUSE, diffuseMapPath);
+                    var diffuseMapCoroutine =
+                        Coroutine.Get(_textureManager.GetMap<Texture2D>(TextureType.DIFFUSE, diffuseMapPath),
+                            nameof(_textureManager.GetMap));
                     if (diffuseMapCoroutine != null)
                     {
                         while (diffuseMapCoroutine.MoveNext())
@@ -573,7 +576,8 @@ namespace Engine.Cell.Delegate
                     }
 
                     var normalMapCoroutine =
-                        _textureManager.GetMap<Texture2D>(TextureType.NORMAL, normalMapPath);
+                        Coroutine.Get(_textureManager.GetMap<Texture2D>(TextureType.NORMAL, normalMapPath),
+                            nameof(_textureManager.GetMap));
                     if (normalMapCoroutine != null)
                     {
                         while (normalMapCoroutine.MoveNext())
