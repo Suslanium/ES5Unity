@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Engine.Cell.Delegate.Interfaces;
 using Engine.Core;
 using Engine.MasterFile;
+using Engine.MasterFile.Structures;
 using Engine.Textures;
 using JetBrains.Annotations;
 using MasterFile.MasterFileContents;
@@ -432,7 +433,7 @@ namespace Engine.Cell.Delegate
         }
 
         //Start preloading the terrain stuff
-        protected override IEnumerator PreprocessRecord(CELL cell, LAND record, GameObject parent)
+        protected override IEnumerator PreprocessRecord(CellData cellData, LAND record, GameObject parent)
         {
             yield return null;
             var layersCoroutine = Coroutine.Get(GetTerrainLayerInfo(record), nameof(GetTerrainLayerInfo));
@@ -474,7 +475,7 @@ namespace Engine.Cell.Delegate
         }
 
         //Build the terrain from the preloaded stuff
-        public IEnumerator InstantiateRecord(CELL cell, Record record, GameObject parent)
+        public IEnumerator InstantiateRecord(CellData cellData, Record record, GameObject parent)
         {
             if (record is not LAND land)
                 yield break;
@@ -622,9 +623,10 @@ namespace Engine.Cell.Delegate
             gameObject.AddComponent<TerrainCollider>().terrainData = terrainData;
             yield return null;
 
-            var terrainPosition = new Vector3(Convert.ExteriorCellSideLengthInMeters * cell.XGridPosition,
+            var terrainPosition = new Vector3(
+                Convert.ExteriorCellSideLengthInMeters * cellData.CellRecord.XGridPosition,
                 meshInfo.MinHeight / Convert.meterInMWUnits,
-                Convert.ExteriorCellSideLengthInMeters * cell.YGridPosition);
+                Convert.ExteriorCellSideLengthInMeters * cellData.CellRecord.YGridPosition);
             yield return null;
 
             gameObject.transform.position = terrainPosition;

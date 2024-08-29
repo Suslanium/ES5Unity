@@ -8,7 +8,6 @@ using Engine.Core;
 using Engine.MasterFile;
 using Engine.MasterFile.Structures;
 using Engine.Textures;
-using MasterFile.MasterFileContents;
 using MasterFile.MasterFileContents.Records;
 using NIF.Builder;
 using UnityEngine;
@@ -54,7 +53,7 @@ namespace Engine.Cell
         private readonly Dictionary<Vector2Int, CellInfo> _exteriorCells = new();
         private readonly List<IEnumerator> _initialLoadingCoroutines = new();
         private uint _currentWorldSpaceFormID = 0;
-        private const int LoadRadius = 1;
+        private const int LoadRadius = 2;
         private Vector2Int _lastCellPosition = Vector2Int.one * int.MaxValue;
 
         private readonly Dictionary<Type, ICellRecordPreprocessDelegate> _preprocessDelegates;
@@ -93,8 +92,7 @@ namespace Engine.Cell
                 staticObjectDelegate
             };
             var referenceDelegateManager =
-                new CellReferenceDelegateManager(referencePreprocessDelegates, referenceInstantiationDelegates,
-                    masterFileManager);
+                new CellReferenceDelegateManager(referencePreprocessDelegates, referenceInstantiationDelegates);
             var terrainDelegate = new TerrainDelegate(masterFileManager, textureManager);
             _preprocessDelegates = new Dictionary<Type, ICellRecordPreprocessDelegate>
             {
@@ -128,7 +126,6 @@ namespace Engine.Cell
             {
                 cellLightingDelegate,
                 cocPlayerPositionDelegate,
-                referenceDelegateManager,
                 terrainDelegate
             };
         }
@@ -151,9 +148,15 @@ namespace Engine.Cell
             _temporalLoadBalancer.AddTask(creationCoroutine);
         }
 
-        private static IEnumerator<CellPosition> GetExteriorCellPositions(Vector2Int gridPosition)
+        private static IEnumerator<CellPosition> GetExteriorCellPositions(Vector2Int gridPosition,
+            bool fromCenter = false)
         {
-            for (var radius = LoadRadius; radius >= 1; radius--)
+            if (fromCenter)
+                yield return new CellPosition(gridPosition);
+
+            for (var radius = fromCenter ? 1 : LoadRadius;
+                 fromCenter ? radius <= LoadRadius : radius >= 1;
+                 radius = fromCenter ? radius + 1 : radius - 1)
             {
                 var minCellX = gridPosition.x - radius;
                 var maxCellX = gridPosition.x + radius;
@@ -175,7 +178,8 @@ namespace Engine.Cell
                 }
             }
 
-            yield return new CellPosition(gridPosition);
+            if (!fromCenter)
+                yield return new CellPosition(gridPosition);
         }
 
 
@@ -283,7 +287,7 @@ namespace Engine.Cell
                     GetExteriorCellPositions(persistentCellData.CellRecord.FormID == cellData.CellRecord.FormID
                         ? new WorldSpacePosition(NifUtils.UnityPointToNifPoint(startPos.GetValueOrDefault()))
                             .CellGridPosition
-                        : new Vector2Int(cellData.CellRecord.XGridPosition, cellData.CellRecord.YGridPosition));
+                        : new Vector2Int(cellData.CellRecord.XGridPosition, cellData.CellRecord.YGridPosition), true);
 
                 cellData = persistentCellData;
                 //Load the current exterior cells
@@ -340,7 +344,7 @@ namespace Engine.Cell
             cellGameObject.SetActive(false);
 
             var persistentObjectsInstantiationTask =
-                Coroutine.Get(InstantiateCellRecords(cellData.CellRecord, cellData.PersistentChildren, cellGameObject),
+                Coroutine.Get(InstantiateCellRecords(cellData, cellGameObject, true),
                     nameof(InstantiateCellRecords));
             while (persistentObjectsInstantiationTask.MoveNext())
                 yield return null;
@@ -349,7 +353,7 @@ namespace Engine.Cell
             {
                 var temporaryObjectsInstantiationTask =
                     Coroutine.Get(
-                        InstantiateCellRecords(cellData.CellRecord, cellData.TemporaryChildren, cellGameObject),
+                        InstantiateCellRecords(cellData, cellGameObject, false),
                         nameof(InstantiateCellRecords));
                 while (temporaryObjectsInstantiationTask.MoveNext())
                     yield return null;
@@ -383,12 +387,12 @@ namespace Engine.Cell
             }
         }
 
-        private IEnumerator InstantiateCellRecords(CELL cell, List<Record> children, GameObject parent)
+        private IEnumerator InstantiateCellRecords(CellData cellData, GameObject parent, bool persistent)
         {
-            foreach (var record in children)
+            foreach (var record in persistent ? cellData.PersistentChildren : cellData.TemporaryChildren)
             {
                 _preprocessDelegates.TryGetValue(record.GetType(), out var preprocessDelegate);
-                var preprocessCoroutine = Coroutine.Get(preprocessDelegate?.PreprocessRecord(cell, record, parent),
+                var preprocessCoroutine = Coroutine.Get(preprocessDelegate?.PreprocessRecord(cellData, record, parent),
                     nameof(ICellRecordPreprocessDelegate.PreprocessRecord));
                 if (preprocessCoroutine == null) continue;
                 while (preprocessCoroutine.MoveNext())
@@ -397,11 +401,11 @@ namespace Engine.Cell
 
             yield return null;
 
-            foreach (var record in children)
+            foreach (var record in persistent ? cellData.PersistentChildren : cellData.TemporaryChildren)
             {
                 _instantiationDelegates.TryGetValue(record.GetType(), out var instantiationDelegate);
                 var instantiationCoroutine =
-                    Coroutine.Get(instantiationDelegate?.InstantiateRecord(cell, record, parent),
+                    Coroutine.Get(instantiationDelegate?.InstantiateRecord(cellData, record, parent),
                         nameof(ICellRecordInstantiationDelegate.InstantiateRecord));
                 if (instantiationCoroutine == null) continue;
                 while (instantiationCoroutine.MoveNext())

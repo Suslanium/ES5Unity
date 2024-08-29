@@ -64,7 +64,7 @@ namespace Textures
         /// <summary>
         /// Loads a DDS/TGA texture from a file.
         /// </summary>
-        public static Texture2DInfo LoadTexture(string filePath, TextureResolution resolution = TextureResolution.Quarter)
+        public static Texture2DInfo LoadTexture(string filePath, TextureResolution resolution = TextureResolution.Full)
         {
             return LoadTexture(File.Open(filePath, FileMode.Open, FileAccess.Read), resolution);
         }
@@ -73,7 +73,7 @@ namespace Textures
         /// Loads a DDS/TGA texture from an input stream.
         /// </summary>
         public static Texture2DInfo LoadTexture(Stream inputStream,
-            TextureResolution resolution = TextureResolution.Quarter)
+            TextureResolution resolution = TextureResolution.Full)
         {
             using var texture = Pfimage.FromStream(inputStream, new PfimConfig(applyColorMap: false));
             if (texture.Compressed) texture.Decompress();

@@ -97,7 +97,6 @@ namespace NIF.Builder.Components
             foreach (var childCoroutine in _children.Select(child =>
                          Coroutine.Get(child.Create(gameObject, _ => { }, isStatic), nameof(child.Create))
                      ))
-
             {
                 while (childCoroutine.MoveNext())
                     yield return null;

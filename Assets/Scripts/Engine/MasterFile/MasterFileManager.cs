@@ -71,7 +71,7 @@ namespace Engine.MasterFile
 
                 List<(ESMasterFile, CELL)> cellRecords = new();
                 CELL cellRecord = null;
-                
+
                 foreach (var masterFile in _reverseLoadOrder.Select(fileName => _masterFiles[fileName]).Reverse())
                 {
                     var currentCellRecord = masterFile.GetPersistentWorldSpaceCell(worldSpaceFormID);
@@ -79,11 +79,12 @@ namespace Engine.MasterFile
                     cellRecords.Add((masterFile, currentCellRecord));
                     cellRecord = currentCellRecord;
                 }
-                
+
                 if (cellRecord == null) return null;
 
                 var persistentChildren = new Dictionary<uint, Record>();
                 var temporaryChildren = new Dictionary<uint, Record>();
+                var baseObjects = new Dictionary<uint, Record>();
 
                 foreach (var (masterFile, currentCellRecord) in cellRecords)
                 {
@@ -105,11 +106,19 @@ namespace Engine.MasterFile
                             if (entry is not Record record) continue;
                             if (group.GroupType == 8) persistentChildren[record.FormID] = record;
                             else temporaryChildren[record.FormID] = record;
+
+                            if (record is REFR reference && reference.BaseObjectReference != 0 &&
+                                !baseObjects.ContainsKey(reference.BaseObjectReference))
+                            {
+                                baseObjects[reference.BaseObjectReference] =
+                                    GetFromFormID(reference.BaseObjectReference);
+                            }
                         }
                     }
                 }
 
                 return new Structures.CellData(persistentChildren.Values.ToList(), temporaryChildren.Values.ToList(),
+                    baseObjects,
                     cellRecord);
             });
         }
@@ -138,11 +147,12 @@ namespace Engine.MasterFile
                     cellRecords.Add((masterFile, currentCellRecord));
                     cellRecord = currentCellRecord;
                 }
-                
+
                 if (cellRecord == null) return null;
 
                 var persistentChildren = new Dictionary<uint, Record>();
                 var temporaryChildren = new Dictionary<uint, Record>();
+                var baseObjects = new Dictionary<uint, Record>();
 
                 foreach (var (masterFile, currentCellRecord) in cellRecords)
                 {
@@ -164,11 +174,19 @@ namespace Engine.MasterFile
                             if (entry is not Record record) continue;
                             if (group.GroupType == 8) persistentChildren[record.FormID] = record;
                             else temporaryChildren[record.FormID] = record;
+
+                            if (record is REFR reference && reference.BaseObjectReference != 0 &&
+                                !baseObjects.ContainsKey(reference.BaseObjectReference))
+                            {
+                                baseObjects[reference.BaseObjectReference] =
+                                    GetFromFormID(reference.BaseObjectReference);
+                            }
                         }
                     }
                 }
 
                 return new Structures.CellData(persistentChildren.Values.ToList(), temporaryChildren.Values.ToList(),
+                    baseObjects,
                     cellRecord);
             });
         }
@@ -189,6 +207,7 @@ namespace Engine.MasterFile
                 CELL cellRecord = null;
                 var persistentChildren = new Dictionary<uint, Record>();
                 var temporaryChildren = new Dictionary<uint, Record>();
+                var baseObjects = new Dictionary<uint, Record>();
 
                 foreach (var masterFile in masterFiles)
                 {
@@ -213,6 +232,13 @@ namespace Engine.MasterFile
                             if (entry is not Record record) continue;
                             if (group.GroupType == 8) persistentChildren[record.FormID] = record;
                             else temporaryChildren[record.FormID] = record;
+
+                            if (record is REFR reference && reference.BaseObjectReference != 0 &&
+                                !baseObjects.ContainsKey(reference.BaseObjectReference))
+                            {
+                                baseObjects[reference.BaseObjectReference] =
+                                    GetFromFormID(reference.BaseObjectReference);
+                            }
                         }
                     }
                 }
@@ -220,6 +246,7 @@ namespace Engine.MasterFile
                 return cellRecord == null
                     ? null
                     : new Structures.CellData(persistentChildren.Values.ToList(), temporaryChildren.Values.ToList(),
+                        baseObjects,
                         cellRecord);
             });
         }
@@ -233,7 +260,7 @@ namespace Engine.MasterFile
         /// </summary>
         public Task<Record> GetFromFormIDTask(uint formId)
         {
-            return Task.Run(() => Task.FromResult(GetFromFormID(formId)));
+            return Task.Run(() => GetFromFormID(formId));
         }
 
         /// <summary>
@@ -324,7 +351,7 @@ namespace Engine.MasterFile
 
             return masterFile?.GetParentFormID(recordFormID) ?? 0;
         }
-        
+
         public uint GetWorldSpaceFormID(uint cellFormID)
         {
             if (!_masterFilesAreInitialized)

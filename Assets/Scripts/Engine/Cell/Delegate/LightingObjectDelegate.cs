@@ -75,7 +75,6 @@ namespace Engine.Cell.Delegate
                 modelObject = new GameObject(lightRecord.EditorID);
 
             CellUtils.ApplyPositionAndRotation(position, rotation, scale, parent, modelObject);
-            //-----------
             InstantiateLightOnGameObject(lightReference, lightRecord, modelObject);
         }
 

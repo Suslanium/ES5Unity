@@ -83,7 +83,6 @@ namespace Engine.Cell.Delegate
         private IEnumerator InstantiateModelAtPositionAndRotation(string modelPath, float[] position, float[] rotation,
             float scale, GameObject parent)
         {
-            //--------------
             GameObject modelObject = null;
             var modelObjectCoroutine =
                 Coroutine.Get(_nifManager.InstantiateNif(modelPath, obj => { modelObject = obj; }),

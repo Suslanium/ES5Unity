@@ -69,7 +69,6 @@ namespace Engine.Textures
 
             yield return null;
 
-            //---------
             Texture2D diffuseMap = null;
             var diffuseMapCoroutine = Coroutine.Get(_textureManager.GetMap<Texture2D>(TextureType.DIFFUSE,
                 materialProperties.DiffuseMapPath, map => { diffuseMap = map; }), nameof(_textureManager.GetMap));

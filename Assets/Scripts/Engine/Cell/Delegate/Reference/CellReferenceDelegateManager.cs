@@ -1,7 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using Engine.Cell.Delegate.Interfaces;
-using Engine.MasterFile;
+using Engine.MasterFile.Structures;
 using MasterFile.MasterFileContents;
 using MasterFile.MasterFileContents.Records;
 using UnityEngine;
@@ -9,44 +9,35 @@ using Coroutine = Engine.Core.Coroutine;
 
 namespace Engine.Cell.Delegate.Reference
 {
-    public class CellReferenceDelegateManager : ICellRecordPreprocessDelegate, ICellRecordInstantiationDelegate,
-        ICellDestroyDelegate
+    public class CellReferenceDelegateManager : ICellRecordPreprocessDelegate, ICellRecordInstantiationDelegate
     {
         private readonly List<ICellReferencePreprocessDelegate> _preprocessDelegates;
         private readonly List<ICellReferenceInstantiationDelegate> _instantiationDelegates;
-        private readonly MasterFileManager _masterFileManager;
-        private readonly Dictionary<uint, Record> _baseObjectCache = new();
 
         public CellReferenceDelegateManager(List<ICellReferencePreprocessDelegate> preprocessDelegates,
-            List<ICellReferenceInstantiationDelegate> instantiationDelegates,
-            MasterFileManager masterFileManager)
+            List<ICellReferenceInstantiationDelegate> instantiationDelegates)
         {
             _preprocessDelegates = preprocessDelegates;
             _instantiationDelegates = instantiationDelegates;
-            _masterFileManager = masterFileManager;
         }
 
-        public IEnumerator PreprocessRecord(CELL cell, Record record, GameObject parent)
+        public IEnumerator PreprocessRecord(CellData cellData, Record record, GameObject parent)
         {
             if (record is not REFR reference) yield break;
 
-            if (!_baseObjectCache.TryGetValue(reference.BaseObjectReference, out var referencedRecord))
+            if (!cellData.ReferenceBaseObjects.TryGetValue(reference.BaseObjectReference, out var referencedRecord))
             {
-                var referencedRecordTask = _masterFileManager.GetFromFormIDTask(reference.BaseObjectReference);
-                while (!referencedRecordTask.IsCompleted)
-                    yield return null;
-
-                referencedRecord = referencedRecordTask.Result;
-                _baseObjectCache[reference.BaseObjectReference] = referencedRecord;
+                yield break;
             }
 
             foreach (var preprocessDelegate in _preprocessDelegates)
             {
-                if (!preprocessDelegate.IsPreprocessApplicable(cell, reference, referencedRecord))
+                if (!preprocessDelegate.IsPreprocessApplicable(cellData.CellRecord, reference, referencedRecord))
                     continue;
 
                 var preprocessCoroutine =
-                    Coroutine.Get(preprocessDelegate.PreprocessObject(cell, parent, reference, referencedRecord),
+                    Coroutine.Get(
+                        preprocessDelegate.PreprocessObject(cellData.CellRecord, parent, reference, referencedRecord),
                         nameof(preprocessDelegate.PreprocessObject));
                 if (preprocessCoroutine == null) continue;
 
@@ -57,22 +48,15 @@ namespace Engine.Cell.Delegate.Reference
             yield return null;
         }
 
-        public IEnumerator InstantiateRecord(CELL cell, Record record, GameObject parent)
+        public IEnumerator InstantiateRecord(CellData cellData, Record record, GameObject parent)
         {
             if (record is not REFR reference) yield break;
 
-            if (!_baseObjectCache.TryGetValue(reference.BaseObjectReference, out var referencedRecord))
-            {
-                var referencedRecordTask = _masterFileManager.GetFromFormIDTask(reference.BaseObjectReference);
-                while (!referencedRecordTask.IsCompleted)
-                    yield return null;
-
-                referencedRecord = referencedRecordTask.Result;
-                _baseObjectCache[reference.BaseObjectReference] = referencedRecord;
-            }
+            if (!cellData.ReferenceBaseObjects.TryGetValue(reference.BaseObjectReference, out var referencedRecord))
+                yield break;
 
             var objectInstantiationCoroutine =
-                Coroutine.Get(InstantiateCellReference(cell, parent, reference, referencedRecord),
+                Coroutine.Get(InstantiateCellReference(cellData.CellRecord, parent, reference, referencedRecord),
                     nameof(InstantiateCellReference));
             if (objectInstantiationCoroutine == null) yield break;
             while (objectInstantiationCoroutine.MoveNext())
@@ -98,12 +82,6 @@ namespace Engine.Cell.Delegate.Reference
                 while (instantiationCoroutine.MoveNext())
                     yield return null;
             }
-        }
-
-        public IEnumerator OnDestroy()
-        {
-            _baseObjectCache.Clear();
-            yield break;
         }
     }
 }
