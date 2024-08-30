@@ -25,11 +25,13 @@ namespace Engine.Textures
         private static readonly int EmissionColor = Shader.PropertyToID("_EmissionColor");
         private static readonly int EmissionMap = Shader.PropertyToID("_EmissionMap");
         private static readonly int UsesVertexColors = Shader.PropertyToID("_UsesVertexColors");
+        private static readonly int UsesVertexAlpha = Shader.PropertyToID("_UsesVertexAlpha");
         private static readonly int Cube = Shader.PropertyToID("_Cube");
         private static readonly int CubeScale = Shader.PropertyToID("_CubeScale");
         private static readonly int BlendSrc = Shader.PropertyToID("_BlendSrc");
         private static readonly int BlendDst = Shader.PropertyToID("_BlendDst");
         private static readonly int Cutoff = Shader.PropertyToID("_Cutoff");
+        private static readonly int CullMode = Shader.PropertyToID("_CullMode");
 
         public MaterialManager(TextureManager textureManager)
         {
@@ -89,6 +91,13 @@ namespace Engine.Textures
             yield return null;
 
             material.SetInt(UsesVertexColors, materialProperties.UseVertexColors ? 1 : 0);
+            material.SetInt(UsesVertexAlpha, materialProperties.UseVertexAlpha ? 1 : 0);
+            material.SetInt(CullMode, materialProperties.DoubleSided switch
+            {
+                true => (int)UnityEngine.Rendering.CullMode.Off,
+                false => (int)UnityEngine.Rendering.CullMode.Back
+            });
+            yield return null;
             material.SetFloat(Alpha, materialProperties.Alpha);
             material.SetFloat(Glossiness, materialProperties.Glossiness);
             yield return null;

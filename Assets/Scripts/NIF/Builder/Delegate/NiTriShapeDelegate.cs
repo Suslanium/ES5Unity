@@ -47,7 +47,7 @@ namespace NIF.Builder.Delegate
                     niObject.AlphaPropertyReference >= 0
                         ? (NiAlphaProperty)niFile.NiObjects[niObject.AlphaPropertyReference]
                         : null, niFile);
-                
+
                 _textureManager.PreloadMap(TextureType.DIFFUSE, materialProperties.DiffuseMapPath);
                 if (!string.IsNullOrEmpty(materialProperties.NormalMapPath))
                     _textureManager.PreloadMap(TextureType.NORMAL, materialProperties.NormalMapPath);
@@ -85,6 +85,13 @@ namespace NIF.Builder.Delegate
         {
             var isSpecular = (shaderInfo.ShaderPropertyFlags1 & 0x1) != 0;
             var useVertexColors = (shaderInfo.ShaderPropertyFlags2 & 0x20) != 0;
+            var useVertexAlpha = (shaderInfo.ShaderPropertyFlags1 & 0x8) != 0 &&
+                                 (niFile.Footer.RootReferences.Length < 1 ||
+                                  //BSLeafAnimNodes and BSTreeNodes use vertex alpha for leaf movement,
+                                  //where 0 is no movement and 1 is full movement
+                                  (niFile.NiObjects[niFile.Footer.RootReferences[0]] is not BsLeafAnimNode &&
+                                   niFile.NiObjects[niFile.Footer.RootReferences[0]] is not BsTreeNode));
+            var doubleSided = (shaderInfo.ShaderPropertyFlags2 & 0x10) != 0;
             var specularStrength = shaderInfo.SpecularStrength;
             var uvOffset = shaderInfo.UVOffset.ToVector2();
             var uvScale = shaderInfo.UVScale.ToVector2();
@@ -107,7 +114,8 @@ namespace NIF.Builder.Delegate
                 : BlendMode.OneMinusSrcAlpha;
             var alphaTest = alphaProperty != null && alphaProperty.AlphaFlags.AlphaTest;
             var alphaTestThreshold = alphaProperty?.Threshold ?? 128;
-            return new MaterialProperties(isSpecular, useVertexColors, specularStrength, uvOffset, uvScale, glossiness,
+            return new MaterialProperties(isSpecular, useVertexColors, useVertexAlpha, doubleSided, specularStrength,
+                uvOffset, uvScale, glossiness,
                 emissiveColor, specularColor,
                 alpha, diffuseMap, normalMap, glowMap, metallicMap, environmentalMap, shaderInfo.EnvironmentMapScale,
                 new AlphaInfo(

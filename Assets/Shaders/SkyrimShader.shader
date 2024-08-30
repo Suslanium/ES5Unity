@@ -5,6 +5,7 @@ Shader "SkyrimDefaultShader"
         _MainTex ("Diffuse map(RGB)", 2D) = "white" {}
         _Alpha ("Alpha", Range(0,1)) = 1
         _UsesVertexColors ("Uses vertex colors", Int) = 0
+        _UsesVertexAlpha ("Uses vertex alpha", Int) = 0
         _Glossiness ("Glossiness", Range(0,1000)) = 500
         _SpecularStrength ("Specular strength", Range(0,1000)) = 0.5
         _NormalMap ("Normal map (RGB) Specular map (A)", 2D) = "bump" {}
@@ -15,6 +16,7 @@ Shader "SkyrimDefaultShader"
         _EmissionMap ("Emission map", 2D) = "white" {}
         _Cube ("Environmental map", Cube) = "" {}
         _CubeScale ("Environmental map scale", Float) = 0
+        [Enum(UnityEngine.Rendering.CullMode)] _CullMode("Cull Mode", Int) = 0
     }
     SubShader
     {
@@ -23,6 +25,7 @@ Shader "SkyrimDefaultShader"
             "Queue"="Geometry"
             "RenderType"="Opaque"
         }
+        Cull [_CullMode]
         LOD 200
 
         CGPROGRAM
@@ -54,6 +57,7 @@ Shader "SkyrimDefaultShader"
         fixed4 _EmissionColor;
         int _EnableEmission;
         int _UsesVertexColors;
+        int _UsesVertexAlpha;
         float _CubeScale;
 
         // Add instancing support for this shader. You need to check 'Enable Instancing' on materials that use the shader.
@@ -67,7 +71,18 @@ Shader "SkyrimDefaultShader"
         {
             // Calculate albedo using diffuse map and vertex color as a tint(if needed)
             fixed4 c = tex2D(_MainTex, IN.uv_MainTex);
-            if (_UsesVertexColors > 0) c *= IN.color;
+            if (_UsesVertexColors > 0 && _UsesVertexAlpha > 0)
+            {
+                c *= IN.color;
+            }
+            else if (_UsesVertexColors > 0)
+            {
+                c.rgb *= IN.color.rgb;
+            }
+            else if (_UsesVertexAlpha > 0)
+            {
+                c.a *= IN.color.a;
+            }
             o.Albedo = c.rgb;
             float4 packedNormal = tex2D(_NormalMap, IN.uv_NormalMap);
             //Calculate glossiness and specularity using specular map (normal map alpha)

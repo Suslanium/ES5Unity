@@ -5,24 +5,26 @@ namespace Engine.Textures
 {
     public struct MaterialProperties
     {
-        public bool IsSpecular { get; private set; }
-        public bool UseVertexColors { get; private set; }
-        public float SpecularStrength { get; private set; }
-        public Vector2 UVOffset { get; private set; }
-        public Vector2 UVScale { get; private set; }
-        public float Glossiness { get; private set; }
-        public Color EmissiveColor { get; private set; }
-        public Color SpecularColor { get; private set; }
-        public float Alpha { get; private set; }
-        public string DiffuseMapPath { get; private set; }
-        public string NormalMapPath { get; private set; }
-        public string GlowMapPath { get; private set; }
-        public string MetallicMaskPath { get; private set; }
-        public string EnvironmentalMapPath { get; private set; }
-        public float EnvironmentalMapScale { get; private set; }
-        public AlphaInfo AlphaInfo { get; private set; }
+        public readonly bool IsSpecular;
+        public readonly bool UseVertexColors;
+        public readonly bool UseVertexAlpha;
+        public readonly bool DoubleSided;
+        public readonly float SpecularStrength;
+        public readonly Vector2 UVOffset;
+        public readonly Vector2 UVScale;
+        public readonly float Glossiness;
+        public readonly Color EmissiveColor;
+        public readonly Color SpecularColor;
+        public readonly float Alpha;
+        public readonly string DiffuseMapPath;
+        public readonly string NormalMapPath;
+        public readonly string GlowMapPath;
+        public readonly string MetallicMaskPath;
+        public readonly string EnvironmentalMapPath;
+        public readonly float EnvironmentalMapScale;
+        public readonly AlphaInfo AlphaInfo;
 
-        public MaterialProperties(bool isSpecular, bool useVertexColors, float specularStrength, Vector2 uvOffset,
+        public MaterialProperties(bool isSpecular, bool useVertexColors, bool useVertexAlpha, bool doubleSided, float specularStrength, Vector2 uvOffset,
             Vector2 uvScale, float glossiness,
             Color emissiveColor, Color specularColor, float alpha, string diffuseMapPath, string normalMapPath,
             string glowMapPath, string metallicMaskPath, string environmentalMapPath, float environmentalMapScale,
@@ -30,6 +32,8 @@ namespace Engine.Textures
         {
             IsSpecular = isSpecular;
             UseVertexColors = useVertexColors;
+            UseVertexAlpha = useVertexAlpha;
+            DoubleSided = doubleSided;
             SpecularStrength = specularStrength;
             UVOffset = uvOffset;
             UVScale = uvScale;
@@ -49,15 +53,15 @@ namespace Engine.Textures
 
     public struct AlphaInfo
     {
-        public bool AlphaBlend { get; private set; }
+        public readonly bool AlphaBlend;
 
-        public BlendMode SourceBlendMode { get; private set; }
+        public readonly BlendMode SourceBlendMode;
 
-        public BlendMode DestinationBlendMode { get; private set; }
+        public readonly BlendMode DestinationBlendMode;
 
-        public bool AlphaTest { get; private set; }
+        public readonly bool AlphaTest;
 
-        public byte AlphaTestThreshold { get; private set; }
+        public readonly byte AlphaTestThreshold;
 
         public AlphaInfo(bool alphaBlend, BlendMode sourceBlendMode, BlendMode destinationBlendMode, bool alphaTest,
             byte alphaTestThreshold)
