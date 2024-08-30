@@ -6,6 +6,7 @@ using Engine.Door;
 using Engine.MasterFile;
 using Engine.Resource;
 using Engine.Textures;
+using Engine.UI;
 using UnityEngine;
 using Coroutine = Engine.Core.Coroutine;
 
@@ -20,7 +21,6 @@ namespace Engine
 
     public class GameEngine
     {
-        private const float DesiredWorkTimePerFrame = 1.0f / 500;
         private readonly MaterialManager _materialManager;
         private readonly NifManager _nifManager;
         private readonly CellManager _cellManager;
@@ -28,6 +28,7 @@ namespace Engine
         private readonly UIManager _uiManager;
         private readonly PlayerManager _playerManager;
         private readonly LoadingScreenManager _loadingScreenManager;
+        private readonly MasterFileManager _masterFileManager;
         public readonly Camera MainCamera;
         public Plane[] CameraPlanes { get; private set; }
 
@@ -42,12 +43,14 @@ namespace Engine
                         _uiManager.SetLoadingState();
                         if (_playerManager.PlayerActive)
                             _playerManager.PlayerActive = false;
+                        _loadBalancer.DesiredWorkTimePerFrame = Settings.LoadingDesiredWorkTimePerFrame;
                         _loadingScreenManager.ShowLoadingScreen();
                         break;
                     case GameState.InGame:
                         _loadingScreenManager.HideLoadingScreen();
                         if (!_playerManager.PlayerActive)
                             _playerManager.PlayerActive = true;
+                        _loadBalancer.DesiredWorkTimePerFrame = Settings.InGameDesiredWorkTimePerFrame;
                         _uiManager.SetInGameState();
                         break;
                     case GameState.Paused:
@@ -69,6 +72,7 @@ namespace Engine
         {
             var textureManager = new TextureManager(resourceManager);
             _materialManager = new MaterialManager(textureManager);
+            _masterFileManager = masterFileManager;
             _nifManager = new NifManager(_materialManager, textureManager, resourceManager);
             _loadBalancer = new TemporalLoadBalancer();
             _playerManager = new PlayerManager(player);
@@ -80,6 +84,27 @@ namespace Engine
             uiManager.SetGameEngine(this);
             MainCamera = mainCamera;
             _loadingScreenManager.Initialize(masterFileManager, _nifManager, _loadBalancer);
+        }
+
+        public void WaitForMasterFileInitialization(Action onReadyCallback, Action onErrorCallback)
+        {
+            var loadCoroutine = WaitForMasterFileInitializationCoroutine(onReadyCallback, onErrorCallback);
+            _loadBalancer.AddTaskPriority(loadCoroutine);
+        }
+
+        private IEnumerator WaitForMasterFileInitializationCoroutine(Action onReadyCallback, Action onErrorCallback)
+        {
+            var initializationTask = _masterFileManager.AwaitInitialization();
+            while (!initializationTask.IsCompleted)
+                yield return null;
+            if (initializationTask.IsFaulted)
+            {
+                onErrorCallback();
+            }
+            else
+            {
+                onReadyCallback();
+            }
         }
 
         public void LoadCell(string editorId, Vector3? startPosition, Quaternion? startRotation)
@@ -124,7 +149,7 @@ namespace Engine
         {
             CameraPlanes = GeometryUtility.CalculateFrustumPlanes(MainCamera);
             _cellManager.Update();
-            _loadBalancer.RunTasks(DesiredWorkTimePerFrame);
+            _loadBalancer.RunTasks();
         }
 
         private IEnumerator DestroyAndClearEverything()

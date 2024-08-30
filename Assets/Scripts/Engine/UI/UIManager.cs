@@ -3,7 +3,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace Engine
+namespace Engine.UI
 {
     public class UIManager : MonoBehaviour
     {
@@ -65,28 +65,36 @@ namespace Engine
         public void FadeIn(Action fadeCompleteCallback)
         {
             _hideLoadButton = true;
+#if UNITY_ANDROID
             characterControls.SetActive(false);
+#endif
             _desiredAlpha = 1f;
             _fadeCompleteCallback = fadeCompleteCallback;
         }
 
         public void SetLoadingState()
         {
+#if UNITY_ANDROID
             characterControls.SetActive(false);
+#endif
             fadeObject.gameObject.SetActive(false);
         }
 
         public void SetInGameState()
         {
             _hideLoadButton = false;
+#if UNITY_ANDROID
             characterControls.SetActive(true);
+#endif
             fadeObject.gameObject.SetActive(true);
             _desiredAlpha = 0f;
         }
 
         public void SetPausedState()
         {
+#if UNITY_ANDROID
             characterControls.SetActive(false);
+#endif
             fadeObject.gameObject.SetActive(false);
         }
 

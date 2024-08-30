@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using Engine.UI;
 
 namespace Engine.Core
 {
@@ -44,9 +45,9 @@ namespace Engine.Core
             _tasks.Remove(taskCoroutine);
         }
 
-        public void RunTasks(float desiredWorkTime)
+        public void RunTasks()
         {
-            Debug.Assert(desiredWorkTime >= 0);
+            Debug.Assert(DesiredWorkTimePerFrame >= 0);
 
             if (_tasks.Count == 0)
             {
@@ -73,7 +74,7 @@ namespace Engine.Core
 #endif
                     _tasks.RemoveAt(0);
                 }
-            } while (_tasks.Count > 0 && _stopwatch.Elapsed.TotalSeconds < desiredWorkTime);
+            } while (_tasks.Count > 0 && _stopwatch.Elapsed.TotalSeconds < DesiredWorkTimePerFrame);
 
 #if (DEVELOPMENT_BUILD || UNITY_EDITOR) && COROUTINE_PERFORMANCE_LOGGING
             if (_stopwatch.Elapsed.TotalSeconds >= desiredWorkTime * 2)
@@ -112,5 +113,6 @@ namespace Engine.Core
 
         private readonly List<IEnumerator> _tasks = new();
         private readonly Stopwatch _stopwatch = new();
+        public float DesiredWorkTimePerFrame = Settings.LoadingDesiredWorkTimePerFrame;
     }
 }

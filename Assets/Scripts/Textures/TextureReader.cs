@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using Engine.UI;
 using Pfim;
 using UnityEngine;
 
@@ -64,16 +65,15 @@ namespace Textures
         /// <summary>
         /// Loads a DDS/TGA texture from a file.
         /// </summary>
-        public static Texture2DInfo LoadTexture(string filePath, TextureResolution resolution = TextureResolution.Full)
+        public static Texture2DInfo LoadTexture(string filePath)
         {
-            return LoadTexture(File.Open(filePath, FileMode.Open, FileAccess.Read), resolution);
+            return LoadTexture(File.Open(filePath, FileMode.Open, FileAccess.Read));
         }
 
         /// <summary>
         /// Loads a DDS/TGA texture from an input stream.
         /// </summary>
-        public static Texture2DInfo LoadTexture(Stream inputStream,
-            TextureResolution resolution = TextureResolution.Full)
+        public static Texture2DInfo LoadTexture(Stream inputStream)
         {
             using var texture = Pfimage.FromStream(inputStream, new PfimConfig(applyColorMap: false));
             if (texture.Compressed) texture.Decompress();
@@ -100,7 +100,7 @@ namespace Textures
                     throw new NotImplementedException($"Unsupported texture format: {texture.Format}");
             }
 
-            return resolution switch
+            return Settings.TextureResolution switch
             {
                 TextureResolution.Quarter when texture.MipMaps.Length > 2 =>
                     new Texture2DInfo(

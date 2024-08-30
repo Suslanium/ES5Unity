@@ -52,7 +52,7 @@ namespace Engine.MasterFile
         /// Awaits the initialization of all master files.
         /// All the tasks that work on the master files should await this function before proceeding.
         /// </summary>
-        private async Task AwaitInitialization()
+        public async Task AwaitInitialization()
         {
             var initializationTasks =
                 _masterFiles.Values.Select(masterFile => masterFile.AwaitInitialization()).ToList();

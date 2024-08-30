@@ -6,7 +6,7 @@ using NIF.Builder;
 using UnityEngine;
 using Coroutine = Engine.Core.Coroutine;
 
-namespace Engine
+namespace Engine.UI
 {
     public class LoadingScreenManager : MonoBehaviour
     {
