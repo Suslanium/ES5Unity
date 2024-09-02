@@ -22,6 +22,10 @@ namespace Engine.UI
 
         [SerializeField] private GameObject mainMenu;
 
+        [SerializeField] private GameObject loadScreen;
+        
+        [SerializeField] private GameObject settingsScreen;
+
         [SerializeField] private TMP_InputField cellText;
 
         [SerializeField] private UIManager uiManager;
@@ -32,6 +36,7 @@ namespace Engine.UI
 
         [SerializeField] private Camera mainCamera;
 
+        private bool _blockInput = false;
         private GameEngine _gameEngine;
         private ResourceManager _resourceManager;
         private MasterFileManager _masterFileManager;
@@ -63,7 +68,9 @@ namespace Engine.UI
                     mainCamera);
                 setupMenu.SetActive(false);
                 initErrorScreen.SetActive(false);
+                loadScreen.SetActive(false);
                 mainMenu.SetActive(false);
+                settingsScreen.SetActive(false);
                 initLoadingScreen.SetActive(true);
                 _gameEngine.WaitForMasterFileInitialization(ShowMainMenu, ShowErrorScreen);
             }
@@ -77,20 +84,26 @@ namespace Engine.UI
         {
             setupMenu.SetActive(false);
             initLoadingScreen.SetActive(false);
+            settingsScreen.SetActive(false);
+            loadScreen.SetActive(false);
             mainMenu.SetActive(false);
             initErrorScreen.SetActive(true);
         }
 
         public void ShowSetupMenu()
         {
+            if (_blockInput) return;
             initLoadingScreen.SetActive(false);
             mainMenu.SetActive(false);
+            settingsScreen.SetActive(false);
+            loadScreen.SetActive(false);
             initErrorScreen.SetActive(false);
             setupMenu.SetActive(true);
         }
 
         public void Setup()
         {
+            if (_blockInput) return;
             var path = pathText.text;
             var loadOrder = loadOrderText.text.Split(',').ToList();
             Settings.SetDataPath(path);
@@ -98,12 +111,43 @@ namespace Engine.UI
             Initialize();
         }
 
-        private void ShowMainMenu()
+        public void ShowMainMenu()
         {
+            if (_blockInput) return;
             setupMenu.SetActive(false);
             initLoadingScreen.SetActive(false);
+            settingsScreen.SetActive(false);
             initErrorScreen.SetActive(false);
+            loadScreen.SetActive(false);
             mainMenu.SetActive(true);
+        }
+        
+        public void ShowSettings()
+        {
+            if (_blockInput) return;
+            setupMenu.SetActive(false);
+            initLoadingScreen.SetActive(false);
+            mainMenu.SetActive(false);
+            initErrorScreen.SetActive(false);
+            loadScreen.SetActive(false);
+            settingsScreen.SetActive(true);
+        }
+        
+        public void ShowLoadMenu()
+        {
+            if (_blockInput) return;
+            setupMenu.SetActive(false);
+            initLoadingScreen.SetActive(false);
+            mainMenu.SetActive(false);
+            initErrorScreen.SetActive(false);
+            settingsScreen.SetActive(false);
+            loadScreen.SetActive(true);
+        }
+        
+        public void Quit()
+        {
+            if (_blockInput) return;
+            Application.Quit();
         }
 
         private void HideMenus()
@@ -112,13 +156,21 @@ namespace Engine.UI
             initLoadingScreen.SetActive(false);
             initErrorScreen.SetActive(false);
             mainMenu.SetActive(false);
+            settingsScreen.SetActive(false);
+            loadScreen.SetActive(false);
         }
 
         public void Load()
         {
+            if (_blockInput) return;
             var cell = cellText.text;
             HideMenus();
-            uiManager.FadeIn(() => { _gameEngine.LoadCell(cell, null, null); });
+            _blockInput = true;
+            uiManager.FadeIn(() =>
+            {
+                _blockInput = false;
+                _gameEngine.LoadCell(cell, null, null);
+            });
         }
 
         private void Update()
