@@ -2,7 +2,7 @@
 using Textures;
 using UnityEngine;
 
-namespace Engine.UI
+namespace Engine
 {
     public enum ScreenResolution
     {
@@ -20,7 +20,7 @@ namespace Engine.UI
         FPS_120 = 120,
         FPS_144 = 144,
         FPS_240 = 240,
-        FPS_REFRESH_RATE = -1
+        FPS_REFRESH_RATE = 1000
     }
 
     public enum ShadowQuality
@@ -34,11 +34,11 @@ namespace Engine.UI
 
     public static class Settings
     {
-        public static string DataPath { get; private set; } = null;
+        public static string DataPath { get; private set; }
 
         private const string DataPathKey = "DataPath";
 
-        public static List<string> LoadOrder { get; private set; } = null;
+        public static List<string> LoadOrder { get; private set; }
 
         private const string LoadOrderKey = "LoadOrder";
 
@@ -48,7 +48,7 @@ namespace Engine.UI
 
         private const string TextureResolutionKey = "TextureResolution";
 
-        public static ScreenResolution ScreenResolution { get; private set; } = ScreenResolution.Native;
+        public static ScreenResolution ScreenResolution { get; private set; } = ScreenResolution.HalfNative;
 
         private const string ScreenResolutionKey = "ScreenResolution";
 
@@ -58,7 +58,7 @@ namespace Engine.UI
 
         private static int _nativeScreenRefreshRate;
 
-        public static TargetFrameRate TargetFrameRate { get; private set; } = TargetFrameRate.FPS_REFRESH_RATE;
+        public static TargetFrameRate TargetFrameRate { get; private set; } = TargetFrameRate.FPS_60;
 
         private const string TargetFrameRateKey = "TargetFrameRate";
 

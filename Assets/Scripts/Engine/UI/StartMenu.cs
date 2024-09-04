@@ -35,8 +35,10 @@ namespace Engine.UI
         [SerializeField] private GameObject player;
 
         [SerializeField] private Camera mainCamera;
+        
+        [SerializeField] private SettingsMenu settingsMenu;
 
-        private bool _blockInput = false;
+        private bool _blockInput;
         private GameEngine _gameEngine;
         private ResourceManager _resourceManager;
         private MasterFileManager _masterFileManager;
@@ -44,6 +46,7 @@ namespace Engine.UI
         private void Start()
         {
             Settings.Initialize();
+            settingsMenu.Initialize();
             if (Settings.DataPath != null && Settings.LoadOrder != null)
             {
                 Initialize();
