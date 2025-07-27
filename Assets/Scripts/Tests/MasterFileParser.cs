@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using MasterFile;
 using UnityEngine;
-using Debug = UnityEngine.Debug;
+using Logger = Engine.Core.Logger;
 
 namespace Tests
 {
@@ -19,7 +19,7 @@ namespace Tests
             stopWatch.Stop();
             var elapsedMs = stopWatch.ElapsedMilliseconds;
             fileReader.Close();
-            Debug.Log(elapsedMs);
+            Logger.Log(elapsedMs);
         }
     }
 }

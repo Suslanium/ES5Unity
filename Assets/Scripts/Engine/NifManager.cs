@@ -4,28 +4,31 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
-using NIF;
-using NIF.Converter;
+using Engine.Resource;
+using Engine.Textures;
+using NIF.Builder;
+using NIF.Parser;
 using UnityEngine;
 using Object = UnityEngine.Object;
+using Coroutine = Engine.Core.Coroutine;
 
 namespace Engine
 {
     public class NifManager
     {
         private readonly Dictionary<string, GameObject> _nifPrefabs = new();
-        private readonly Dictionary<string, Task<NiFile>> _niFileTasks = new();
-        private readonly MaterialManager _materialManager;
+        private readonly Dictionary<string, Task<NIF.Builder.Components.GameObject>> _niFileTasks = new();
         private readonly ResourceManager _resourceManager;
         private GameObject _prefabContainerObject;
 
-        public NifManager(MaterialManager materialManager, ResourceManager resourceManager)
+        public NifManager(MaterialManager materialManager, TextureManager textureManager,
+            ResourceManager resourceManager)
         {
-            _materialManager = materialManager;
             _resourceManager = resourceManager;
+            NifObjectBuilder.Initialize(materialManager, textureManager);
         }
 
-        private Task<NiFile> StartNiFileLoadingTask(string filePath)
+        private Task<NIF.Builder.Components.GameObject> StartNiFileLoadingTask(string filePath)
         {
             return Task.Run(() =>
             {
@@ -35,7 +38,9 @@ namespace Engine
                 var niFile = NiFile.ReadNif(filePath, fileReader, 0);
                 fileReader.Close();
                 fileStream.Close();
-                return niFile;
+                var objectBuilder = new NifObjectBuilder(niFile);
+                var gameObject = objectBuilder.BuildObject();
+                return gameObject;
             });
         }
 
@@ -70,12 +75,14 @@ namespace Engine
 
             if (!_nifPrefabs.TryGetValue(filePath, out var prefab))
             {
-                var prefabCoroutine = LoadNifPrefab(filePath, loadedPrefab => { prefab = loadedPrefab; });
+                var prefabCoroutine = Coroutine.Get(LoadNifPrefab(filePath, gameObj => { prefab = gameObj; }),
+                    nameof(LoadNifPrefab));
                 while (prefabCoroutine.MoveNext())
                 {
                     yield return null;
                 }
 
+                yield return null;
                 _nifPrefabs[filePath] = prefab;
             }
 
@@ -86,30 +93,32 @@ namespace Engine
         {
             PreloadNifFile(filePath);
             var task = _niFileTasks[filePath];
-            
+
             while (!task.IsCompleted)
             {
                 yield return null;
             }
 
-            var file = task.Result;
+            var gameObject = task.Result;
             _niFileTasks.Remove(filePath);
-            var objectBuilder = new NifObjectBuilder(file, _materialManager);
             yield return null;
 
-            var prefabCoroutine = objectBuilder.BuildObject(prefab =>
+            if (gameObject == null)
             {
-                if (prefab != null)
-                {
-                    prefab.transform.parent = _prefabContainerObject.transform;
-                }
+                onReadyCallback(null);
+                yield break;
+            }
 
-                onReadyCallback(prefab);
-            });
+            GameObject prefab = null;
+            var prefabCoroutine =
+                Coroutine.Get(gameObject.Create(_prefabContainerObject, gameObj => { prefab = gameObj; }, true),
+                    nameof(gameObject.Create));
             while (prefabCoroutine.MoveNext())
             {
                 yield return null;
             }
+
+            onReadyCallback(prefab);
         }
 
         /// <summary>

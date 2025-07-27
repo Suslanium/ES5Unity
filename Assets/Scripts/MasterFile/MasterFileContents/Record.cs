@@ -1,7 +1,7 @@
 using System.IO;
 using Ionic.Zlib;
 using MasterFile.MasterFileContents.Records;
-using UnityEngine;
+using Logger = Engine.Core.Logger;
 
 namespace MasterFile.MasterFileContents
 {
@@ -152,43 +152,25 @@ namespace MasterFile.MasterFileContents
 
         private static Record GetSpecificRecord(BinaryReader fileReader, Record basicRecordInfo)
         {
-            Record specificRecord = basicRecordInfo;
-            switch (basicRecordInfo.Type)
+            var specificRecord = basicRecordInfo.Type switch
             {
-                case "TES4":
-                    specificRecord = TES4.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position);
-                    break;
-                case "WRLD":
-                    specificRecord = WRLD.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position);
-                    break;
-                case "CELL":
-                    specificRecord = CELL.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position);
-                    break;
-                case "REFR":
-                    specificRecord = REFR.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position);
-                    break;
-                case "STAT":
-                    specificRecord = STAT.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position);
-                    break;
-                case "MSTT":
-                    specificRecord = MSTT.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position);
-                    break;
-                case "FURN":
-                    specificRecord = FURN.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position);
-                    break;
-                case "LGTM":
-                    specificRecord = LGTM.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position);
-                    break;
-                case "LIGH":
-                    specificRecord = LIGH.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position);
-                    break;
-                case "DOOR":
-                    specificRecord = DOOR.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position);
-                    break;
-                case "LSCR":
-                    specificRecord = LSCR.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position);
-                    break;
-            }
+                "TES4" => TES4.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position),
+                "WRLD" => WRLD.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position),
+                "CELL" => CELL.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position),
+                "REFR" => REFR.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position),
+                "STAT" => STAT.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position),
+                "MSTT" => MSTT.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position),
+                "FURN" => FURN.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position),
+                "LGTM" => LGTM.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position),
+                "LIGH" => LIGH.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position),
+                "DOOR" => DOOR.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position),
+                "LSCR" => LSCR.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position),
+                "LAND" => LAND.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position),
+                "LTEX" => LTEX.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position),
+                "TXST" => TXST.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position),
+                "TREE" => TREE.ParseSpecific(basicRecordInfo, fileReader, fileReader.BaseStream.Position),
+                _ => basicRecordInfo
+            };
 
             return specificRecord;
         }
@@ -205,13 +187,13 @@ namespace MasterFile.MasterFileContents
         {
             var decompressedSize = fileReader.ReadUInt32();
             var compressedData = fileReader.ReadBytes(checked((int)compressedDataSize));
-            byte[] decompressedData = new byte[decompressedSize];
-            using MemoryStream compressedDataStream = new MemoryStream(compressedData, false);
-            using ZlibStream decompressStream = new ZlibStream(compressedDataStream, CompressionMode.Decompress);
+            var decompressedData = new byte[decompressedSize];
+            using var compressedDataStream = new MemoryStream(compressedData, false);
+            using var decompressStream = new ZlibStream(compressedDataStream, CompressionMode.Decompress);
             var readAmount = decompressStream.Read(decompressedData, 0, checked((int)decompressedSize));
             if (readAmount != decompressedSize)
             {
-                Debug.LogError("Decompressed record data size doesn't match with the original decompressed size");
+                Logger.LogError("Decompressed record data size doesn't match with the original decompressed size");
             }
 
             return decompressedData;

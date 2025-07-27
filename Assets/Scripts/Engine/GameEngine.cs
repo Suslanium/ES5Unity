@@ -1,9 +1,14 @@
 ﻿using System;
 using System.Collections;
-using Core;
+using Engine.Cell;
+using Engine.Core;
 using Engine.Door;
-using MasterFile;
+using Engine.MasterFile;
+using Engine.Resource;
+using Engine.Textures;
+using Engine.UI;
 using UnityEngine;
+using Coroutine = Engine.Core.Coroutine;
 
 namespace Engine
 {
@@ -16,35 +21,36 @@ namespace Engine
 
     public class GameEngine
     {
-        private const float DesiredWorkTimePerFrame = 1.0f / 200;
-        private readonly ResourceManager _resourceManager;
-        private readonly ESMasterFile _esMasterFile;
-        private readonly TextureManager _textureManager;
         private readonly MaterialManager _materialManager;
         private readonly NifManager _nifManager;
         private readonly CellManager _cellManager;
         private readonly TemporalLoadBalancer _loadBalancer;
         private readonly UIManager _uiManager;
-        private readonly GameObject _player;
+        private readonly PlayerManager _playerManager;
         private readonly LoadingScreenManager _loadingScreenManager;
+        private readonly MasterFileManager _masterFileManager;
         public readonly Camera MainCamera;
         public Plane[] CameraPlanes { get; private set; }
 
         public GameState GameState
         {
             get => _backingState;
-            set
+            private set
             {
                 switch (value)
                 {
                     case GameState.Loading:
                         _uiManager.SetLoadingState();
+                        if (_playerManager.PlayerActive)
+                            _playerManager.PlayerActive = false;
+                        _loadBalancer.DesiredWorkTimePerFrame = Settings.LoadingDesiredWorkTimePerFrame;
                         _loadingScreenManager.ShowLoadingScreen();
                         break;
                     case GameState.InGame:
                         _loadingScreenManager.HideLoadingScreen();
-                        if (!_player.activeSelf)
-                            _player.SetActive(true);
+                        if (!_playerManager.PlayerActive)
+                            _playerManager.PlayerActive = true;
+                        _loadBalancer.DesiredWorkTimePerFrame = Settings.InGameDesiredWorkTimePerFrame;
                         _uiManager.SetInGameState();
                         break;
                     case GameState.Paused:
@@ -61,97 +67,107 @@ namespace Engine
         private GameState _backingState;
         public DoorTeleport ActiveDoorTeleport;
 
-        public GameEngine(ResourceManager resourceManager, ESMasterFile masterFile, GameObject player,
+        public GameEngine(ResourceManager resourceManager, MasterFileManager masterFileManager, GameObject player,
             UIManager uiManager, LoadingScreenManager loadingScreenManager, Camera mainCamera)
         {
-            _resourceManager = resourceManager;
-            _esMasterFile = masterFile;
-            _textureManager = new TextureManager(_resourceManager);
-            _materialManager = new MaterialManager(_textureManager);
-            _nifManager = new NifManager(_materialManager, _resourceManager);
+            var textureManager = new TextureManager(resourceManager);
+            _materialManager = new MaterialManager(textureManager);
+            _masterFileManager = masterFileManager;
+            _nifManager = new NifManager(_materialManager, textureManager, resourceManager);
             _loadBalancer = new TemporalLoadBalancer();
-            _cellManager = new CellManager(_esMasterFile, _nifManager, _loadBalancer, this, player);
+            _playerManager = new PlayerManager(player);
+            _cellManager = new CellManager(masterFileManager, _nifManager, textureManager,
+                _loadBalancer, this,
+                _playerManager);
             _loadingScreenManager = loadingScreenManager;
-            _player = player;
             _uiManager = uiManager;
             uiManager.SetGameEngine(this);
             MainCamera = mainCamera;
-            _loadingScreenManager.Initialize(masterFile, _nifManager, _loadBalancer);
+            _loadingScreenManager.Initialize(masterFileManager, _nifManager, _loadBalancer);
         }
 
-        // ReSharper disable Unity.PerformanceAnalysis
-        public void LoadCell(string editorId, bool clearPrevious = false)
+        public void WaitForMasterFileInitialization(Action onReadyCallback, Action onErrorCallback)
         {
-            _player.SetActive(false);
-            var startCellLoadingCoroutine = LoadCellCoroutine(editorId, clearPrevious);
-            _loadBalancer.AddTask(startCellLoadingCoroutine);
+            var loadCoroutine = WaitForMasterFileInitializationCoroutine(onReadyCallback, onErrorCallback);
+            _loadBalancer.AddTaskPriority(loadCoroutine);
         }
 
-        // ReSharper disable Unity.PerformanceAnalysis
-        public void LoadCell(uint formID, LoadCause loadCause, Vector3 startPosition, Quaternion startRotation,
-            bool clearPrevious = false)
+        private IEnumerator WaitForMasterFileInitializationCoroutine(Action onReadyCallback, Action onErrorCallback)
         {
-            if (loadCause != LoadCause.OpenWorldLoad)
-                _player.SetActive(false);
-            var startCellLoadingCoroutine =
-                LoadCellCoroutine(formID, loadCause, startPosition, startRotation, clearPrevious);
-            _loadBalancer.AddTask(startCellLoadingCoroutine);
+            var initializationTask = _masterFileManager.AwaitInitialization();
+            while (!initializationTask.IsCompleted)
+                yield return null;
+            if (initializationTask.IsFaulted)
+            {
+                onErrorCallback();
+            }
+            else
+            {
+                onReadyCallback();
+            }
+        }
+
+        public void LoadCell(string editorId, Vector3? startPosition, Quaternion? startRotation)
+        {
+            var loadCoroutine = LoadCellCoroutine(editorId, startPosition, startRotation);
+            _loadBalancer.AddTaskPriority(loadCoroutine);
+        }
+
+        private IEnumerator LoadCellCoroutine(string editorId, Vector3? startPosition,
+            Quaternion? startRotation)
+        {
+            var clearCoroutine = Coroutine.Get(DestroyAndClearEverything(), nameof(DestroyAndClearEverything));
+            while (clearCoroutine.MoveNext())
+                yield return null;
+
+            ActiveDoorTeleport = null;
+            GameState = GameState.Loading;
+            _cellManager.LoadCell(editorId, startPosition, startRotation,
+                () => { GameState = GameState.InGame; });
+        }
+
+        public void LoadCell(uint formID, Vector3? startPosition, Quaternion? startRotation)
+        {
+            var loadCoroutine = LoadCellCoroutine(formID, startPosition, startRotation);
+            _loadBalancer.AddTaskPriority(loadCoroutine);
+        }
+
+        private IEnumerator LoadCellCoroutine(uint formID, Vector3? startPosition,
+            Quaternion? startRotation)
+        {
+            var clearCoroutine = Coroutine.Get(DestroyAndClearEverything(), nameof(DestroyAndClearEverything));
+            while (clearCoroutine.MoveNext())
+                yield return null;
+
+            ActiveDoorTeleport = null;
+            GameState = GameState.Loading;
+            _cellManager.LoadCell(formID, startPosition, startRotation,
+                () => { GameState = GameState.InGame; });
         }
 
         public void Update()
         {
             CameraPlanes = GeometryUtility.CalculateFrustumPlanes(MainCamera);
-            _loadBalancer.RunTasks(DesiredWorkTimePerFrame);
-        }
-
-        private IEnumerator LoadCellCoroutine(string editorId, bool clearPrevious = false)
-        {
-            if (clearPrevious)
-            {
-                var clearCoroutine = DestroyAndClearEverything();
-                while (clearCoroutine.MoveNext())
-                {
-                    yield return null;
-                }
-            }
-
-            ActiveDoorTeleport = null;
-            GameState = GameState.Loading;
-            _cellManager.LoadCell(editorId);
-        }
-
-        private IEnumerator LoadCellCoroutine(uint formID, LoadCause loadCause, Vector3 startPosition,
-            Quaternion startRotation, bool clearPrevious = false)
-        {
-            if (clearPrevious)
-            {
-                var clearCoroutine = DestroyAndClearEverything();
-                while (clearCoroutine.MoveNext())
-                {
-                    yield return null;
-                }
-            }
-
-            ActiveDoorTeleport = null;
-            GameState = GameState.Loading;
-            _cellManager.LoadCell(formID, loadCause, startPosition, startRotation);
+            _cellManager.Update();
+            _loadBalancer.RunTasks();
         }
 
         private IEnumerator DestroyAndClearEverything()
         {
-            var cellCoroutine = _cellManager.DestroyAllCells();
+            var cellCoroutine = Coroutine.Get(_cellManager.DestroyAllCells(), nameof(_cellManager.DestroyAllCells));
             while (cellCoroutine.MoveNext())
             {
                 yield return null;
             }
 
-            var nifCoroutine = _nifManager.ClearModelCache();
+            var nifCoroutine = Coroutine.Get(_nifManager.ClearModelCache(), nameof(_nifManager.ClearModelCache));
             while (nifCoroutine.MoveNext())
             {
                 yield return null;
             }
 
-            var materialCoroutine = _materialManager.ClearCachedMaterialsAndTextures();
+            var materialCoroutine = Coroutine.Get(_materialManager.ClearCachedMaterialsAndTextures(),
+                nameof(_materialManager.ClearCachedMaterialsAndTextures));
             while (materialCoroutine.MoveNext())
             {
                 yield return null;

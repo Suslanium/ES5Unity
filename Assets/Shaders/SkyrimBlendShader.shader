@@ -5,6 +5,7 @@ Shader "SkyrimBlendShader"
         _MainTex ("Diffuse map(RGB)", 2D) = "white" {}
         _Alpha ("Alpha", Range(0,1)) = 1
         _UsesVertexColors ("Uses vertex colors", Int) = 0
+        _UsesVertexAlpha ("Uses vertex alpha", Int) = 0
         _Glossiness ("Glossiness", Range(0,1000)) = 500
         _SpecularStrength ("Specular strength", Range(0,1000)) = 0.5
         _NormalMap ("Normal map (RGB) Specular map (A)", 2D) = "bump" {}
@@ -18,11 +19,13 @@ Shader "SkyrimBlendShader"
         [Header(Blending)]
         [Enum(UnityEngine.Rendering.BlendMode)] _BlendSrc ("Blend mode Source", Int) = 5
         [Enum(UnityEngine.Rendering.BlendMode)] _BlendDst ("Blend mode Destination", Int) = 10
+        [Enum(UnityEngine.Rendering.CullMode)] _CullMode("Cull Mode", Int) = 0
     }
     SubShader
     {
         Offset -1, -1
         Tags {"Queue"="Transparent" "IgnoreProjector"="True" "RenderType"="Transparent"}
+        Cull [_CullMode]
         LOD 200
         Blend [_BlendSrc] [_BlendDst]
 
@@ -55,6 +58,7 @@ Shader "SkyrimBlendShader"
         fixed4 _EmissionColor;
         int _EnableEmission;
         int _UsesVertexColors;
+        int _UsesVertexAlpha;
         float _CubeScale;
 
         // Add instancing support for this shader. You need to check 'Enable Instancing' on materials that use the shader.
@@ -68,7 +72,18 @@ Shader "SkyrimBlendShader"
         {
             // Calculate albedo using diffuse map and vertex color as a tint(if needed)
             fixed4 c = tex2D(_MainTex, IN.uv_MainTex);
-            if (_UsesVertexColors > 0) c *= IN.color;
+            if (_UsesVertexColors > 0 && _UsesVertexAlpha > 0)
+            {
+                c *= IN.color;
+            }
+            else if (_UsesVertexColors > 0)
+            {
+                c.rgb *= IN.color.rgb;
+            }
+            else if (_UsesVertexAlpha > 0)
+            {
+                c.a *= IN.color.a;
+            }
             o.Albedo = c.rgb;
             float4 packedNormal = tex2D(_NormalMap, IN.uv_NormalMap);
             //Calculate glossiness and specularity using specular map (normal map alpha)
