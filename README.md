@@ -1,6 +1,12 @@
 # ⚠️ This repository is outdated.
-TL;DR — an extremely unfinished WIP of the new project can be found here: https://github.com/Suslanium/SkyUnity
+### TL;DR
+- An extremely unfinished WIP of the new project can be found here: https://github.com/Suslanium/SkyUnity
 
+- The latest build of this project can be found here: https://github.com/Suslanium/ES5Unity/releases/tag/v-final
+
+- A demonstration of the final version of this project can be found here: https://youtu.be/gl9cuYzv1QU
+
+### Explanation as to why this project is discontinued:
 This project is currently slowly being rewritten from scratch since the current version is poorly written in many places. I started this project back in 2023, and I wasn't really good in terms of code quality and architecture back then, so, over time this project became a mess that is hard to manage and update, so I decided to rewrite it while also improving it (performance- and feature-wise) along the way. ~~The new project will be made public when it reaches the same functionality as this one.~~ The new project is available at the link above, but it is still far from even loading interior locations. The latest version of this (old) project is available on the master and develop branches.
 
 # <img src="https://github.com/Suslanium/ES5Unity/assets/84632927/4e23b155-8d36-472d-90f8-40c148b9b1e4" width="24" height="24"/> ES5Unity
